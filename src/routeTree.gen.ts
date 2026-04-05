@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LibrarySeriesRouteImport } from './routes/library/series'
@@ -20,6 +21,11 @@ import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/mo
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyListRoute = MyListRouteImport.update({
@@ -56,6 +62,7 @@ const LibraryMoviesGenreGenreRoute = LibraryMoviesGenreGenreRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/my-list': typeof MyListRoute
+  '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/my-list': typeof MyListRoute
+  '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/library/series': typeof LibrarySeriesRoute
   '/library/movies': typeof LibraryMoviesIndexRoute
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/my-list': typeof MyListRoute
+  '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/my-list'
+    | '/settings'
     | '/setup'
     | '/library/movies'
     | '/library/series'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/my-list'
+    | '/settings'
     | '/setup'
     | '/library/series'
     | '/library/movies'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/my-list'
+    | '/settings'
     | '/setup'
     | '/library/movies'
     | '/library/series'
@@ -112,6 +124,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MyListRoute: typeof MyListRoute
+  SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   LibraryMoviesRoute: typeof LibraryMoviesRouteWithChildren
   LibrarySeriesRoute: typeof LibrarySeriesRoute
@@ -124,6 +137,13 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-list': {
@@ -188,6 +208,7 @@ const LibraryMoviesRouteWithChildren = LibraryMoviesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MyListRoute: MyListRoute,
+  SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   LibraryMoviesRoute: LibraryMoviesRouteWithChildren,
   LibrarySeriesRoute: LibrarySeriesRoute,

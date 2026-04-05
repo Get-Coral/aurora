@@ -33,13 +33,7 @@ function SetupPage() {
   const setupMutation = useMutation({
     mutationFn: async () =>
       saveSetupConfiguration({
-        data: {
-          url,
-          apiKey,
-          userId,
-          username,
-          password,
-        },
+        data: { url, apiKey, userId, username, password },
       }),
     onSuccess: async () => {
       await navigate({ to: '/' })
@@ -56,87 +50,100 @@ function SetupPage() {
         </div>
       </div>
 
-      <div className="page-wrap" style={{ display: 'grid', gap: '1.5rem', paddingBottom: '4rem' }}>
+      <div
+        className="page-wrap"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 18rem',
+          gap: '1.5rem',
+          alignItems: 'start',
+          paddingTop: '2rem',
+          paddingBottom: '4rem',
+        }}
+      >
         <form
-          className="dialog-panel"
-          style={{ position: 'relative', inset: 'auto', width: '100%', maxWidth: '56rem', margin: '0 auto' }}
+          className="overview-card"
+          style={{ padding: '2rem', gap: '1.25rem' }}
           onSubmit={(event) => {
             event.preventDefault()
             setupMutation.mutate()
           }}
         >
-          <div className="dialog-body" style={{ gridTemplateColumns: '1.4fr .8fr' }}>
-            <div className="dialog-copy" style={{ gap: '1rem' }}>
-              <label className="library-select-shell">
-                <span>{t('setup.serverUrl')}</span>
-                <input
-                  className="search-input"
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  placeholder="http://localhost:8096"
-                />
-              </label>
+          <label className="library-select-shell">
+            <span>{t('setup.serverUrl')}</span>
+            <input
+              className="library-select"
+              style={{ width: '100%' }}
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="http://localhost:8096"
+            />
+          </label>
 
-              <label className="library-select-shell">
-                <span>{t('setup.apiKey')}</span>
-                <input
-                  className="search-input"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                />
-              </label>
+          <label className="library-select-shell">
+            <span>{t('setup.apiKey')}</span>
+            <input
+              className="library-select"
+              style={{ width: '100%' }}
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+            />
+          </label>
 
-              <label className="library-select-shell">
-                <span>{t('setup.userId')}</span>
-                <input
-                  className="search-input"
-                  value={userId}
-                  onChange={(event) => setUserId(event.target.value)}
-                />
-              </label>
+          <label className="library-select-shell">
+            <span>{t('setup.userId')}</span>
+            <input
+              className="library-select"
+              style={{ width: '100%' }}
+              value={userId}
+              onChange={(event) => setUserId(event.target.value)}
+            />
+          </label>
 
-              <label className="library-select-shell">
-                <span>{t('setup.username')}</span>
-                <input
-                  className="search-input"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                />
-              </label>
+          <label className="library-select-shell">
+            <span>{t('setup.username')}</span>
+            <input
+              className="library-select"
+              style={{ width: '100%' }}
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+          </label>
 
-              <label className="library-select-shell">
-                <span>{t('setup.password')}</span>
-                <input
-                  type="password"
-                  className="search-input"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </label>
+          <label className="library-select-shell">
+            <span>{t('setup.password')}</span>
+            <input
+              type="password"
+              className="library-select"
+              style={{ width: '100%' }}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
 
-              <p className="eyebrow" style={{ opacity: 0.8 }}>
-                {t('setup.passwordHint')}
-              </p>
+          <p className="eyebrow" style={{ opacity: 0.6 }}>
+            {t('setup.passwordHint')}
+          </p>
 
-              {setupMutation.error ? (
-                <p className="detail-empty">
-                  {setupMutation.error instanceof Error
-                    ? setupMutation.error.message
-                    : t('setup.errorFallback')}
-                </p>
-              ) : null}
+          {setupMutation.error ? (
+            <p className="detail-empty">
+              {setupMutation.error instanceof Error
+                ? setupMutation.error.message
+                : t('setup.errorFallback')}
+            </p>
+          ) : null}
 
-              <button type="submit" className="primary-action" disabled={setupMutation.isPending}>
-                {setupMutation.isPending ? t('setup.saving') : t('setup.submit')}
-              </button>
-            </div>
-
-            <aside className="orbit-card" style={{ alignSelf: 'start' }}>
-              <span>{t('setup.helpTitle')}</span>
-              <strong>{t('setup.helpCopy')}</strong>
-            </aside>
-          </div>
+          <button type="submit" className="primary-action" disabled={setupMutation.isPending}>
+            {setupMutation.isPending ? t('setup.saving') : t('setup.submit')}
+          </button>
         </form>
+
+        <aside className="overview-card" style={{ padding: '1.6rem', gap: '0.55rem' }}>
+          <p className="eyebrow">{t('setup.helpTitle')}</p>
+          <strong style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--ink-muted)' }}>
+            {t('setup.helpCopy')}
+          </strong>
+        </aside>
       </div>
     </main>
   )

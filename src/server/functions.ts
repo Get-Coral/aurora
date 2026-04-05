@@ -195,6 +195,29 @@ export const fetchSearch = createServerFn({ method: 'GET' })
     return items.map(fromJellyfin)
   })
 
+export const saveSettings = createServerFn({ method: 'POST' })
+  .inputValidator((input: {
+    url: string
+    apiKey: string
+    userId: string
+    username: string
+    password: string
+  }) => input)
+  .handler(async ({ data }) => {
+    const { validateJellyfinSettings, saveJellyfinSettings, getEffectiveJellyfinSettings, isAuroraConfigured } = await import('../lib/config-store')
+    const existing = getEffectiveJellyfinSettings()
+    const settings = {
+      url: data.url,
+      apiKey: data.apiKey || existing?.apiKey || '',
+      userId: data.userId,
+      username: data.username,
+      password: data.password || existing?.password || '',
+    }
+    const validated = await validateJellyfinSettings(settings)
+    saveJellyfinSettings(validated)
+    return { configured: isAuroraConfigured() }
+  })
+
 export const toggleFavorite = createServerFn({ method: 'POST' })
   .inputValidator((input: { id: string; isFavorite: boolean }) => input)
   .handler(async ({ data }) => {

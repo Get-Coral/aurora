@@ -1,13 +1,13 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Sparkles, X } from 'lucide-react'
+import { Search, Settings, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
 import { fetchSearch } from '../server/functions'
 
 export default function Header() {
-  const { locale, setLocale, t } = useI18n()
+  const { t } = useI18n()
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -55,13 +55,6 @@ export default function Header() {
           <Link to="/" className="nav-pill" activeProps={{ className: 'nav-pill nav-pill-active' }}>
             {t('nav.home')}
           </Link>
-          <button
-            type="button"
-            className="nav-pill"
-            onClick={() => jumpToSection('continue')}
-          >
-            {t('nav.continue')}
-          </button>
           <Link
             to="/library/movies"
             search={{ page: 0, sort: 'DateCreated' }}
@@ -147,18 +140,13 @@ export default function Header() {
             </button>
           )}
 
-          <label className="library-select-shell">
-            <span className="sr-only">Language</span>
-            <select
-              value={locale}
-              className="library-select"
-              onChange={(event) => setLocale(event.target.value as typeof locale)}
-              aria-label={t('locale.label')}
-            >
-              <option value="en">EN</option>
-              <option value="nl">NL</option>
-            </select>
-          </label>
+          <Link
+            to="/settings"
+            className="icon-button"
+            aria-label={t('nav.settings')}
+          >
+            <Settings size={20} />
+          </Link>
 
           <div className="avatar-chip" aria-hidden="true">
             EL
