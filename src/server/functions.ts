@@ -1,12 +1,16 @@
 import { createServerFn } from '@tanstack/react-start'
 import {
   getContinueWatching,
+  getEpisodesForSeries,
+  getFavoriteItems,
   getLatestMedia,
   getLibraryItems,
   getItem,
   getFeaturedItem,
+  getNextUpForSeries,
   getSimilarItems,
   searchItems,
+  setFavorite,
 } from '../lib/jellyfin'
 import { fromJellyfin, fromJellyfinDetailed } from '../lib/media'
 
@@ -30,11 +34,34 @@ export const fetchLatestSeries = createServerFn({ method: 'GET' }).handler(async
   return items.map(fromJellyfin)
 })
 
+export const fetchFavoriteMovies = createServerFn({ method: 'GET' }).handler(async () => {
+  const items = await getFavoriteItems('Movie')
+  return items.map(fromJellyfin)
+})
+
+export const fetchMyList = createServerFn({ method: 'GET' }).handler(async () => {
+  const [movies, series] = await Promise.all([
+    getFavoriteItems('Movie'),
+    getFavoriteItems('Series'),
+  ])
+
+  return [...movies, ...series].map(fromJellyfin)
+})
+
+export const fetchRecommendedFromItem = createServerFn({ method: 'GET' })
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    const items = await getSimilarItems(data.id)
+    return items.map(fromJellyfin)
+  })
+
 export const fetchLibrary = createServerFn({ method: 'GET' })
   .inputValidator((input: {
     type: 'Movie' | 'Series'
     page?: number
     sortBy?: 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
+    genre?: string
+    favoritesOnly?: boolean
   }) => input)
   .handler(async ({ data }) => {
     const page = data.page ?? 0
@@ -42,6 +69,8 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
       sortBy: data.sortBy ?? 'DateCreated',
       limit: 24,
       startIndex: page * 24,
+      genre: data.genre,
+      filters: data.favoritesOnly ? 'IsFavorite' : undefined,
     })
     return {
       items: result.Items.map(fromJellyfin),
@@ -71,10 +100,35 @@ export const fetchItemDetails = createServerFn({ method: 'GET' })
     }
   })
 
+export const fetchSeriesDetails = createServerFn({ method: 'GET' })
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    const [item, episodes, nextUp, similar] = await Promise.all([
+      getItem(data.id),
+      getEpisodesForSeries(data.id),
+      getNextUpForSeries(data.id),
+      getSimilarItems(data.id),
+    ])
+
+    return {
+      item: fromJellyfinDetailed(item),
+      episodes: episodes.map(fromJellyfin),
+      nextUp: nextUp.map(fromJellyfin),
+      similar: similar.map(fromJellyfin),
+    }
+  })
+
 export const fetchSearch = createServerFn({ method: 'GET' })
   .inputValidator((input: { query: string }) => input)
   .handler(async ({ data }) => {
     if (!data.query.trim()) return []
     const items = await searchItems(data.query)
     return items.map(fromJellyfin)
+  })
+
+export const toggleFavorite = createServerFn({ method: 'POST' })
+  .inputValidator((input: { id: string; isFavorite: boolean }) => input)
+  .handler(async ({ data }) => {
+    const result = await setFavorite(data.id, data.isFavorite)
+    return { id: data.id, isFavorite: result.IsFavorite }
   })

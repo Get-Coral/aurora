@@ -6,6 +6,8 @@ interface MediaPlayerDialogProps {
   item: MediaItem | null
   open: boolean
   onClose: () => void
+  queue?: MediaItem[]
+  onSelectQueueItem?: (item: MediaItem) => void
 }
 
 function buildSubtitle(item: MediaItem) {
@@ -22,6 +24,8 @@ export function MediaPlayerDialog({
   item,
   open,
   onClose,
+  queue = [],
+  onSelectQueueItem,
 }: MediaPlayerDialogProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -71,17 +75,51 @@ export function MediaPlayerDialog({
 
         <div className="player-stage">
           {item.streamUrl ? (
-            <video
-              ref={videoRef}
-              className="player-video"
-              controls
-              autoPlay
-              playsInline
-              poster={item.backdropUrl ?? item.posterUrl}
-              preload="metadata"
-            >
-              <source src={item.streamUrl} />
-            </video>
+            <div className="player-layout">
+              <video
+                ref={videoRef}
+                className="player-video"
+                controls
+                autoPlay
+                playsInline
+                poster={item.backdropUrl ?? item.posterUrl}
+                preload="metadata"
+              >
+                <source src={item.streamUrl} />
+              </video>
+
+              {queue.length > 1 ? (
+                <aside className="player-queue">
+                  <div className="player-queue-head">
+                    <p className="eyebrow">Up next</p>
+                    <span>{queue.length - 1} in queue</span>
+                  </div>
+                  <div className="player-queue-list">
+                    {queue
+                      .filter((entry) => entry.id !== item.id)
+                      .slice(0, 6)
+                      .map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          className="player-queue-item"
+                          onClick={() => onSelectQueueItem?.(entry)}
+                        >
+                          <strong>{entry.title}</strong>
+                          <span>
+                            {[
+                              entry.seriesTitle ?? (entry.type === 'series' ? 'Series' : 'Movie'),
+                              entry.episodeNumber ? `E${entry.episodeNumber}` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ')}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                </aside>
+              ) : null}
+            </div>
           ) : (
             <div className="player-empty">
               <Film size={28} />

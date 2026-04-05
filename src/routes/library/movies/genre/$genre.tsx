@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LibraryView } from '../../components/LibraryView'
-import { fetchLibrary } from '../../server/functions'
+import { LibraryView } from '../../../../components/LibraryView'
+import { fetchLibrary } from '../../../../server/functions'
 
 type MovieSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
 
-export const Route = createFileRoute('/library/movies')({
+export const Route = createFileRoute('/library/movies/genre/$genre')({
   validateSearch: (search: Record<string, unknown>) => ({
     page:
       typeof search.page === 'number'
@@ -20,26 +20,30 @@ export const Route = createFileRoute('/library/movies')({
         ? (search.sort as MovieSort)
         : 'DateCreated',
   }),
-  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort }),
+  loaderDeps: ({ params, search }) => ({ genre: params.genre, page: search.page, sort: search.sort }),
   loader: async ({ context: { queryClient }, deps }) => {
     await queryClient.ensureQueryData({
-      queryKey: ['library', 'Movie', deps.page, deps.sort],
-      queryFn: () => fetchLibrary({ data: { type: 'Movie', page: deps.page, sortBy: deps.sort } }),
+      queryKey: ['library', 'Movie', deps.page, deps.sort, deps.genre],
+      queryFn: () =>
+        fetchLibrary({
+          data: { type: 'Movie', page: deps.page, sortBy: deps.sort, genre: deps.genre },
+        }),
     })
   },
-  component: MoviesLibraryPage,
+  component: MovieGenrePage,
 })
 
-function MoviesLibraryPage() {
+function MovieGenrePage() {
   const search = Route.useSearch()
+  const { genre } = Route.useParams()
 
   return (
     <LibraryView
       type="Movie"
-      title="Movie library"
-      subtitle="Browse the full catalog"
+      title={`${genre} movies`}
+      subtitle="Browse by genre"
       search={search}
-      genre={undefined}
+      genre={genre}
     />
   )
 }

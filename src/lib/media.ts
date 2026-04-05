@@ -39,6 +39,13 @@ export interface DetailedMediaItem extends MediaItem {
   tags: string[]
 }
 
+export interface SeriesDetailPayload {
+  item: DetailedMediaItem
+  episodes: MediaItem[]
+  nextUp: MediaItem[]
+  similar: MediaItem[]
+}
+
 import type { JellyfinItem } from './jellyfin'
 import {
   jellyfinImageUrl,

@@ -76,6 +76,13 @@ export default function Header() {
           >
             Series
           </Link>
+          <Link
+            to="/my-list"
+            className="nav-pill"
+            activeProps={{ className: 'nav-pill nav-pill-active' }}
+          >
+            My List
+          </Link>
         </div>
 
         <div className="header-actions">

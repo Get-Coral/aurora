@@ -9,10 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LibrarySeriesRouteImport } from './routes/library/series'
 import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
+import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/movies/genre/$genre'
 
+const MyListRoute = MyListRouteImport.update({
+  id: '/my-list',
+  path: '/my-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -28,39 +35,74 @@ const LibraryMoviesRoute = LibraryMoviesRouteImport.update({
   path: '/library/movies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryMoviesGenreGenreRoute = LibraryMoviesGenreGenreRouteImport.update({
+  id: '/genre/$genre',
+  path: '/genre/$genre',
+  getParentRoute: () => LibraryMoviesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/library/movies': typeof LibraryMoviesRoute
+  '/my-list': typeof MyListRoute
+  '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
+  '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/library/movies': typeof LibraryMoviesRoute
+  '/my-list': typeof MyListRoute
+  '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
+  '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/library/movies': typeof LibraryMoviesRoute
+  '/my-list': typeof MyListRoute
+  '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
+  '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/library/movies' | '/library/series'
+  fullPaths:
+    | '/'
+    | '/my-list'
+    | '/library/movies'
+    | '/library/series'
+    | '/library/movies/genre/$genre'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/library/movies' | '/library/series'
-  id: '__root__' | '/' | '/library/movies' | '/library/series'
+  to:
+    | '/'
+    | '/my-list'
+    | '/library/movies'
+    | '/library/series'
+    | '/library/movies/genre/$genre'
+  id:
+    | '__root__'
+    | '/'
+    | '/my-list'
+    | '/library/movies'
+    | '/library/series'
+    | '/library/movies/genre/$genre'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LibraryMoviesRoute: typeof LibraryMoviesRoute
+  MyListRoute: typeof MyListRoute
+  LibraryMoviesRoute: typeof LibraryMoviesRouteWithChildren
   LibrarySeriesRoute: typeof LibrarySeriesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/my-list': {
+      id: '/my-list'
+      path: '/my-list'
+      fullPath: '/my-list'
+      preLoaderRoute: typeof MyListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,12 +124,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LibraryMoviesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/library/movies/genre/$genre': {
+      id: '/library/movies/genre/$genre'
+      path: '/genre/$genre'
+      fullPath: '/library/movies/genre/$genre'
+      preLoaderRoute: typeof LibraryMoviesGenreGenreRouteImport
+      parentRoute: typeof LibraryMoviesRoute
+    }
   }
 }
 
+interface LibraryMoviesRouteChildren {
+  LibraryMoviesGenreGenreRoute: typeof LibraryMoviesGenreGenreRoute
+}
+
+const LibraryMoviesRouteChildren: LibraryMoviesRouteChildren = {
+  LibraryMoviesGenreGenreRoute: LibraryMoviesGenreGenreRoute,
+}
+
+const LibraryMoviesRouteWithChildren = LibraryMoviesRoute._addFileChildren(
+  LibraryMoviesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LibraryMoviesRoute: LibraryMoviesRoute,
+  MyListRoute: MyListRoute,
+  LibraryMoviesRoute: LibraryMoviesRouteWithChildren,
   LibrarySeriesRoute: LibrarySeriesRoute,
 }
 export const routeTree = rootRouteImport

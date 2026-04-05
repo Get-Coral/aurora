@@ -1,4 +1,4 @@
-import { Heart, Info, Play, Star } from 'lucide-react'
+import { Check, Heart, Info, Play, Plus, Star } from 'lucide-react'
 import type { MediaItem } from '../lib/media'
 
 interface MediaCardProps {
@@ -7,6 +7,7 @@ interface MediaCardProps {
   priority?: boolean
   variant?: 'feature' | 'poster' | 'standard'
   onPlay?: (item: MediaItem) => void
+  onToggleFavorite?: (item: MediaItem) => void
 }
 
 export function MediaCard({
@@ -15,6 +16,7 @@ export function MediaCard({
   priority = false,
   variant = 'standard',
   onPlay,
+  onToggleFavorite,
 }: MediaCardProps) {
   return (
     <div
@@ -84,6 +86,24 @@ export function MediaCard({
           }}
         >
           <Info size={14} /> Details
+        </button>
+        <button
+          type="button"
+          className="card-action-button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggleFavorite?.(item)
+          }}
+        >
+          {item.isFavorite ? (
+            <>
+              <Check size={14} /> In My List
+            </>
+          ) : (
+            <>
+              <Plus size={14} /> My List
+            </>
+          )}
         </button>
       </div>
 

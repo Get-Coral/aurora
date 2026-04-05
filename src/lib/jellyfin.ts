@@ -69,10 +69,35 @@ export function jellyfinStreamUrl(itemId: string): string {
   return `${BASE_URL}/Videos/${itemId}/stream?static=true&api_key=${API_KEY}`
 }
 
+export async function setFavorite(itemId: string, isFavorite: boolean) {
+  const url = new URL(`${BASE_URL}/Users/${USER_ID}/FavoriteItems/${itemId}`)
+  url.searchParams.set('api_key', API_KEY)
+
+  const res = await fetch(url.toString(), { method: isFavorite ? 'DELETE' : 'POST' })
+  if (!res.ok) throw new Error(`Jellyfin favorite error: ${res.status} ${res.statusText}`)
+  return res.json() as Promise<{ IsFavorite: boolean }>
+}
+
 export async function getContinueWatching(): Promise<JellyfinItem[]> {
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Users/${USER_ID}/Items/Resume`,
     { MediaTypes: 'Video', Limit: '6', Fields: 'Overview,GenreItems,UserData' },
+  )
+  return data.Items
+}
+
+export async function getFavoriteItems(type: JellyfinMediaType = 'Movie'): Promise<JellyfinItem[]> {
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${USER_ID}/Items`,
+    {
+      IncludeItemTypes: type,
+      Recursive: 'true',
+      Filters: 'IsFavorite',
+      Limit: '12',
+      SortBy: 'DateCreated',
+      SortOrder: 'Descending',
+      Fields: 'Overview,GenreItems,UserData',
+    },
   )
   return data.Items
 }
@@ -86,19 +111,36 @@ export async function getLatestMedia(type: JellyfinMediaType = 'Movie'): Promise
 }
 export async function getLibraryItems(
   type: JellyfinMediaType,
-  { sortBy = 'SortName', limit = 24, startIndex = 0 } = {},
+  {
+    sortBy = 'SortName',
+    limit = 24,
+    startIndex = 0,
+    genre,
+    filters,
+  }: {
+    sortBy?: string
+    limit?: number
+    startIndex?: number
+    genre?: string
+    filters?: string
+  } = {},
 ): Promise<JellyfinResponse<JellyfinItem>> {
+  const params: Record<string, string> = {
+    IncludeItemTypes: type,
+    SortBy: sortBy,
+    SortOrder: 'Ascending',
+    Recursive: 'true',
+    Limit: String(limit),
+    StartIndex: String(startIndex),
+    Fields: 'Overview,GenreItems,UserData',
+  }
+
+  if (genre) params.Genres = genre
+  if (filters) params.Filters = filters
+
   return jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Users/${USER_ID}/Items`,
-    {
-      IncludeItemTypes: type,
-      SortBy: sortBy,
-      SortOrder: 'Ascending',
-      Recursive: 'true',
-      Limit: String(limit),
-      StartIndex: String(startIndex),
-      Fields: 'Overview,GenreItems,UserData',
-    },
+    params,
   )
 }
 
@@ -118,6 +160,47 @@ export async function getSimilarItems(itemId: string): Promise<JellyfinItem[]> {
       Fields: 'Overview,GenreItems,UserData',
     },
   )
+  return data.Items
+}
+
+export async function getEpisodesForSeries(seriesId: string): Promise<JellyfinItem[]> {
+  const direct = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Shows/${seriesId}/Episodes`,
+    {
+      UserId: USER_ID,
+      Limit: '60',
+      Fields: 'Overview,GenreItems,UserData',
+    },
+  ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
+
+  if (direct.Items.length) return direct.Items
+
+  const fallback = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${USER_ID}/Items`,
+    {
+      IncludeItemTypes: 'Episode',
+      Recursive: 'true',
+      SeriesId: seriesId,
+      Limit: '60',
+      SortBy: 'ParentIndexNumber,IndexNumber',
+      Fields: 'Overview,GenreItems,UserData',
+    },
+  ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
+
+  return fallback.Items
+}
+
+export async function getNextUpForSeries(seriesId: string): Promise<JellyfinItem[]> {
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Shows/NextUp`,
+    {
+      UserId: USER_ID,
+      SeriesId: seriesId,
+      Limit: '6',
+      Fields: 'Overview,GenreItems,UserData',
+    },
+  ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
+
   return data.Items
 }
 

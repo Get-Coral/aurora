@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { Play, Star, X } from 'lucide-react'
+import { Check, Play, Plus, Star, X } from 'lucide-react'
 import type { DetailedMediaItem, MediaItem } from '../lib/media'
-import { fetchItemDetails } from '../server/functions'
+import { fetchItemDetails, fetchSeriesDetails } from '../server/functions'
 
 interface MediaSpotlightDialogProps {
   item: MediaItem | null
@@ -9,6 +9,7 @@ interface MediaSpotlightDialogProps {
   onClose: () => void
   onPlay?: (item: MediaItem) => void
   onSelectSimilar?: (item: MediaItem) => void
+  onToggleFavorite?: (item: MediaItem) => void
 }
 
 function formatRuntime(minutes?: number) {
@@ -24,17 +25,29 @@ export function MediaSpotlightDialog({
   onClose,
   onPlay,
   onSelectSimilar,
+  onToggleFavorite,
 }: MediaSpotlightDialogProps) {
-  if (!open || !item) return null
-
   const { data, isLoading } = useQuery({
-    queryKey: ['item-details', item.id],
-    queryFn: () => fetchItemDetails({ data: { id: item.id } }),
-    enabled: open,
+    queryKey: ['item-details', item?.id],
+    queryFn: () => fetchItemDetails({ data: { id: item!.id } }),
+    enabled: open && Boolean(item?.id) && item?.type !== 'series',
   })
 
-  const detail: DetailedMediaItem = data?.item ?? { ...item, cast: [], studios: [], tags: [] }
-  const similar = data?.similar ?? []
+  const { data: seriesData, isLoading: seriesLoading } = useQuery({
+    queryKey: ['series-details', item?.id],
+    queryFn: () => fetchSeriesDetails({ data: { id: item!.id } }),
+    enabled: open && Boolean(item?.id) && item?.type === 'series',
+  })
+
+  if (!open || !item) return null
+
+  const detail: DetailedMediaItem =
+    (item.type === 'series' ? seriesData?.item : data?.item) ??
+    { ...item, cast: [], studios: [], tags: [] }
+  const similar = item.type === 'series' ? (seriesData?.similar ?? []) : (data?.similar ?? [])
+  const episodes = item.type === 'series' ? (seriesData?.episodes ?? []) : []
+  const nextUp = item.type === 'series' ? (seriesData?.nextUp ?? []) : []
+  const loadingState = item.type === 'series' ? seriesLoading : isLoading
 
   const metadata = [
     detail.year,
@@ -142,6 +155,22 @@ export function MediaSpotlightDialog({
             >
               <Play size={18} fill="currentColor" /> Play now
             </button>
+
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => onToggleFavorite?.(detail)}
+            >
+              {detail.isFavorite ? (
+                <>
+                  <Check size={18} /> In My List
+                </>
+              ) : (
+                <>
+                  <Plus size={18} /> Add to My List
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -149,7 +178,7 @@ export function MediaSpotlightDialog({
           <section className="detail-section">
             <div className="detail-section-head">
               <p className="eyebrow">Cast & crew</p>
-              {isLoading ? <span className="detail-loading">Loading credits…</span> : null}
+              {loadingState ? <span className="detail-loading">Loading credits…</span> : null}
             </div>
             {detail.cast.length ? (
               <div className="cast-grid">
@@ -171,6 +200,68 @@ export function MediaSpotlightDialog({
               <p className="detail-empty">No cast data is available for this title yet.</p>
             )}
           </section>
+
+          {detail.type === 'series' ? (
+            <section className="detail-section">
+              <div className="detail-section-head">
+                <p className="eyebrow">Episodes</p>
+                {nextUp.length ? (
+                  <span className="detail-loading">Next up ready</span>
+                ) : null}
+              </div>
+              {nextUp.length ? (
+                <div className="episode-highlight">
+                  <div>
+                    <span className="eyebrow">Continue with</span>
+                    <h3>{nextUp[0].title}</h3>
+                    <p>
+                      {[
+                        nextUp[0].seriesTitle,
+                        nextUp[0].seasonNumber ? `S${nextUp[0].seasonNumber}` : null,
+                        nextUp[0].episodeNumber ? `E${nextUp[0].episodeNumber}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' • ')}
+                    </p>
+                  </div>
+                  <button type="button" className="primary-action" onClick={() => onPlay?.(nextUp[0])}>
+                    <Play size={18} fill="currentColor" /> Play next up
+                  </button>
+                </div>
+              ) : null}
+
+              {episodes.length ? (
+                <div className="episode-list">
+                  {episodes.slice(0, 10).map((episode) => (
+                    <button
+                      key={episode.id}
+                      type="button"
+                      className="episode-row"
+                      onClick={() => onPlay?.(episode)}
+                    >
+                      <div>
+                        <strong>{episode.title}</strong>
+                        <span>
+                          {[
+                            episode.seasonNumber ? `Season ${episode.seasonNumber}` : null,
+                            episode.episodeNumber ? `Episode ${episode.episodeNumber}` : null,
+                            episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </span>
+                      </div>
+                      <span className="episode-progress">
+                        {episode.progress ? `${Math.round(episode.progress)}% watched` : 'Play'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="detail-empty">No episode list is available for this series in Jellyfin.</p>
+              )}
+            </section>
+          ) : null}
 
           <section className="detail-section">
             <div className="detail-section-head">
