@@ -1109,7 +1109,8 @@ button { font: inherit; }
 .dialog-panel {
   position: relative;
   width: min(72rem, 100%);
-  overflow: hidden;
+  max-height: calc(100vh - 4rem);
+  overflow: auto;
   border-radius: 2rem;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(7, 12, 24, 0.96), rgba(8, 13, 28, 0.98));
@@ -1211,6 +1212,120 @@ button { font: inherit; }
   font-size: 4rem;
 }
 
+.dialog-lower {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.detail-meta-block {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.detail-meta-block span,
+.detail-loading {
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+}
+
+.detail-meta-block strong {
+  display: block;
+  margin-top: 0.35rem;
+  line-height: 1.55;
+}
+
+.detail-section {
+  margin-top: 1.6rem;
+}
+
+.detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.cast-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.cast-card,
+.similar-card {
+  text-align: left;
+}
+
+.cast-card strong,
+.similar-card strong {
+  display: block;
+  margin-top: 0.7rem;
+  font-size: 0.95rem;
+}
+
+.cast-card span,
+.similar-card span,
+.detail-empty {
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.cast-photo,
+.similar-poster {
+  width: 100%;
+  object-fit: cover;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+}
+
+.cast-photo {
+  aspect-ratio: 3 / 4;
+}
+
+.cast-photo-fallback,
+.similar-poster-fallback {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(112, 168, 255, 0.16), rgba(255, 157, 102, 0.16));
+}
+
+.cast-photo-fallback span {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+}
+
+.similar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.similar-card {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.similar-card:hover strong {
+  color: var(--accent-strong);
+}
+
+.similar-poster {
+  aspect-ratio: 2 / 3;
+}
+
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1225,6 +1340,12 @@ button { font: inherit; }
   .dialog-body,
   .overview-band {
     grid-template-columns: 1fr;
+  }
+
+  .detail-meta-grid,
+  .cast-grid,
+  .similar-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .library-head,
@@ -1309,6 +1430,12 @@ button { font: inherit; }
 
   .dialog-panel {
     border-radius: 1.4rem;
+  }
+
+  .detail-meta-grid,
+  .cast-grid,
+  .similar-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   .player-shell {

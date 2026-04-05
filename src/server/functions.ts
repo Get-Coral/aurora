@@ -5,9 +5,10 @@ import {
   getLibraryItems,
   getItem,
   getFeaturedItem,
+  getSimilarItems,
   searchItems,
 } from '../lib/jellyfin'
-import { fromJellyfin } from '../lib/media'
+import { fromJellyfin, fromJellyfinDetailed } from '../lib/media'
 
 export const fetchContinueWatching = createServerFn({ method: 'GET' }).handler(async () => {
   const items = await getContinueWatching()
@@ -54,6 +55,20 @@ export const fetchItem = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const item = await getItem(data.id)
     return fromJellyfin(item)
+  })
+
+export const fetchItemDetails = createServerFn({ method: 'GET' })
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    const [item, similar] = await Promise.all([
+      getItem(data.id),
+      getSimilarItems(data.id),
+    ])
+
+    return {
+      item: fromJellyfinDetailed(item),
+      similar: similar.map(fromJellyfin),
+    }
   })
 
 export const fetchSearch = createServerFn({ method: 'GET' })

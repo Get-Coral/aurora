@@ -16,6 +16,15 @@ export interface JellyfinItem {
   ImageTags?: { Primary?: string; Backdrop?: string; Thumb?: string; Logo?: string }
   BackdropImageTags?: string[]
   GenreItems?: { Id: string; Name: string }[]
+  People?: {
+    Id: string
+    Name: string
+    Role?: string
+    Type?: string
+    PrimaryImageTag?: string
+  }[]
+  Studios?: { Id?: string; Name: string }[]
+  Tags?: string[]
   SeriesName?: string
   SeasonName?: string
   IndexNumber?: number
@@ -50,6 +59,10 @@ export function jellyfinImageUrl(
   width = 400,
 ): string {
   return `${BASE_URL}/Items/${itemId}/Images/${type}?maxWidth=${width}&api_key=${API_KEY}`
+}
+
+export function jellyfinPersonImageUrl(personId: string, width = 240): string {
+  return `${BASE_URL}/Items/${personId}/Images/Primary?maxWidth=${width}&api_key=${API_KEY}`
 }
 
 export function jellyfinStreamUrl(itemId: string): string {
@@ -94,6 +107,18 @@ export async function getItem(itemId: string): Promise<JellyfinItem> {
     `/Users/${USER_ID}/Items/${itemId}`,
     { Fields: 'Overview,GenreItems,UserData,People,Studios' },
   )
+}
+
+export async function getSimilarItems(itemId: string): Promise<JellyfinItem[]> {
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Items/${itemId}/Similar`,
+    {
+      UserId: USER_ID,
+      Limit: '8',
+      Fields: 'Overview,GenreItems,UserData',
+    },
+  )
+  return data.Items
 }
 
 export async function searchItems(query: string): Promise<JellyfinItem[]> {

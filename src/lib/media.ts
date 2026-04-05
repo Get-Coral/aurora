@@ -25,8 +25,26 @@ export interface MediaItem {
   streamUrl?: string
 }
 
+export interface MediaPerson {
+  id: string
+  name: string
+  role?: string
+  type?: string
+  imageUrl?: string
+}
+
+export interface DetailedMediaItem extends MediaItem {
+  cast: MediaPerson[]
+  studios: string[]
+  tags: string[]
+}
+
 import type { JellyfinItem } from './jellyfin'
-import { jellyfinImageUrl, jellyfinStreamUrl } from './jellyfin'
+import {
+  jellyfinImageUrl,
+  jellyfinPersonImageUrl,
+  jellyfinStreamUrl,
+} from './jellyfin'
 
 export function fromJellyfin(item: JellyfinItem): MediaItem {
   const type: MediaType =
@@ -64,5 +82,27 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
     seasonNumber: item.ParentIndexNumber,
     episodeNumber: item.IndexNumber,
     streamUrl: jellyfinStreamUrl(item.Id),
+  }
+}
+
+export function fromJellyfinDetailed(item: JellyfinItem): DetailedMediaItem {
+  const base = fromJellyfin(item)
+
+  return {
+    ...base,
+    cast:
+      item.People?.filter((person) => person.Type === 'Actor' || person.Role)
+        .slice(0, 10)
+        .map((person) => ({
+          id: person.Id,
+          name: person.Name,
+          role: person.Role,
+          type: person.Type,
+          imageUrl: person.PrimaryImageTag
+            ? jellyfinPersonImageUrl(person.Id, 240)
+            : undefined,
+        })) ?? [],
+    studios: item.Studios?.map((studio) => studio.Name) ?? [],
+    tags: item.Tags ?? [],
   }
 }

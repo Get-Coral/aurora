@@ -129,6 +129,7 @@ function HomePage() {
         open={selectedItem != null}
         onClose={() => setSelectedItem(null)}
         onPlay={(item) => playMedia(item)}
+        onSelectSimilar={setSelectedItem}
       />
     </main>
   )
