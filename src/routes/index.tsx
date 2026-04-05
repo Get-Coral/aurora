@@ -1,18 +1,20 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { HeroSection } from '../components/HeroSection'
 import { MediaPlayerDialog } from '../components/MediaPlayerDialog'
 import { MediaSpotlightDialog } from '../components/MediaSpotlightDialog'
 import { SectionShelf } from '../components/SectionShelf'
 import { useFavoriteAction } from '../components/useFavoriteAction'
 import { useI18n } from '../lib/i18n'
+import { useTvMode } from '../lib/tv-mode'
 import {
   fetchFeatured,
   fetchContinueWatching,
   fetchFavoriteMovies,
   fetchLatestMovies,
   fetchLatestSeries,
+  fetchMostPlayed,
   fetchRecommendedFromItem,
   fetchSetupStatus,
 } from '../server/functions'
@@ -43,10 +45,20 @@ function HomePage() {
   const { data: latestMovies } = useSuspenseQuery({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMovies() })
   const { data: latestSeries } = useSuspenseQuery({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeries() })
   const { data: favoriteMovies = [] } = useQuery({ queryKey: ['favorite-movies'], queryFn: () => fetchFavoriteMovies() })
+  const { data: mostPlayed = [] } = useQuery({ queryKey: ['most-played'], queryFn: () => fetchMostPlayed() })
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
+  const [heroIndex, setHeroIndex] = useState(0)
+  const [screensaverActive, setScreensaverActive] = useState(false)
+  const [screensaverTime, setScreensaverTime] = useState('')
+  const { tvMode } = useTvMode()
   const favoriteMutation = useFavoriteAction()
+  const queryClient = useQueryClient()
+  const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastInteractionRef = useRef(Date.now())
+  const screensaverCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const screensaverClockRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     function handleSelect(event: Event) {
@@ -58,7 +70,68 @@ function HomePage() {
     return () => window.removeEventListener('aurora:select-media', handleSelect as EventListener)
   }, [])
 
-  const spotlightItem = featured ?? latestMovies[0] ?? latestSeries[0] ?? null
+  const heroPool = [
+    ...(featured ? [featured] : []),
+    ...latestMovies,
+    ...latestSeries,
+  ].filter((item, index, arr) => arr.findIndex((c) => c.id === item.id) === index)
+
+  useEffect(() => {
+    if (heroTimerRef.current) clearInterval(heroTimerRef.current)
+    if (tvMode && heroPool.length > 1) {
+      heroTimerRef.current = setInterval(() => {
+        setHeroIndex((i) => (i + 1) % heroPool.length)
+      }, 15000)
+    }
+    return () => {
+      if (heroTimerRef.current) clearInterval(heroTimerRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tvMode, heroPool.length])
+
+  // Screensaver: activate after 3 min of no interaction; only when not playing
+  useEffect(() => {
+    const TIMEOUT_MS = 3 * 60 * 1000
+
+    function resetInteraction() {
+      lastInteractionRef.current = Date.now()
+      if (screensaverActive) setScreensaverActive(false)
+    }
+
+    screensaverCheckRef.current = setInterval(() => {
+      if (playingItem) return
+      if (Date.now() - lastInteractionRef.current >= TIMEOUT_MS) setScreensaverActive(true)
+    }, 10_000)
+
+    window.addEventListener('mousemove', resetInteraction)
+    window.addEventListener('keydown', resetInteraction)
+    window.addEventListener('touchstart', resetInteraction)
+    window.addEventListener('click', resetInteraction)
+
+    return () => {
+      if (screensaverCheckRef.current) clearInterval(screensaverCheckRef.current)
+      window.removeEventListener('mousemove', resetInteraction)
+      window.removeEventListener('keydown', resetInteraction)
+      window.removeEventListener('touchstart', resetInteraction)
+      window.removeEventListener('click', resetInteraction)
+    }
+  }, [screensaverActive, playingItem])
+
+  // Screensaver clock
+  useEffect(() => {
+    if (!screensaverActive) {
+      if (screensaverClockRef.current) clearInterval(screensaverClockRef.current)
+      return
+    }
+    function updateClock() {
+      setScreensaverTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    }
+    updateClock()
+    screensaverClockRef.current = setInterval(updateClock, 1000)
+    return () => { if (screensaverClockRef.current) clearInterval(screensaverClockRef.current) }
+  }, [screensaverActive])
+
+  const spotlightItem = heroPool[heroIndex % Math.max(heroPool.length, 1)] ?? null
   const { data: recommendedItems = [] } = useQuery({
     queryKey: ['recommended-from-item', spotlightItem?.id],
     queryFn: () => fetchRecommendedFromItem({ data: { id: spotlightItem!.id } }),
@@ -82,6 +155,25 @@ function HomePage() {
     favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
   }
 
+  function handleWatchedChange(id: string, played: boolean) {
+    // Patch every home-page query cache that might contain this item
+    const patchList = (items: MediaItem[]) =>
+      items.map((i) => (i.id === id ? { ...i, played } : i))
+
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['continue-watching'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['latest-movies'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['latest-series'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['favorite-movies'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+  }
+
   return (
     <main className="home-shell">
       {spotlightItem ? (
@@ -99,23 +191,25 @@ function HomePage() {
       <div className="home-gradient-band" />
 
       <div className="page-wrap home-sections">
-        <section className="overview-band">
-          <div className="overview-card">
-            <p className="eyebrow">{t('home.libraryPulse')}</p>
-            <strong>{latestMovies.length + latestSeries.length}</strong>
-            <span>{t('home.libraryPulseCopy')}</span>
-          </div>
-          <div className="overview-card">
-            <p className="eyebrow">{t('home.watchRhythm')}</p>
-            <strong>{continueWatching.length}</strong>
-            <span>{t('home.watchRhythmCopy')}</span>
-          </div>
-          <div className="overview-card">
-            <p className="eyebrow">{t('home.tonightsLane')}</p>
-            <strong>{spotlightItem?.genres[0] ?? t('home.curatedFallback')}</strong>
-            <span>{t('home.tonightsLaneCopy')}</span>
-          </div>
-        </section>
+        {!tvMode ? (
+          <section className="overview-band">
+            <div className="overview-card">
+              <p className="eyebrow">{t('home.libraryPulse')}</p>
+              <strong>{latestMovies.length + latestSeries.length}</strong>
+              <span>{t('home.libraryPulseCopy')}</span>
+            </div>
+            <div className="overview-card">
+              <p className="eyebrow">{t('home.watchRhythm')}</p>
+              <strong>{continueWatching.length}</strong>
+              <span>{t('home.watchRhythmCopy')}</span>
+            </div>
+            <div className="overview-card">
+              <p className="eyebrow">{t('home.tonightsLane')}</p>
+              <strong>{spotlightItem?.genres[0] ?? t('home.curatedFallback')}</strong>
+              <span>{t('home.tonightsLaneCopy')}</span>
+            </div>
+          </section>
+        ) : null}
 
         <SectionShelf
           id="continue"
@@ -172,6 +266,18 @@ function HomePage() {
           emptyTitle={t('home.recommended.emptyTitle')}
           emptyCopy={t('home.recommended.emptyCopy')}
         />
+        {mostPlayed.length > 0 ? (
+          <SectionShelf
+            id="most-played"
+            title={t('home.mostPlayed.title')}
+            subtitle={t('home.mostPlayed.subtitle')}
+            items={mostPlayed}
+            onSelect={setSelectedItem}
+            onPlay={(item) => playMedia(item, mostPlayed)}
+            onToggleFavorite={handleToggleFavorite}
+            browseTo="/history"
+          />
+        ) : null}
       </div>
 
       <MediaPlayerDialog
@@ -189,7 +295,22 @@ function HomePage() {
         onPlay={(item, queue) => playMedia(item, queue ?? (item.type === 'episode' ? [item] : [item, ...recommendedItems]))}
         onSelectSimilar={setSelectedItem}
         onToggleFavorite={handleToggleFavorite}
+        onWatchedChange={handleWatchedChange}
       />
+
+      {screensaverActive && spotlightItem ? (
+        <div className="screensaver-shell" onClick={() => setScreensaverActive(false)}>
+          {spotlightItem.backdropUrl ? (
+            <img src={spotlightItem.backdropUrl} alt="" className="screensaver-backdrop" />
+          ) : null}
+          <div className="screensaver-overlay" />
+          <div className="screensaver-clock">{screensaverTime}</div>
+          <div className="screensaver-title">
+            <p className="eyebrow">{spotlightItem.genres[0] ?? ''}</p>
+            <strong>{spotlightItem.title}</strong>
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }

@@ -32,7 +32,7 @@ function MyListPage() {
       type="Movie"
       title={t('route.myList.title')}
       subtitle={t('route.myList.subtitle')}
-      search={{ page: 0, sort: 'DateCreated' }}
+      search={{ sort: 'DateCreated' }}
       mode="my-list"
       customItems={data}
     />

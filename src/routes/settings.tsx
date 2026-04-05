@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { Tv } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n, supportedLocales } from '../lib/i18n'
 import type { Locale } from '../lib/i18n'
+import { useTvMode } from '../lib/tv-mode'
 import { fetchOpenSubtitlesKey, fetchSetupStatus, saveOpenSubtitlesKey, saveSettings } from '../server/functions'
 
 export const Route = createFileRoute('/settings')({
@@ -23,6 +25,7 @@ const LOCALE_LABELS: Record<Locale, string> = {
 
 function SettingsPage() {
   const { t, locale, setLocale } = useI18n()
+  const { tvMode, setTvMode } = useTvMode()
   const setupStatus = Route.useLoaderData()
 
   const [url, setUrl] = useState(setupStatus.current.url)
@@ -205,6 +208,26 @@ function SettingsPage() {
               ))}
             </select>
           </label>
+
+          <div className="settings-toggle-row">
+            <div className="settings-toggle-copy">
+              <div className="settings-toggle-label">
+                <Tv size={16} />
+                {t('settings.tvMode')}
+              </div>
+              <p className="settings-toggle-description">{t('settings.tvModeCopy')}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={tvMode}
+              className={`toggle-switch${tvMode ? ' toggle-switch-on' : ''}`}
+              onClick={() => setTvMode(!tvMode)}
+              aria-label={t('settings.tvMode')}
+            >
+              <span className="toggle-switch-thumb" />
+            </button>
+          </div>
         </section>
       </div>
     </main>

@@ -19,8 +19,11 @@ export const Route = createFileRoute('/library/movies/genre/$genre')({
       search.order === 'Ascending' || search.order === 'Descending'
         ? (search.order as MovieSortOrder)
         : 'Descending',
+    ratings: typeof search.ratings === 'string' ? search.ratings : '',
+    decade: typeof search.decade === 'string' ? search.decade : '',
+    minScore: typeof search.minScore === 'number' ? search.minScore : 0,
   }),
-  loaderDeps: ({ search }) => ({ sort: search.sort, order: search.order }),
+  loaderDeps: ({ search }) => search,
   loader: async () => {
     const setupStatus = await fetchSetupStatus()
     if (!setupStatus.configured) {

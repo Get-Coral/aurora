@@ -4,10 +4,12 @@ import { Search, Settings, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
+import { useTvMode } from '../lib/tv-mode'
 import { fetchSearch, fetchUsername } from '../server/functions'
 
 export default function Header() {
   const { t } = useI18n()
+  const { tvMode } = useTvMode()
 
   const { data: username = '' } = useQuery({
     queryKey: ['current-user'],
@@ -25,6 +27,7 @@ export default function Header() {
     queryFn: () => fetchSearch({ data: { query: deferredQuery } }),
     enabled: deferredQuery.length > 1,
   })
+
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus()
@@ -62,7 +65,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/movies"
-            search={{ sort: 'DateCreated' }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
@@ -70,12 +73,21 @@ export default function Header() {
           </Link>
           <Link
             to="/library/series"
-            search={{ sort: 'DateCreated' }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
             {t('nav.series')}
           </Link>
+          {!tvMode ? (
+            <Link
+              to="/collections"
+              className="nav-pill"
+              activeProps={{ className: 'nav-pill nav-pill-active' }}
+            >
+              {t('nav.collections')}
+            </Link>
+          ) : null}
           <Link
             to="/my-list"
             className="nav-pill"

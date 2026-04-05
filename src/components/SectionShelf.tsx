@@ -12,7 +12,7 @@ interface SectionShelfProps {
   onSelect: (item: MediaItem) => void
   onPlay: (item: MediaItem) => void
   onToggleFavorite?: (item: MediaItem) => void
-  browseTo?: '/library/movies' | '/library/series' | '/my-list'
+  browseTo?: '/library/movies' | '/library/series' | '/my-list' | '/history' | '/collections'
   emptyTitle?: string
   emptyCopy?: string
 }
@@ -41,7 +41,11 @@ export function SectionShelf({
         {browseTo ? (
           <Link
             to={browseTo}
-            search={browseTo === '/my-list' ? undefined : { page: 0, sort: 'DateCreated' }}
+            search={
+              browseTo === '/library/movies' || browseTo === '/library/series'
+                ? { sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }
+                : undefined
+            }
             className="section-trailing section-trailing-button"
           >
             {t('section.browseMore')} <ChevronRight size={16} />

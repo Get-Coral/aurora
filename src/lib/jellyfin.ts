@@ -8,7 +8,7 @@ const AURORA_DEVICE_NAME = 'Aurora Web'
 const AURORA_DEVICE_ID = 'aurora-ui-web'
 const AURORA_VERSION = '1.0.0'
 
-export type JellyfinMediaType = 'Movie' | 'Series' | 'Episode' | 'MusicAlbum'
+export type JellyfinMediaType = 'Movie' | 'Series' | 'Episode' | 'MusicAlbum' | 'BoxSet'
 
 export interface JellyfinItem {
   Id: string
@@ -19,6 +19,7 @@ export interface JellyfinItem {
   OfficialRating?: string
   Overview?: string
   CommunityRating?: number
+  ChildCount?: number
   ImageTags?: { Primary?: string; Backdrop?: string; Thumb?: string; Logo?: string }
   BackdropImageTags?: string[]
   GenreItems?: { Id: string; Name: string }[]
@@ -40,6 +41,7 @@ export interface JellyfinItem {
     PlayedPercentage?: number
     Played?: boolean
     IsFavorite?: boolean
+    LastPlayedDate?: string
   }
 }
 
@@ -476,6 +478,11 @@ export async function getLibraryItems(
     startIndex = 0,
     genre,
     filters,
+    watchStatus,
+    officialRatings,
+    minCommunityRating,
+    minPremiereDate,
+    maxPremiereDate,
   }: {
     sortBy?: string
     sortOrder?: 'Ascending' | 'Descending'
@@ -483,6 +490,11 @@ export async function getLibraryItems(
     startIndex?: number
     genre?: string
     filters?: string
+    watchStatus?: 'watched' | 'unwatched' | 'inprogress'
+    officialRatings?: string
+    minCommunityRating?: number
+    minPremiereDate?: string
+    maxPremiereDate?: string
   } = {},
 ): Promise<JellyfinResponse<JellyfinItem>> {
   const settings = getRequiredSettings()
@@ -496,14 +508,94 @@ export async function getLibraryItems(
     Fields: 'Overview,GenreItems,UserData',
   }
 
+  const filterParts: string[] = []
+  if (filters) filterParts.push(filters)
+  if (watchStatus === 'watched') filterParts.push('IsPlayed')
+  else if (watchStatus === 'unwatched') filterParts.push('IsUnplayed')
+  else if (watchStatus === 'inprogress') filterParts.push('IsResumable')
+  if (filterParts.length) params.Filters = filterParts.join(',')
+
   if (genre) params.Genres = genre
-  if (filters) params.Filters = filters
+  if (officialRatings) params.OfficialRatings = officialRatings
+  if (minCommunityRating != null) params.MinCommunityRating = String(minCommunityRating)
+  if (minPremiereDate) params.MinPremiereDate = minPremiereDate
+  if (maxPremiereDate) params.MaxPremiereDate = maxPremiereDate
 
   return jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Users/${settings.userId}/Items`,
     params,
     settings,
   )
+}
+
+export async function getWatchHistory({
+  limit = 24,
+  startIndex = 0,
+}: { limit?: number; startIndex?: number } = {}): Promise<JellyfinResponse<JellyfinItem>> {
+  const settings = getRequiredSettings()
+  return jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${settings.userId}/Items`,
+    {
+      Filters: 'IsPlayed',
+      SortBy: 'DatePlayed',
+      SortOrder: 'Descending',
+      Recursive: 'true',
+      IncludeItemTypes: 'Movie,Series',
+      Limit: String(limit),
+      StartIndex: String(startIndex),
+      Fields: 'Overview,GenreItems,UserData',
+    },
+    settings,
+  )
+}
+
+export async function getCollections(): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${settings.userId}/Items`,
+    {
+      IncludeItemTypes: 'BoxSet',
+      Recursive: 'true',
+      SortBy: 'SortName',
+      SortOrder: 'Ascending',
+      Fields: 'Overview,GenreItems,UserData,ChildCount',
+    },
+    settings,
+  )
+  return data.Items
+}
+
+export async function getCollectionItems(collectionId: string): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${settings.userId}/Items`,
+    {
+      ParentId: collectionId,
+      SortBy: 'PremiereDate,SortName',
+      SortOrder: 'Ascending',
+      Fields: 'Overview,GenreItems,UserData',
+    },
+    settings,
+  )
+  return data.Items
+}
+
+export async function getMostPlayed(type: JellyfinMediaType = 'Movie', limit = 12): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${settings.userId}/Items`,
+    {
+      IncludeItemTypes: type,
+      SortBy: 'PlayCount',
+      SortOrder: 'Descending',
+      Recursive: 'true',
+      Limit: String(limit),
+      Filters: 'IsPlayed',
+      Fields: 'Overview,GenreItems,UserData',
+    },
+    settings,
+  )
+  return data.Items
 }
 
 export async function getItem(itemId: string): Promise<JellyfinItem> {
@@ -575,6 +667,56 @@ export async function searchItems(query: string): Promise<JellyfinItem[]> {
     settings,
   )
   return data.Items
+}
+
+export async function createCollection(name: string, itemIds: string[] = []): Promise<{ Id: string }> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Collections`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('Name', name)
+  if (itemIds.length) url.searchParams.set('Ids', itemIds.join(','))
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`Jellyfin collection create error: ${res.status}`)
+  return res.json() as Promise<{ Id: string }>
+}
+
+export async function deleteItem(id: string): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Items/${id}`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Jellyfin delete error: ${res.status}`)
+}
+
+export async function updateItemName(id: string, name: string): Promise<void> {
+  const settings = getRequiredSettings()
+  const item = await getItem(id)
+  const url = new URL(`${settings.url}/Items/${id}`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...item, Name: name }),
+  })
+  if (!res.ok) throw new Error(`Jellyfin update error: ${res.status}`)
+}
+
+export async function addItemsToCollection(collectionId: string, itemIds: string[]): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Collections/${collectionId}/Items`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('Ids', itemIds.join(','))
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`Jellyfin add to collection error: ${res.status}`)
+}
+
+export async function removeItemsFromCollection(collectionId: string, itemIds: string[]): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Collections/${collectionId}/Items`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('Ids', itemIds.join(','))
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Jellyfin remove from collection error: ${res.status}`)
 }
 
 export async function getFeaturedItem(): Promise<JellyfinItem | null> {

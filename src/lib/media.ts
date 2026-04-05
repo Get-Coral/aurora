@@ -1,5 +1,5 @@
 export type MediaSource = 'jellyfin' | 'plex'
-export type MediaType = 'movie' | 'series' | 'episode'
+export type MediaType = 'movie' | 'series' | 'episode' | 'collection'
 
 export interface MediaItem {
   id: string
@@ -24,6 +24,8 @@ export interface MediaItem {
   seasonNumber?: number
   episodeNumber?: number
   streamUrl?: string
+  childCount?: number
+  watchedAt?: string
 }
 
 export interface MediaPerson {
