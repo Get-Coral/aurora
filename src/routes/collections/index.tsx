@@ -133,19 +133,19 @@ function CollectionsPage() {
                 params={{ id: collection.id }}
                 className="collection-card"
               >
-                {collection.posterUrl ? (
+                {collection.backdropUrl ?? collection.posterUrl ? (
                   <img
-                    src={collection.posterUrl}
+                    src={collection.backdropUrl ?? collection.posterUrl}
                     alt={collection.title}
-                    className="collection-card-poster"
+                    className="collection-card-thumb"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="collection-card-poster collection-card-fallback">
-                    <Layers size={32} />
+                  <div className="collection-card-thumb collection-card-fallback">
+                    <Layers size={40} />
                   </div>
                 )}
-                <div className="collection-card-info">
+                <div className="collection-card-overlay">
                   <strong className="collection-card-title">{collection.title}</strong>
                   {collection.childCount != null ? (
                     <span className="collection-card-count">

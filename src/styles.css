@@ -2211,49 +2211,59 @@ html.tv-mode .hero-copy-in {
 
 .collection-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
   margin-top: 2rem;
 }
 
 .collection-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: block;
+  position: relative;
   text-decoration: none;
   color: inherit;
-  transition: transform 200ms;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
 }
 
 .collection-card:hover {
   transform: translateY(-4px);
+  border-color: var(--line-strong);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.45);
 }
 
-.collection-card-poster {
+.collection-card-thumb {
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: 1rem;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.04);
+  display: block;
 }
 
 .collection-card-fallback {
   display: grid;
   place-items: center;
   color: var(--ink-faint);
+  background: linear-gradient(135deg, #13203f 0%, #0c1427 100%);
+  min-height: 8rem;
 }
 
-.collection-card-info {
+.collection-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2.5rem 1rem 1rem;
+  background: linear-gradient(0deg, rgba(5,8,20,0.92) 0%, transparent 100%);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0 0.25rem;
+  gap: 0.2rem;
 }
 
 .collection-card-title {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2263,7 +2273,26 @@ html.tv-mode .hero-copy-in {
 
 .collection-card-count {
   font-size: 0.78rem;
-  color: var(--ink-faint);
+  color: rgba(255,255,255,0.55);
+}
+
+/* ── Collection detail items grid ────────────────────────── */
+
+.collection-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+
+.collection-items-grid .collection-item-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.collection-items-grid .media-card {
+  flex: 1;
+  min-height: 16rem;
 }
 
 .collection-hero {

@@ -140,13 +140,13 @@ function CollectionDetailPage() {
         ) : null}
       </div>
 
-      <div className="page-wrap library-grid">
+      <div className="page-wrap collection-items-grid">
         {items.map((item, index) => (
           <div key={item.id} className="collection-item-wrap">
             <MediaCard
               item={item}
               priority={index < 8}
-              variant={index % 7 === 0 ? 'feature' : index % 3 === 0 ? 'poster' : 'standard'}
+              variant="standard"
               onClick={() => setSelectedItem(item)}
               onPlay={playMedia}
               onToggleFavorite={handleToggleFavorite}

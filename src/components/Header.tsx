@@ -5,7 +5,7 @@ import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
 import { useTvMode } from '../lib/tv-mode'
-import { fetchCollections, fetchSearch, fetchUsername } from '../server/functions'
+import { fetchSearch, fetchUsername } from '../server/functions'
 
 export default function Header() {
   const { t } = useI18n()
@@ -28,13 +28,6 @@ export default function Header() {
     enabled: deferredQuery.length > 1,
   })
 
-  const { data: collections, isSuccess: collectionsLoaded } = useQuery({
-    queryKey: ['collections'],
-    queryFn: () => fetchCollections(),
-  })
-  // Non-TV: always show so users can create collections.
-  // TV mode: hide only once we've confirmed there are no collections.
-  const showCollections = !tvMode || !collectionsLoaded || (collections?.length ?? 0) > 0
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus()
@@ -86,7 +79,7 @@ export default function Header() {
           >
             {t('nav.series')}
           </Link>
-          {showCollections ? (
+          {!tvMode ? (
             <Link
               to="/collections"
               className="nav-pill"
