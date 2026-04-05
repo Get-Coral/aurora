@@ -488,32 +488,18 @@ export async function getSimilarItems(itemId: string): Promise<JellyfinItem[]> {
 
 export async function getEpisodesForSeries(seriesId: string): Promise<JellyfinItem[]> {
   const settings = getRequiredSettings()
-  const direct = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
+  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Shows/${seriesId}/Episodes`,
     {
       UserId: settings.userId,
-      Limit: '60',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
-
-  if (direct.Items.length) return direct.Items
-
-  const fallback = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      IncludeItemTypes: 'Episode',
-      Recursive: 'true',
-      SeriesId: seriesId,
-      Limit: '60',
+      Limit: '200',
       SortBy: 'ParentIndexNumber,IndexNumber',
       Fields: 'Overview,GenreItems,UserData',
     },
     settings,
   ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
 
-  return fallback.Items
+  return data.Items
 }
 
 export async function getNextUpForSeries(seriesId: string): Promise<JellyfinItem[]> {

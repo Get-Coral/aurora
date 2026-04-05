@@ -100,6 +100,8 @@ export const nlMessages: MessageDictionary = {
   'dialog.resumeNextUp': 'Volgende hervatten',
   'dialog.playNextUp': 'Volgende afspelen',
   'dialog.playEpisode': 'Speel af',
+  'dialog.markWatched': 'Markeer als bekeken',
+  'dialog.markUnwatched': 'Markeer als onbekeken',
   'dialog.noEpisodes': 'Er is geen afleveringslijst beschikbaar voor deze serie in Jellyfin.',
   'dialog.moreLikeThis': 'Meer zoals dit',
   'dialog.noSimilar': 'We konden geen gelijkaardige titels vinden voor dit item.',

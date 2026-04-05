@@ -100,6 +100,8 @@ export const enMessages: MessageDictionary = {
   'dialog.resumeNextUp': 'Resume next up',
   'dialog.playNextUp': 'Play next up',
   'dialog.playEpisode': 'Play',
+  'dialog.markWatched': 'Mark as watched',
+  'dialog.markUnwatched': 'Mark as unwatched',
   'dialog.noEpisodes': 'No episode list is available for this series in Jellyfin.',
   'dialog.moreLikeThis': 'More like this',
   'dialog.noSimilar': 'We could not find similar titles for this item.',

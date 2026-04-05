@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
-import { Check, Play, Plus, Star, X } from 'lucide-react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { Check, CheckCircle, Circle, Play, Plus, Star, X } from 'lucide-react'
+import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
-import { fetchItemDetails, fetchSeriesDetails } from '../server/functions'
+import { fetchItemDetails, fetchSeriesDetails, markPlayed } from '../server/functions'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
 interface MediaSpotlightDialogProps {
@@ -31,6 +32,18 @@ export function MediaSpotlightDialog({
 }: MediaSpotlightDialogProps) {
   const { t } = useI18n()
   const prefetchMediaDetails = usePrefetchMediaDetails()
+  const [playedOverrides, setPlayedOverrides] = useState<Record<string, boolean>>({})
+
+  const markPlayedMutation = useMutation({
+    mutationFn: (vars: { id: string; played: boolean }) => markPlayed({ data: vars }),
+  })
+
+  function handleToggleWatched(episode: MediaItem) {
+    const current = playedOverrides[episode.id] ?? episode.played ?? false
+    setPlayedOverrides((prev) => ({ ...prev, [episode.id]: !current }))
+    markPlayedMutation.mutate({ id: episode.id, played: !current })
+  }
+
   const { data, isLoading } = useQuery({
     queryKey: ['item-details', item?.id],
     queryFn: () => fetchItemDetails({ data: { id: item!.id } }),
@@ -155,10 +168,16 @@ export function MediaSpotlightDialog({
             <button
               type="button"
               className="primary-action"
-              onClick={() => onPlay?.(detail)}
-              disabled={!onPlay}
+              onClick={() => {
+                const target = item.type === 'series' ? (nextUp[0] ?? episodes[0] ?? detail) : detail
+                onPlay?.(target)
+              }}
+              disabled={!onPlay || (item.type === 'series' && loadingState)}
             >
-              <Play size={18} fill="currentColor" /> {resumable ? t('hero.resumeNow') : t('hero.playNow')}
+              <Play size={18} fill="currentColor" />{' '}
+              {item.type === 'series'
+                ? (isResumable(nextUp[0] ?? episodes[0] ?? detail) ? t('hero.resumeNow') : t('hero.playNow'))
+                : (resumable ? t('hero.resumeNow') : t('hero.playNow'))}
             </button>
 
             <button
@@ -237,34 +256,48 @@ export function MediaSpotlightDialog({
 
               {episodes.length ? (
                 <div className="episode-list">
-                  {episodes.slice(0, 10).map((episode) => (
-                    <button
-                      key={episode.id}
-                      type="button"
-                      className="episode-row"
-                      onClick={() => onPlay?.(episode)}
-                    >
-                      <div>
-                        <strong>{episode.title}</strong>
-                        <span>
-                          {[
-                            episode.seasonNumber ? `${t('generic.season')} ${episode.seasonNumber}` : null,
-                            episode.episodeNumber ? `${t('generic.episode')} ${episode.episodeNumber}` : null,
-                            episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' • ')}
-                        </span>
+                  {episodes.slice(0, 20).map((episode) => {
+                    const isPlayed = playedOverrides[episode.id] ?? episode.played ?? false
+                    return (
+                      <div key={episode.id} className={`episode-row${isPlayed ? ' episode-row-watched' : ''}`}>
+                        <button
+                          type="button"
+                          className="episode-row-body"
+                          onClick={() => onPlay?.(episode)}
+                        >
+                          <div>
+                            <strong>{episode.title}</strong>
+                            <span>
+                              {[
+                                episode.seasonNumber ? `${t('generic.season')} ${episode.seasonNumber}` : null,
+                                episode.episodeNumber ? `${t('generic.episode')} ${episode.episodeNumber}` : null,
+                                episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')}
+                            </span>
+                          </div>
+                          <span className="episode-progress">
+                            {isPlayed
+                              ? t('dialog.playEpisode')
+                              : episode.progress
+                                ? t('hero.progressWatched', { progress: Math.round(episode.progress) })
+                                : isResumable(episode)
+                                  ? t('card.resume')
+                                  : t('dialog.playEpisode')}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button episode-watched-toggle"
+                          onClick={() => handleToggleWatched(episode)}
+                          aria-label={isPlayed ? t('dialog.markUnwatched') : t('dialog.markWatched')}
+                        >
+                          {isPlayed ? <CheckCircle size={16} /> : <Circle size={16} />}
+                        </button>
                       </div>
-                      <span className="episode-progress">
-                        {episode.progress
-                          ? t('hero.progressWatched', { progress: Math.round(episode.progress) })
-                          : isResumable(episode)
-                            ? t('card.resume')
-                            : t('dialog.playEpisode')}
-                      </span>
-                    </button>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="detail-empty">{t('dialog.noEpisodes')}</p>

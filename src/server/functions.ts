@@ -223,6 +223,14 @@ export const saveSettings = createServerFn({ method: 'POST' })
     return { configured: isAuroraConfigured() }
   })
 
+export const markPlayed = createServerFn({ method: 'POST' })
+  .inputValidator((input: { id: string; played: boolean }) => input)
+  .handler(async ({ data }) => {
+    const { setPlayed } = await import('../lib/jellyfin')
+    const result = await setPlayed(data.id, data.played)
+    return { id: data.id, played: result.Played }
+  })
+
 export const toggleFavorite = createServerFn({ method: 'POST' })
   .inputValidator((input: { id: string; isFavorite: boolean }) => input)
   .handler(async ({ data }) => {

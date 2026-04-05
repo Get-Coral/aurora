@@ -1526,20 +1526,34 @@ button { font: inherit; }
 .episode-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  padding: 1rem 1.1rem;
+  gap: 0.5rem;
   border: 1px solid var(--line);
   border-radius: 1.1rem;
   background: rgba(255, 255, 255, 0.03);
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.15s;
 }
 
 .episode-row:hover {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.episode-row-watched {
+  opacity: 0.55;
+}
+
+.episode-row-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 1;
+  padding: 1rem 1.1rem;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
 }
 
 .episode-row strong {
@@ -1555,6 +1569,17 @@ button { font: inherit; }
 
 .episode-progress {
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.episode-watched-toggle {
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+  color: var(--ink-faint);
+}
+
+.episode-watched-toggle:hover {
+  color: var(--ink);
 }
 
 @keyframes fade-up {
@@ -1762,7 +1787,7 @@ button { font: inherit; }
   }
 
   .episode-highlight,
-  .episode-row {
+  .episode-row-body {
     flex-direction: column;
     align-items: flex-start;
   }
