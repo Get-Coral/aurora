@@ -357,12 +357,14 @@ export async function getLibraryItems(
   type: JellyfinMediaType,
   {
     sortBy = 'SortName',
+    sortOrder = 'Ascending',
     limit = 24,
     startIndex = 0,
     genre,
     filters,
   }: {
     sortBy?: string
+    sortOrder?: 'Ascending' | 'Descending'
     limit?: number
     startIndex?: number
     genre?: string
@@ -372,7 +374,7 @@ export async function getLibraryItems(
   const params: Record<string, string> = {
     IncludeItemTypes: type,
     SortBy: sortBy,
-    SortOrder: 'Ascending',
+    SortOrder: sortOrder,
     Recursive: 'true',
     Limit: String(limit),
     StartIndex: String(startIndex),

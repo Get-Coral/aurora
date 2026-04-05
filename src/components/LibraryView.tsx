@@ -12,6 +12,7 @@ import { useFavoriteAction } from './useFavoriteAction'
 
 type LibraryType = 'Movie' | 'Series'
 type LibrarySort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
+type LibrarySortOrder = 'Ascending' | 'Descending'
 
 interface LibraryViewProps {
   type: LibraryType
@@ -20,6 +21,7 @@ interface LibraryViewProps {
   search: {
     page?: number
     sort?: LibrarySort
+    order?: LibrarySortOrder
   }
   genre?: string
   mode?: 'library' | 'my-list'
@@ -45,14 +47,15 @@ export function LibraryView({
   const navigate = useNavigate()
   const page = search.page ?? 0
   const sort = search.sort ?? 'DateCreated'
+  const order = search.order ?? 'Descending'
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
   const favoriteMutation = useFavoriteAction()
 
   const { data } = useQuery({
-    queryKey: ['library', type, page, sort, genre],
-    queryFn: () => fetchLibrary({ data: { type, page, sortBy: sort, genre } }),
+    queryKey: ['library', type, page, sort, order, genre],
+    queryFn: () => fetchLibrary({ data: { type, page, sortBy: sort, sortOrder: order, genre } }),
     enabled: mode === 'library',
   })
 
@@ -61,7 +64,7 @@ export function LibraryView({
 
   const totalPages = Math.max(1, Math.ceil(resolvedTotal / 24))
 
-  function updateSearch(next: Partial<{ page: number; sort: LibrarySort }>) {
+  function updateSearch(next: Partial<{ page: number; sort: LibrarySort; order: LibrarySortOrder }>) {
     if (mode === 'my-list') return
 
     void navigate({
@@ -75,6 +78,7 @@ export function LibraryView({
       search: {
         page: next.page ?? page,
         sort: next.sort ?? sort,
+        order: next.order ?? order,
       },
     })
   }
@@ -126,6 +130,18 @@ export function LibraryView({
               </select>
             </label>
 
+            <label className="library-select-shell">
+              <span>Direction</span>
+              <select
+                value={order}
+                className="library-select"
+                onChange={(event) => updateSearch({ order: event.target.value as LibrarySortOrder, page: 0 })}
+              >
+                <option value="Descending">Descending</option>
+                <option value="Ascending">Ascending</option>
+              </select>
+            </label>
+
             {totalPages > 1 ? (
               <div className="library-pagination">
                 <button
@@ -159,7 +175,7 @@ export function LibraryView({
         <div className="page-wrap genre-rail">
           <Link
             to="/library/movies"
-            search={{ page: 0, sort }}
+            search={{ page: 0, sort, order }}
             className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
           >
             All movies
@@ -169,7 +185,7 @@ export function LibraryView({
               key={genreOption}
               to="/library/movies/genre/$genre"
               params={{ genre: genreOption }}
-              search={{ page: 0, sort }}
+              search={{ page: 0, sort, order }}
               className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
             >
               {genreOption}

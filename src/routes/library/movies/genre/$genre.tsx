@@ -3,6 +3,7 @@ import { LibraryView } from '../../../../components/LibraryView'
 import { fetchLibrary } from '../../../../server/functions'
 
 type MovieSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
+type MovieSortOrder = 'Ascending' | 'Descending'
 
 export const Route = createFileRoute('/library/movies/genre/$genre')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -19,14 +20,24 @@ export const Route = createFileRoute('/library/movies/genre/$genre')({
       search.sort === 'CommunityRating'
         ? (search.sort as MovieSort)
         : 'DateCreated',
+    order:
+      search.order === 'Ascending' || search.order === 'Descending'
+        ? (search.order as MovieSortOrder)
+        : 'Descending',
   }),
-  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort }),
+  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort, order: search.order }),
   loader: async ({ context: { queryClient }, deps, params }) => {
     await queryClient.ensureQueryData({
-      queryKey: ['library', 'Movie', deps.page, deps.sort, params.genre],
+      queryKey: ['library', 'Movie', deps.page, deps.sort, deps.order, params.genre],
       queryFn: () =>
         fetchLibrary({
-          data: { type: 'Movie', page: deps.page, sortBy: deps.sort, genre: params.genre },
+          data: {
+            type: 'Movie',
+            page: deps.page,
+            sortBy: deps.sort,
+            sortOrder: deps.order,
+            genre: params.genre,
+          },
         }),
     })
   },

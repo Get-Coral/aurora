@@ -62,6 +62,7 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
     type: 'Movie' | 'Series'
     page?: number
     sortBy?: 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
+    sortOrder?: 'Ascending' | 'Descending'
     genre?: string
     favoritesOnly?: boolean
   }) => input)
@@ -69,6 +70,7 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
     const page = data.page ?? 0
     const result = await getLibraryItems(data.type, {
       sortBy: data.sortBy ?? 'DateCreated',
+      sortOrder: data.sortOrder ?? 'Descending',
       limit: 24,
       startIndex: page * 24,
       genre: data.genre,

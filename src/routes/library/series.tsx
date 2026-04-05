@@ -3,6 +3,7 @@ import { LibraryView } from '../../components/LibraryView'
 import { fetchLibrary } from '../../server/functions'
 
 type SeriesSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
+type SeriesSortOrder = 'Ascending' | 'Descending'
 
 export const Route = createFileRoute('/library/series')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -19,12 +20,19 @@ export const Route = createFileRoute('/library/series')({
       search.sort === 'CommunityRating'
         ? (search.sort as SeriesSort)
         : 'DateCreated',
+    order:
+      search.order === 'Ascending' || search.order === 'Descending'
+        ? (search.order as SeriesSortOrder)
+        : 'Descending',
   }),
-  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort }),
+  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort, order: search.order }),
   loader: async ({ context: { queryClient }, deps }) => {
     await queryClient.ensureQueryData({
-      queryKey: ['library', 'Series', deps.page, deps.sort],
-      queryFn: () => fetchLibrary({ data: { type: 'Series', page: deps.page, sortBy: deps.sort } }),
+      queryKey: ['library', 'Series', deps.page, deps.sort, deps.order],
+      queryFn: () =>
+        fetchLibrary({
+          data: { type: 'Series', page: deps.page, sortBy: deps.sort, sortOrder: deps.order },
+        }),
     })
   },
   component: SeriesLibraryPage,
