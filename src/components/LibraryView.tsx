@@ -51,7 +51,7 @@ export function LibraryView({
   const favoriteMutation = useFavoriteAction()
 
   const { data } = useQuery({
-    queryKey: ['library', type, page, sort],
+    queryKey: ['library', type, page, sort, genre],
     queryFn: () => fetchLibrary({ data: { type, page, sortBy: sort, genre } }),
     enabled: mode === 'library',
   })
@@ -159,7 +159,7 @@ export function LibraryView({
         <div className="page-wrap genre-rail">
           <Link
             to="/library/movies"
-            search={{ page: 0, sort: 'DateCreated' }}
+            search={{ page: 0, sort }}
             className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
           >
             All movies
@@ -169,7 +169,7 @@ export function LibraryView({
               key={genreOption}
               to="/library/movies/genre/$genre"
               params={{ genre: genreOption }}
-              search={{ page: 0, sort: 'DateCreated' }}
+              search={{ page: 0, sort }}
               className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
             >
               {genreOption}
