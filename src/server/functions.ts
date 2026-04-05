@@ -195,6 +195,11 @@ export const fetchSearch = createServerFn({ method: 'GET' })
     return items.map(fromJellyfin)
   })
 
+export const fetchUsername = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getEffectiveJellyfinSettings } = await import('../lib/config-store')
+  return getEffectiveJellyfinSettings()?.username ?? ''
+})
+
 export const saveSettings = createServerFn({ method: 'POST' })
   .inputValidator((input: {
     url: string

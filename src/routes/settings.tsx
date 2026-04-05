@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useI18n, supportedLocales } from '../lib/i18n'
@@ -31,8 +31,11 @@ function SettingsPage() {
   const [username, setUsername] = useState(setupStatus.current.username)
   const [password, setPassword] = useState('')
 
+  const queryClient = useQueryClient()
+
   const saveMutation = useMutation({
     mutationFn: () => saveSettings({ data: { url, apiKey, userId, username, password } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['current-user'] }),
   })
 
   return (

@@ -4,10 +4,15 @@ import { Search, Settings, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
-import { fetchSearch } from '../server/functions'
+import { fetchSearch, fetchUsername } from '../server/functions'
 
 export default function Header() {
   const { t } = useI18n()
+
+  const { data: username = '' } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: () => fetchUsername(),
+  })
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -149,7 +154,7 @@ export default function Header() {
           </Link>
 
           <div className="avatar-chip" aria-hidden="true">
-            EL
+            {username.slice(0, 2).toUpperCase() || '??'}
           </div>
         </div>
       </nav>
