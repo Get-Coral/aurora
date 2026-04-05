@@ -205,6 +205,8 @@ export const nlMessages: MessageDictionary = {
   'settings.jellyfinCopy': 'Werk je Jellyfin-servergegevens bij. Laat API-sleutel of wachtwoord leeg om de huidige waarden te behouden.',
   'settings.appearanceSection': 'Weergave',
   'settings.language': 'Taal',
+  'settings.tvMode': 'TV-modus',
+  'settings.tvModeCopy': 'Grotere tekst en vereenvoudigde navigatie geoptimaliseerd voor tv-schermen en afstandsbedieningen.',
   'settings.apiKeyPlaceholder': 'Leeg laten om huidige te behouden',
   'settings.passwordPlaceholder': 'Leeg laten om huidige te behouden',
   'settings.openSubtitlesSection': 'OpenSubtitles',

@@ -205,6 +205,8 @@ export const enMessages: MessageDictionary = {
   'settings.jellyfinCopy': 'Update your Jellyfin server details. Leave API key or password blank to keep the current values.',
   'settings.appearanceSection': 'Appearance',
   'settings.language': 'Language',
+  'settings.tvMode': 'TV mode',
+  'settings.tvModeCopy': 'Larger text and simplified navigation optimised for TV screens and remote controls.',
   'settings.apiKeyPlaceholder': 'Leave blank to keep current',
   'settings.passwordPlaceholder': 'Leave blank to keep current',
   'settings.openSubtitlesSection': 'OpenSubtitles',
