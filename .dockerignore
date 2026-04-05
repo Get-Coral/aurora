@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.github
+.vscode
+.tanstack
+.playwright-cli
+.env
+.env.*
+Dockerfile
+README.md
+todo.md
+npm-debug.log*
+pnpm-debug.log*

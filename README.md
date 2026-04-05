@@ -58,9 +58,22 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 pnpm dev
 pnpm build
+pnpm start
 pnpm preview
 pnpm test
 ```
+
+## CI
+
+GitHub Actions workflows are included for:
+
+- CI on pushes and pull requests: install, test, build, and Docker build validation
+- Docker publish to GitHub Container Registry on `main`, version tags, or manual dispatch
+
+Workflow files:
+
+- [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
+- [`.github/workflows/docker-publish.yml`](./.github/workflows/docker-publish.yml)
 
 ## Jellyfin Notes
 
@@ -86,6 +99,38 @@ To add a new language:
 2. Translate the strings
 3. Export and register the file in `src/lib/i18n/messages/index.ts`
 4. Add the locale to the language picker if you want it selectable in the UI
+
+## Docker
+
+Aurora ships with a production Dockerfile and can be deployed to a VM with Docker or Docker Compose.
+
+Build locally:
+
+```bash
+docker build -t aurora-ui .
+```
+
+Run locally:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e JELLYFIN_URL=http://your-jellyfin:8096 \
+  -e JELLYFIN_API_KEY=your_api_key \
+  -e JELLYFIN_USER_ID=your_user_id \
+  -e JELLYFIN_USERNAME=your_username \
+  -e JELLYFIN_PASSWORD=your_password \
+  ghcr.io/eliancodes/aurora-ui:latest
+```
+
+The container listens on port `3000`.
+
+Published images go to:
+
+- `ghcr.io/<owner>/<repo>`
+
+For this repository, that will be:
+
+- `ghcr.io/eliancodes/aurora-ui`
 
 ## Contributing
 
