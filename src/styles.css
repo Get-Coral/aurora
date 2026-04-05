@@ -1000,6 +1000,7 @@ button { font: inherit; }
   z-index: 1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.55rem;
   opacity: 0;
   transform: translateY(10px);
@@ -1015,19 +1016,25 @@ button { font: inherit; }
 .card-action-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
   min-height: 2.5rem;
-  padding: 0 0.95rem;
+  padding: 0 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   background: rgba(7, 12, 24, 0.72);
   color: var(--ink);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .card-action-primary {
   background: linear-gradient(135deg, rgba(112, 168, 255, 0.88), rgba(255, 157, 102, 0.9));
   border-color: transparent;
+}
+
+.card-action-label {
+  display: inline-block;
 }
 
 .card-body {
@@ -1525,6 +1532,25 @@ button { font: inherit; }
   .media-card-poster,
   .media-card-standard {
     grid-column: span 6;
+  }
+
+  .card-hover-actions {
+    inset: auto 1rem 5.2rem;
+    gap: 0.45rem;
+  }
+
+  .card-action-button {
+    min-width: 2.5rem;
+    padding: 0 0.72rem;
+  }
+
+  .card-action-label {
+    display: none;
+  }
+
+  .media-card-feature .card-action-label,
+  .media-card-feature .card-action-label-wide {
+    display: inline-block;
   }
 }
 

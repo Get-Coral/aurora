@@ -74,8 +74,10 @@ export function MediaCard({
             event.stopPropagation()
             onPlay?.(item)
           }}
+          aria-label="Play"
         >
-          <Play size={14} fill="currentColor" /> Play
+          <Play size={14} fill="currentColor" />
+          <span className="card-action-label">Play</span>
         </button>
         <button
           type="button"
@@ -84,8 +86,10 @@ export function MediaCard({
             event.stopPropagation()
             onClick?.()
           }}
+          aria-label="Details"
         >
-          <Info size={14} /> Details
+          <Info size={14} />
+          <span className="card-action-label">Details</span>
         </button>
         <button
           type="button"
@@ -94,14 +98,17 @@ export function MediaCard({
             event.stopPropagation()
             onToggleFavorite?.(item)
           }}
+          aria-label={item.isFavorite ? 'Remove from My List' : 'Add to My List'}
         >
           {item.isFavorite ? (
             <>
-              <Check size={14} /> In My List
+              <Check size={14} />
+              <span className="card-action-label card-action-label-wide">In My List</span>
             </>
           ) : (
             <>
-              <Plus size={14} /> My List
+              <Plus size={14} />
+              <span className="card-action-label">My List</span>
             </>
           )}
         </button>
