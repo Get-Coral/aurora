@@ -1264,6 +1264,30 @@ button { font: inherit; }
   border-color: var(--line);
 }
 
+.player-unmute-prompt {
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.88rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+
+.player-unmute-prompt:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
 .player-empty-fullscreen {
   position: absolute;
   inset: 0;

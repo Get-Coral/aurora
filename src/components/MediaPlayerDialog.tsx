@@ -43,6 +43,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
   const [duration, setDuration] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [autoplayMuted, setAutoplayMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false)
@@ -61,6 +62,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     setIsPlaying(false)
     setActiveSubtitle(null)
     setSubtitlePickerOpen(false)
+    setAutoplayMuted(false)
 
     if (!open || !item?.streamUrl) return
 
@@ -143,9 +145,15 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
 
     const onTimeUpdate = () => setCurrentTime(video.currentTime)
     const onDurationChange = () => setDuration(video.duration || 0)
-    const onPlay = () => setIsPlaying(true)
+    const onPlay = () => {
+      setIsPlaying(true)
+      if (video.muted) setAutoplayMuted(true)
+    }
     const onPause = () => setIsPlaying(false)
-    const onVolumeChange = () => setIsMuted(video.muted)
+    const onVolumeChange = () => {
+      setIsMuted(video.muted)
+      if (!video.muted) setAutoplayMuted(false)
+    }
 
     video.addEventListener('timeupdate', onTimeUpdate)
     video.addEventListener('durationchange', onDurationChange)
@@ -283,6 +291,20 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
               />
             ))}
           </video>
+
+          {autoplayMuted ? (
+            <button
+              type="button"
+              className="player-unmute-prompt"
+              onClick={() => {
+                const video = videoRef.current
+                if (video) video.muted = false
+              }}
+            >
+              <VolumeX size={20} />
+              <span>{t('player.tapToUnmute')}</span>
+            </button>
+          ) : null}
 
           <div className={`player-controls-overlay${controlsVisible ? ' visible' : ''}`}>
             <div className="player-controls-top">

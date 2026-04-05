@@ -112,6 +112,7 @@ export const nlMessages: MessageDictionary = {
   'player.close': 'Speler sluiten',
   'player.upNext': 'Hierna',
   'player.inQueue': ({ count }) => `${count} in wachtrij`,
+  'player.tapToUnmute': 'Tik om geluid aan te zetten',
   'player.notPlayable': 'Deze titel is nog niet direct afspeelbaar.',
   'player.series': 'Serie',
   'player.movie': 'Film',

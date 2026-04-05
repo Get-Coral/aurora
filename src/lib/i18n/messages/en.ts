@@ -112,6 +112,7 @@ export const enMessages: MessageDictionary = {
   'player.close': 'Close player',
   'player.upNext': 'Up next',
   'player.inQueue': ({ count }) => `${count} in queue`,
+  'player.tapToUnmute': 'Tap to unmute',
   'player.notPlayable': 'This title is not directly playable yet.',
   'player.series': 'Series',
   'player.movie': 'Movie',
