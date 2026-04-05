@@ -171,23 +171,25 @@ function HomePage() {
       <div className="home-gradient-band" />
 
       <div className="page-wrap home-sections">
-        <section className="overview-band">
-          <div className="overview-card">
-            <p className="eyebrow">{t('home.libraryPulse')}</p>
-            <strong>{latestMovies.length + latestSeries.length}</strong>
-            <span>{t('home.libraryPulseCopy')}</span>
-          </div>
-          <div className="overview-card">
-            <p className="eyebrow">{t('home.watchRhythm')}</p>
-            <strong>{continueWatching.length}</strong>
-            <span>{t('home.watchRhythmCopy')}</span>
-          </div>
-          <div className="overview-card">
-            <p className="eyebrow">{t('home.tonightsLane')}</p>
-            <strong>{spotlightItem?.genres[0] ?? t('home.curatedFallback')}</strong>
-            <span>{t('home.tonightsLaneCopy')}</span>
-          </div>
-        </section>
+        {!tvMode ? (
+          <section className="overview-band">
+            <div className="overview-card">
+              <p className="eyebrow">{t('home.libraryPulse')}</p>
+              <strong>{latestMovies.length + latestSeries.length}</strong>
+              <span>{t('home.libraryPulseCopy')}</span>
+            </div>
+            <div className="overview-card">
+              <p className="eyebrow">{t('home.watchRhythm')}</p>
+              <strong>{continueWatching.length}</strong>
+              <span>{t('home.watchRhythmCopy')}</span>
+            </div>
+            <div className="overview-card">
+              <p className="eyebrow">{t('home.tonightsLane')}</p>
+              <strong>{spotlightItem?.genres[0] ?? t('home.curatedFallback')}</strong>
+              <span>{t('home.tonightsLaneCopy')}</span>
+            </div>
+          </section>
+        ) : null}
 
         <SectionShelf
           id="continue"

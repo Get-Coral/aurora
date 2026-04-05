@@ -2,6 +2,7 @@ import { Clock3, Heart, Play, Sparkles, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { isResumable, type MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
+import { useTvMode } from '../lib/tv-mode'
 
 interface HeroSectionProps {
   item: MediaItem
@@ -30,6 +31,7 @@ export function HeroSection({
   onSelectCompanion,
 }: HeroSectionProps) {
   const { t } = useI18n()
+  const { tvMode } = useTvMode()
   const itemIsResumable = isResumable(item)
   const continueIsResumable = continueItem ? isResumable(continueItem) : false
 
@@ -85,20 +87,22 @@ export function HeroSection({
           </button>
         </div>
 
-        <div className="hero-stat-strip">
-          <div>
-            <span className="hero-stat-value">{i.genres[0] ?? t('hero.cinematic')}</span>
-            <span className="hero-stat-label">{t('hero.mood')}</span>
+        {!tvMode ? (
+          <div className="hero-stat-strip">
+            <div>
+              <span className="hero-stat-value">{i.genres[0] ?? t('hero.cinematic')}</span>
+              <span className="hero-stat-label">{t('hero.mood')}</span>
+            </div>
+            <div>
+              <span className="hero-stat-value">{rt ?? t('hero.readyTonight')}</span>
+              <span className="hero-stat-label">{t('hero.runtime')}</span>
+            </div>
+            <div>
+              <span className="hero-stat-value">{i.year ?? t('hero.freshPick')}</span>
+              <span className="hero-stat-label">{t('hero.release')}</span>
+            </div>
           </div>
-          <div>
-            <span className="hero-stat-value">{rt ?? t('hero.readyTonight')}</span>
-            <span className="hero-stat-label">{t('hero.runtime')}</span>
-          </div>
-          <div>
-            <span className="hero-stat-value">{i.year ?? t('hero.freshPick')}</span>
-            <span className="hero-stat-label">{t('hero.release')}</span>
-          </div>
-        </div>
+        ) : null}
       </>
     )
   }
@@ -146,7 +150,7 @@ export function HeroSection({
           </div>
         </div>
 
-        {continueItem ? (
+        {continueItem && !tvMode ? (
           <aside className="continue-panel fade-up">
             <div className="hero-panel-head">
               <div>
@@ -243,7 +247,7 @@ export function HeroSection({
               </div>
             ) : null}
           </aside>
-        ) : (
+        ) : !tvMode ? (
           <aside className="hero-orbit">
             <div className="orbit-card">
               <span>{t('hero.curatedByJellyfin')}</span>
@@ -255,7 +259,7 @@ export function HeroSection({
               ) : null}
             </div>
           </aside>
-        )}
+        ) : null}
       </div>
     </section>
   )
