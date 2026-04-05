@@ -346,96 +346,46 @@ export function MediaSpotlightDialog({
         </div>
 
         <div className="dialog-body">
-          <div className="dialog-copy">
-            <p className="eyebrow">
-              {detail.type === 'series' ? t('dialog.seriesSpotlight') : t('dialog.movieSpotlight')}
-            </p>
-            <h2 id="aurora-dialog-title" className="dialog-title">
-              {detail.title}
-            </h2>
+          {detail.posterUrl ? (
+            <img src={detail.posterUrl} alt={detail.title} className="dialog-poster-thumb" />
+          ) : null}
 
-            <div className="dialog-meta">
-              {metadata.map((entry) => (
-                <span key={entry}>{entry}</span>
-              ))}
-              {detail.rating != null ? (
-                <span className="dialog-rating">
-                  <Star size={14} fill="currentColor" /> {detail.rating.toFixed(1)}
-                </span>
-              ) : null}
-            </div>
+          <p className="eyebrow">
+            {detail.type === 'series' ? t('dialog.seriesSpotlight') : t('dialog.movieSpotlight')}
+          </p>
+          <h2 id="aurora-dialog-title" className="dialog-title">{detail.title}</h2>
 
-            {detail.overview ? (
-              <p className="dialog-overview">{detail.overview}</p>
-            ) : (
-              <p className="dialog-overview">
-                {t('dialog.noSynopsis')}
-              </p>
-            )}
-
-            {detail.genres.length ? (
-              <div className="chip-row">
-                {detail.genres.slice(0, 5).map((genre) => (
-                  <span key={genre} className="genre-chip">
-                    {genre}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-
-            {detail.studios.length || detail.tags.length ? (
-              <div className="detail-meta-grid">
-                {detail.studios.length ? (
-                  <div className="detail-meta-block">
-                    <span>{t('dialog.studios')}</span>
-                    <strong>{detail.studios.slice(0, 4).join(', ')}</strong>
-                  </div>
-                ) : null}
-                {detail.tags.length ? (
-                  <div className="detail-meta-block">
-                    <span>{t('dialog.tags')}</span>
-                    <strong>{detail.tags.slice(0, 6).join(', ')}</strong>
-                  </div>
-                ) : null}
-              </div>
+          <div className="dialog-meta">
+            {metadata.map((entry) => (
+              <span key={entry}>{entry}</span>
+            ))}
+            {detail.rating != null ? (
+              <span className="dialog-rating">
+                <Star size={14} fill="currentColor" /> {detail.rating.toFixed(1)}
+              </span>
             ) : null}
           </div>
 
-          <div className="dialog-sidebar">
-            {detail.posterUrl ? (
-              <img src={detail.posterUrl} alt={detail.title} className="dialog-poster" />
-            ) : (
-              <div className="dialog-poster dialog-poster-fallback">
-                <span>{detail.title.slice(0, 1)}</span>
-              </div>
-            )}
-
+          <div className="dialog-actions">
             <button
               type="button"
               className="primary-action"
               onClick={playAction}
               disabled={!onPlay || (item.type === 'series' && loadingState)}
             >
-              <Play size={18} fill="currentColor" />{' '}
-              {playLabel}
+              <Play size={18} fill="currentColor" /> {playLabel}
             </button>
-
             <button
               type="button"
               className="secondary-action"
               onClick={() => onToggleFavorite?.(detail)}
             >
               {detail.isFavorite ? (
-                <>
-                  <Check size={18} /> {t('dialog.inMyList')}
-                </>
+                <><Check size={18} /> {t('dialog.inMyList')}</>
               ) : (
-                <>
-                  <Plus size={18} /> {t('dialog.addToMyList')}
-                </>
+                <><Plus size={18} /> {t('dialog.addToMyList')}</>
               )}
             </button>
-
             {item.type !== 'series' ? (
               <button
                 type="button"
@@ -450,35 +400,38 @@ export function MediaSpotlightDialog({
               </button>
             ) : null}
           </div>
+
+          <p className="dialog-overview">
+            {detail.overview || t('dialog.noSynopsis')}
+          </p>
+
+          {detail.genres.length ? (
+            <div className="chip-row">
+              {detail.genres.slice(0, 5).map((genre) => (
+                <span key={genre} className="genre-chip">{genre}</span>
+              ))}
+            </div>
+          ) : null}
+
+          {detail.studios.length || detail.tags.length ? (
+            <div className="detail-meta-inline">
+              {detail.studios.length ? (
+                <span className="detail-meta-item">
+                  <span className="detail-meta-label">{t('dialog.studios')}</span>
+                  {detail.studios.slice(0, 3).join(', ')}
+                </span>
+              ) : null}
+              {detail.tags.length ? (
+                <span className="detail-meta-item">
+                  <span className="detail-meta-label">{t('dialog.tags')}</span>
+                  {detail.tags.slice(0, 5).join(', ')}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="dialog-lower">
-          <section className="detail-section">
-            <div className="detail-section-head">
-              <p className="eyebrow">{t('dialog.castCrew')}</p>
-              {loadingState ? <span className="detail-loading">{t('dialog.loadingCredits')}</span> : null}
-            </div>
-            {detail.cast.length ? (
-              <div className="cast-grid">
-                {detail.cast.map((person) => (
-                  <article key={person.id} className="cast-card">
-                    {person.imageUrl ? (
-                      <img src={person.imageUrl} alt={person.name} className="cast-photo" />
-                    ) : (
-                      <div className="cast-photo cast-photo-fallback">
-                        <span>{person.name.slice(0, 1)}</span>
-                      </div>
-                    )}
-                    <strong>{person.name}</strong>
-                    <span>{person.role ?? person.type ?? t('dialog.castFallback')}</span>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="detail-empty">{t('dialog.noCast')}</p>
-            )}
-          </section>
-
           {detail.type === 'series' ? (
             <section className="detail-section">
               <div className="detail-section-head">
@@ -564,6 +517,32 @@ export function MediaSpotlightDialog({
               )}
             </section>
           ) : null}
+
+          <section className="detail-section">
+            <div className="detail-section-head">
+              <p className="eyebrow">{t('dialog.castCrew')}</p>
+              {loadingState ? <span className="detail-loading">{t('dialog.loadingCredits')}</span> : null}
+            </div>
+            {detail.cast.length ? (
+              <div className="cast-grid">
+                {detail.cast.map((person) => (
+                  <article key={person.id} className="cast-card">
+                    {person.imageUrl ? (
+                      <img src={person.imageUrl} alt={person.name} className="cast-photo" />
+                    ) : (
+                      <div className="cast-photo cast-photo-fallback">
+                        <span>{person.name.slice(0, 1)}</span>
+                      </div>
+                    )}
+                    <strong>{person.name}</strong>
+                    <span>{person.role ?? person.type ?? t('dialog.castFallback')}</span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="detail-empty">{t('dialog.noCast')}</p>
+            )}
+          </section>
 
           <section className="detail-section">
             <div className="detail-section-head">

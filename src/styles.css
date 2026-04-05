@@ -1705,23 +1705,65 @@ html.tv-mode .hero-copy-in {
 }
 
 .dialog-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(14rem, 18rem);
-  gap: 1.5rem;
-  padding: 1.5rem;
+  padding: 1.75rem 2rem 1.25rem;
+  position: relative;
+}
+
+.dialog-poster-thumb {
+  float: right;
+  width: 130px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 0.875rem;
+  border: 1px solid var(--line);
+  margin: 0 0 1rem 1.75rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 .dialog-title {
-  margin: 0.55rem 0 0;
+  margin: 0.4rem 0 0;
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  line-height: 1;
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  line-height: 1.05;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0 1.5rem;
 }
 
 .dialog-overview {
-  margin: 1.1rem 0 0;
   color: var(--ink-muted);
   line-height: 1.8;
+  max-width: 68ch;
+  margin: 0;
+}
+
+.detail-meta-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.detail-meta-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.detail-meta-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
 }
 
 .chip-row {
@@ -1742,50 +1784,11 @@ html.tv-mode .hero-copy-in {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.dialog-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.dialog-poster {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: 1.25rem;
-  border: 1px solid var(--line);
-}
-
-.dialog-poster-fallback {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, rgba(112, 168, 255, 0.22), rgba(255, 157, 102, 0.2));
-}
-
-.dialog-poster-fallback span {
-  font-family: var(--font-display);
-  font-size: 4rem;
-}
 
 .dialog-lower {
   padding: 0 1.5rem 1.5rem;
 }
 
-.detail-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin-top: 1.25rem;
-}
-
-.detail-meta-block {
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: 1.1rem;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.detail-meta-block span,
 .detail-loading {
   color: var(--ink-faint);
   font-size: 0.82rem;
@@ -2702,12 +2705,10 @@ html.tv-mode .hero-copy-in {
 
 @media (max-width: 1100px) {
   .hero-content,
-  .dialog-body,
   .overview-band {
     grid-template-columns: 1fr;
   }
 
-  .detail-meta-grid,
   .cast-grid,
   .similar-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
