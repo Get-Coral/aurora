@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Check, CheckCircle, Circle, Play, Plus, Star, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
 import { fetchItemDetails, fetchSeriesDetails, markPlayed } from '../server/functions'
@@ -37,6 +37,11 @@ export function MediaSpotlightDialog({
   useLockBodyScroll(open)
   const prefetchMediaDetails = usePrefetchMediaDetails()
   const [playedOverrides, setPlayedOverrides] = useState<Record<string, boolean>>({})
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null)
+
+  useEffect(() => {
+    setSelectedSeason(null)
+  }, [item?.id])
 
   const markPlayedMutation = useMutation({
     mutationFn: (vars: { id: string; played: boolean }) => markPlayed({ data: vars }),
@@ -70,6 +75,10 @@ export function MediaSpotlightDialog({
   const nextUp = item.type === 'series' ? (seriesData?.nextUp ?? []) : []
   const loadingState = item.type === 'series' ? seriesLoading : isLoading
   const resumable = isResumable(detail)
+
+  const seasons = [...new Set(episodes.map((e) => e.seasonNumber ?? 1))].sort((a, b) => a - b)
+  const activeSeason = selectedSeason ?? nextUp[0]?.seasonNumber ?? seasons[0] ?? 1
+  const seasonEpisodes = episodes.filter((e) => (e.seasonNumber ?? 1) === activeSeason)
 
   const metadata = [
     detail.year,
@@ -162,6 +171,79 @@ export function MediaSpotlightDialog({
           </div>
 
           <div className="tv-detail-lower">
+            {item.type === 'series' ? (
+              <div className="tv-episodes-section">
+                <div className="tv-episodes-head">
+                  <p className="tv-detail-section-label">{t('dialog.episodes')}</p>
+                  {seasons.length > 1 ? (
+                    <div className="tv-season-tabs">
+                      {seasons.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          className={`tv-season-tab${activeSeason === s ? ' tv-season-tab-active' : ''}`}
+                          onClick={() => setSelectedSeason(s)}
+                        >
+                          {t('generic.season')} {s}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                {seriesLoading ? (
+                  <p className="tv-detail-section-label" style={{ opacity: 0.5 }}>{t('dialog.loadingCredits')}</p>
+                ) : seasonEpisodes.length === 0 ? (
+                  <p className="tv-detail-section-label" style={{ opacity: 0.5 }}>{t('dialog.noEpisodes')}</p>
+                ) : (
+                  <div className="tv-episode-list">
+                    {seasonEpisodes.map((episode) => {
+                      const isNextUp = nextUp[0]?.id === episode.id
+                      const globalIdx = episodes.indexOf(episode)
+                      return (
+                        <button
+                          key={episode.id}
+                          type="button"
+                          className={`tv-episode-row${isNextUp ? ' tv-episode-next-up' : ''}`}
+                          onClick={() => onPlay?.(episode, globalIdx >= 0 ? episodes.slice(globalIdx) : [episode])}
+                        >
+                          <div className="tv-episode-thumb-wrap">
+                            {episode.backdropUrl ?? episode.posterUrl ? (
+                              <img
+                                src={episode.backdropUrl ?? episode.posterUrl}
+                                alt=""
+                                className="tv-episode-thumb"
+                              />
+                            ) : (
+                              <div className="tv-episode-thumb tv-episode-thumb-fallback">
+                                <span>{episode.episodeNumber}</span>
+                              </div>
+                            )}
+                            {episode.progress ? (
+                              <div className="tv-episode-progress">
+                                <div className="tv-episode-progress-fill" style={{ width: `${episode.progress}%` }} />
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="tv-episode-info">
+                            <span className="tv-episode-num">
+                              {t('generic.episode')} {episode.episodeNumber}
+                              {isNextUp ? <span className="tv-episode-next-badge">{t('dialog.nextUpReady')}</span> : null}
+                            </span>
+                            <strong className="tv-episode-title">{episode.title}</strong>
+                            {episode.runtimeMinutes ? (
+                              <span className="tv-episode-runtime">{episode.runtimeMinutes}m</span>
+                            ) : null}
+                          </div>
+                          <Play size={18} fill="currentColor" className="tv-episode-play-icon" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             {detail.cast.length > 0 ? (
               <div>
                 <p className="tv-detail-section-label">{t('dialog.castCrew')}</p>
