@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { CURATED_MOVIE_GENRES } from '../lib/genres'
 import { fetchLibrary } from '../server/functions'
@@ -44,6 +45,7 @@ export function LibraryView({
   mode = 'library',
   customItems,
 }: LibraryViewProps) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const page = search.page ?? 0
   const sort = search.sort ?? 'DateCreated'
@@ -102,21 +104,21 @@ export function LibraryView({
       <div className="page-wrap library-head">
         <div className="library-copy">
           <Link to="/" className="library-backlink">
-            <ArrowLeft size={16} /> Back home
+            <ArrowLeft size={16} /> {t('library.backHome')}
           </Link>
           <p className="eyebrow">{subtitle}</p>
           <h1 className="library-title">{title}</h1>
           <p className="library-summary">
             {mode === 'my-list'
-              ? 'Everything you marked as a favorite in Jellyfin, collected into one streaming-style list.'
-              : `Explore your full ${type === 'Movie' ? 'movie' : 'series'} library with sort controls and a scannable grid.`}
+              ? t('library.myListSummary')
+              : t('library.summary', { type: type === 'Movie' ? 'movie' : 'series' })}
           </p>
         </div>
 
         {mode === 'library' ? (
           <div className="library-controls">
             <label className="library-select-shell">
-              <span>Sort by</span>
+              <span>{t('library.sortBy')}</span>
               <select
                 value={sort}
                 className="library-select"
@@ -124,21 +126,27 @@ export function LibraryView({
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {option.value === 'DateCreated'
+                      ? t('library.sort.dateCreated')
+                      : option.value === 'PremiereDate'
+                        ? t('library.sort.premiereDate')
+                        : option.value === 'CommunityRating'
+                          ? t('library.sort.communityRating')
+                          : t('library.sort.sortName')}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="library-select-shell">
-              <span>Direction</span>
+              <span>{t('library.direction')}</span>
               <select
                 value={order}
                 className="library-select"
                 onChange={(event) => updateSearch({ order: event.target.value as LibrarySortOrder, page: 0 })}
               >
-                <option value="Descending">Descending</option>
-                <option value="Ascending">Ascending</option>
+                <option value="Descending">{t('library.order.desc')}</option>
+                <option value="Ascending">{t('library.order.asc')}</option>
               </select>
             </label>
 
@@ -149,19 +157,19 @@ export function LibraryView({
                   className="icon-button"
                   onClick={() => updateSearch({ page: Math.max(0, page - 1) })}
                   disabled={page === 0}
-                  aria-label="Previous page"
+                  aria-label={t('library.previousPage')}
                 >
                   <ChevronLeft size={18} />
                 </button>
                 <span>
-                  Page {page + 1} of {totalPages}
+                  {t('library.pageOf', { page: page + 1, total: totalPages })}
                 </span>
                 <button
                   type="button"
                   className="icon-button"
                   onClick={() => updateSearch({ page: Math.min(totalPages - 1, page + 1) })}
                   disabled={page >= totalPages - 1}
-                  aria-label="Next page"
+                  aria-label={t('library.nextPage')}
                 >
                   <ChevronRight size={18} />
                 </button>
@@ -178,7 +186,7 @@ export function LibraryView({
             search={{ page: 0, sort, order }}
             className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
           >
-            All movies
+            {t('library.allMovies')}
           </Link>
           {CURATED_MOVIE_GENRES.map((genreOption) => (
             <Link
@@ -216,21 +224,21 @@ export function LibraryView({
             onClick={() => updateSearch({ page: Math.max(0, page - 1) })}
             disabled={page === 0 || mode === 'my-list'}
           >
-            Previous page
+            {t('library.previousPage')}
           </button>
-          <span>{resolvedTotal} total titles</span>
+          <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
           <button
             type="button"
             className="secondary-action"
             onClick={() => updateSearch({ page: Math.min(totalPages - 1, page + 1) })}
             disabled={page >= totalPages - 1 || mode === 'my-list'}
           >
-            Next page
+            {t('library.nextPage')}
           </button>
         </div>
       ) : (
         <div className="page-wrap library-footer library-footer-compact">
-          <span>{resolvedTotal} total titles</span>
+          <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
         </div>
       )}
 

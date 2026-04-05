@@ -1,5 +1,6 @@
 import { Check, Heart, Info, Play, Plus, Star } from 'lucide-react'
 import { isResumable, type MediaItem } from '../lib/media'
+import { useI18n } from '../lib/i18n'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
 interface MediaCardProps {
@@ -19,6 +20,7 @@ export function MediaCard({
   onPlay,
   onToggleFavorite,
 }: MediaCardProps) {
+  const { t } = useI18n()
   const resumable = isResumable(item)
   const prefetchMediaDetails = usePrefetchMediaDetails()
 
@@ -61,12 +63,16 @@ export function MediaCard({
 
       <div className="card-topline">
         <span className="card-format">
-          {item.type === 'series' ? 'Series' : variant === 'feature' ? 'Tonight' : 'Feature'}
+          {item.type === 'series'
+            ? t('card.series')
+            : variant === 'feature'
+              ? t('card.tonight')
+              : t('card.feature')}
         </span>
         <div className="card-badges">
           {item.isFavorite ? (
             <span className="card-favorite">
-              <Heart size={12} fill="currentColor" /> Favorite
+              <Heart size={12} fill="currentColor" /> {t('card.favorite')}
             </span>
           ) : null}
           {item.rating != null ? (
@@ -85,10 +91,10 @@ export function MediaCard({
             event.stopPropagation()
             onPlay?.(item)
           }}
-          aria-label={resumable ? 'Resume' : 'Play'}
+          aria-label={resumable ? t('card.resume') : t('card.play')}
         >
           <Play size={14} fill="currentColor" />
-          <span className="card-action-label">{resumable ? 'Resume' : 'Play'}</span>
+          <span className="card-action-label">{resumable ? t('card.resume') : t('card.play')}</span>
         </button>
         <button
           type="button"
@@ -97,10 +103,10 @@ export function MediaCard({
             event.stopPropagation()
             onClick?.()
           }}
-          aria-label="Details"
+          aria-label={t('card.details')}
         >
           <Info size={14} />
-          <span className="card-action-label">Details</span>
+          <span className="card-action-label">{t('card.details')}</span>
         </button>
         <button
           type="button"
@@ -109,17 +115,17 @@ export function MediaCard({
             event.stopPropagation()
             onToggleFavorite?.(item)
           }}
-          aria-label={item.isFavorite ? 'Remove from My List' : 'Add to My List'}
+          aria-label={item.isFavorite ? t('card.removeFromMyList') : t('card.addToMyList')}
         >
           {item.isFavorite ? (
             <>
               <Check size={14} />
-              <span className="card-action-label card-action-label-wide">In My List</span>
+              <span className="card-action-label card-action-label-wide">{t('card.inMyList')}</span>
             </>
           ) : (
             <>
               <Plus size={14} />
-              <span className="card-action-label">My List</span>
+              <span className="card-action-label">{t('card.myList')}</span>
             </>
           )}
         </button>
@@ -131,7 +137,7 @@ export function MediaCard({
           <p className="card-subtitle">
             {[item.year, item.ageRating, item.runtimeMinutes ? `${item.runtimeMinutes}m` : null]
               .filter(Boolean)
-              .join(' • ') || 'Instantly available'}
+              .join(' • ') || t('card.instantlyAvailable')}
           </p>
         </div>
 

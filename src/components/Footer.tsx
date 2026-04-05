@@ -1,9 +1,13 @@
+import { useI18n } from '../lib/i18n'
+
 export default function Footer() {
+  const { t } = useI18n()
+
   return (
     <footer className="site-footer">
       <div className="page-wrap site-footer-inner">
         <p className="site-footer-copy">
-          Built with <span aria-hidden="true">❤️</span> by{' '}
+          {t('footer.builtWith')} <span aria-hidden="true">❤️</span> {t('footer.by')}{' '}
           <a
             href="https://github.com/ElianCodes"
             target="_blank"
@@ -19,7 +23,7 @@ export default function Footer() {
           target="_blank"
           rel="noreferrer"
         >
-          Contribute
+          {t('footer.contribute')}
         </a>
       </div>
     </footer>

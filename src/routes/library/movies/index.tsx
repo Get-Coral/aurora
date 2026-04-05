@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { LibraryView } from '../../../components/LibraryView'
+import { useI18n } from '../../../lib/i18n'
 import { fetchLibrary } from '../../../server/functions'
 
 type MovieSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
@@ -39,13 +40,14 @@ export const Route = createFileRoute('/library/movies/')({
 })
 
 function MoviesLibraryPage() {
+  const { t } = useI18n()
   const search = Route.useSearch()
 
   return (
     <LibraryView
       type="Movie"
-      title="Movie library"
-      subtitle="Browse the full catalog"
+      title={t('route.movies.title')}
+      subtitle={t('route.movies.subtitle')}
       search={search}
       genre={undefined}
     />

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Check, Play, Plus, Star, X } from 'lucide-react'
+import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
 import { fetchItemDetails, fetchSeriesDetails } from '../server/functions'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
@@ -28,6 +29,7 @@ export function MediaSpotlightDialog({
   onSelectSimilar,
   onToggleFavorite,
 }: MediaSpotlightDialogProps) {
+  const { t } = useI18n()
   const prefetchMediaDetails = usePrefetchMediaDetails()
   const { data, isLoading } = useQuery({
     queryKey: ['item-details', item?.id],
@@ -71,7 +73,7 @@ export function MediaSpotlightDialog({
           type="button"
           className="icon-button dialog-close"
           onClick={onClose}
-          aria-label="Close details"
+          aria-label={t('dialog.closeDetails')}
         >
           <X size={18} />
         </button>
@@ -88,7 +90,7 @@ export function MediaSpotlightDialog({
         <div className="dialog-body">
           <div className="dialog-copy">
             <p className="eyebrow">
-              {detail.type === 'series' ? 'Series spotlight' : 'Movie spotlight'}
+              {detail.type === 'series' ? t('dialog.seriesSpotlight') : t('dialog.movieSpotlight')}
             </p>
             <h2 id="aurora-dialog-title" className="dialog-title">
               {detail.title}
@@ -109,7 +111,7 @@ export function MediaSpotlightDialog({
               <p className="dialog-overview">{detail.overview}</p>
             ) : (
               <p className="dialog-overview">
-                No synopsis is available for this title yet.
+                {t('dialog.noSynopsis')}
               </p>
             )}
 
@@ -127,13 +129,13 @@ export function MediaSpotlightDialog({
               <div className="detail-meta-grid">
                 {detail.studios.length ? (
                   <div className="detail-meta-block">
-                    <span>Studios</span>
+                    <span>{t('dialog.studios')}</span>
                     <strong>{detail.studios.slice(0, 4).join(', ')}</strong>
                   </div>
                 ) : null}
                 {detail.tags.length ? (
                   <div className="detail-meta-block">
-                    <span>Tags</span>
+                    <span>{t('dialog.tags')}</span>
                     <strong>{detail.tags.slice(0, 6).join(', ')}</strong>
                   </div>
                 ) : null}
@@ -156,7 +158,7 @@ export function MediaSpotlightDialog({
               onClick={() => onPlay?.(detail)}
               disabled={!onPlay}
             >
-              <Play size={18} fill="currentColor" /> {resumable ? 'Resume now' : 'Play now'}
+              <Play size={18} fill="currentColor" /> {resumable ? t('hero.resumeNow') : t('hero.playNow')}
             </button>
 
             <button
@@ -166,11 +168,11 @@ export function MediaSpotlightDialog({
             >
               {detail.isFavorite ? (
                 <>
-                  <Check size={18} /> In My List
+                  <Check size={18} /> {t('dialog.inMyList')}
                 </>
               ) : (
                 <>
-                  <Plus size={18} /> Add to My List
+                  <Plus size={18} /> {t('dialog.addToMyList')}
                 </>
               )}
             </button>
@@ -180,8 +182,8 @@ export function MediaSpotlightDialog({
         <div className="dialog-lower">
           <section className="detail-section">
             <div className="detail-section-head">
-              <p className="eyebrow">Cast & crew</p>
-              {loadingState ? <span className="detail-loading">Loading credits…</span> : null}
+              <p className="eyebrow">{t('dialog.castCrew')}</p>
+              {loadingState ? <span className="detail-loading">{t('dialog.loadingCredits')}</span> : null}
             </div>
             {detail.cast.length ? (
               <div className="cast-grid">
@@ -195,27 +197,27 @@ export function MediaSpotlightDialog({
                       </div>
                     )}
                     <strong>{person.name}</strong>
-                    <span>{person.role ?? person.type ?? 'Cast'}</span>
+                    <span>{person.role ?? person.type ?? t('dialog.castFallback')}</span>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="detail-empty">No cast data is available for this title yet.</p>
+              <p className="detail-empty">{t('dialog.noCast')}</p>
             )}
           </section>
 
           {detail.type === 'series' ? (
             <section className="detail-section">
               <div className="detail-section-head">
-                <p className="eyebrow">Episodes</p>
+                <p className="eyebrow">{t('dialog.episodes')}</p>
                 {nextUp.length ? (
-                  <span className="detail-loading">Next up ready</span>
+                  <span className="detail-loading">{t('dialog.nextUpReady')}</span>
                 ) : null}
               </div>
               {nextUp.length ? (
                 <div className="episode-highlight">
                   <div>
-                    <span className="eyebrow">Continue with</span>
+                    <span className="eyebrow">{t('dialog.continueWith')}</span>
                     <h3>{nextUp[0].title}</h3>
                     <p>
                       {[
@@ -228,7 +230,7 @@ export function MediaSpotlightDialog({
                     </p>
                   </div>
                   <button type="button" className="primary-action" onClick={() => onPlay?.(nextUp[0])}>
-                    <Play size={18} fill="currentColor" /> {isResumable(nextUp[0]) ? 'Resume next up' : 'Play next up'}
+                    <Play size={18} fill="currentColor" /> {isResumable(nextUp[0]) ? t('dialog.resumeNextUp') : t('dialog.playNextUp')}
                   </button>
                 </div>
               ) : null}
@@ -246,8 +248,8 @@ export function MediaSpotlightDialog({
                         <strong>{episode.title}</strong>
                         <span>
                           {[
-                            episode.seasonNumber ? `Season ${episode.seasonNumber}` : null,
-                            episode.episodeNumber ? `Episode ${episode.episodeNumber}` : null,
+                            episode.seasonNumber ? `${t('generic.season')} ${episode.seasonNumber}` : null,
+                            episode.episodeNumber ? `${t('generic.episode')} ${episode.episodeNumber}` : null,
                             episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : null,
                           ]
                             .filter(Boolean)
@@ -256,23 +258,23 @@ export function MediaSpotlightDialog({
                       </div>
                       <span className="episode-progress">
                         {episode.progress
-                          ? `${Math.round(episode.progress)}% watched`
+                          ? t('hero.progressWatched', { progress: Math.round(episode.progress) })
                           : isResumable(episode)
-                            ? 'Resume'
-                            : 'Play'}
+                            ? t('card.resume')
+                            : t('dialog.playEpisode')}
                       </span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <p className="detail-empty">No episode list is available for this series in Jellyfin.</p>
+                <p className="detail-empty">{t('dialog.noEpisodes')}</p>
               )}
             </section>
           ) : null}
 
           <section className="detail-section">
             <div className="detail-section-head">
-              <p className="eyebrow">More like this</p>
+              <p className="eyebrow">{t('dialog.moreLikeThis')}</p>
             </div>
             {similar.length ? (
               <div className="similar-grid">
@@ -300,7 +302,7 @@ export function MediaSpotlightDialog({
                 ))}
               </div>
             ) : (
-              <p className="detail-empty">We could not find similar titles for this item.</p>
+              <p className="detail-empty">{t('dialog.noSimilar')}</p>
             )}
           </section>
         </div>

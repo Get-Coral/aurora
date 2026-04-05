@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
 import type { MediaItem } from '../lib/media'
+import { useI18n } from '../lib/i18n'
 import { MediaCard } from './MediaCard'
 
 interface SectionShelfProps {
@@ -28,6 +29,8 @@ export function SectionShelf({
   emptyTitle,
   emptyCopy,
 }: SectionShelfProps) {
+  const { t } = useI18n()
+
   return (
     <section id={id} className="shelf-section">
       <div className="section-heading">
@@ -41,7 +44,7 @@ export function SectionShelf({
             search={browseTo === '/my-list' ? undefined : { page: 0, sort: 'DateCreated' }}
             className="section-trailing section-trailing-button"
           >
-            Browse more <ChevronRight size={16} />
+            {t('section.browseMore')} <ChevronRight size={16} />
           </Link>
         ) : null}
       </div>
@@ -63,11 +66,11 @@ export function SectionShelf({
       ) : (
         <div className="empty-shelf">
           <div className="empty-shelf-copy">
-            <p className="eyebrow">Ready when you are</p>
-            <h3>{emptyTitle ?? 'Nothing here yet'}</h3>
+            <p className="eyebrow">{t('section.readyWhenYouAre')}</p>
+            <h3>{emptyTitle ?? t('section.emptyTitle')}</h3>
             <p>
               {emptyCopy ??
-                'Start a title and your in-progress picks will show up here for quick access.'}
+                t('section.emptyCopy')}
             </p>
           </div>
         </div>

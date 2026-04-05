@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { LibraryView } from '../components/LibraryView'
+import { useI18n } from '../lib/i18n'
 import { fetchMyList } from '../server/functions'
 
 export const Route = createFileRoute('/my-list')({
@@ -14,6 +15,7 @@ export const Route = createFileRoute('/my-list')({
 })
 
 function MyListPage() {
+  const { t } = useI18n()
   const { data } = useSuspenseQuery({
     queryKey: ['my-list'],
     queryFn: () => fetchMyList(),
@@ -22,8 +24,8 @@ function MyListPage() {
   return (
     <LibraryView
       type="Movie"
-      title="My List"
-      subtitle="Saved for later"
+      title={t('route.myList.title')}
+      subtitle={t('route.myList.subtitle')}
       search={{ page: 0, sort: 'DateCreated' }}
       mode="my-list"
       customItems={data}

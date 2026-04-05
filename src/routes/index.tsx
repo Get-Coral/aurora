@@ -6,6 +6,7 @@ import { MediaPlayerDialog } from '../components/MediaPlayerDialog'
 import { MediaSpotlightDialog } from '../components/MediaSpotlightDialog'
 import { SectionShelf } from '../components/SectionShelf'
 import { useFavoriteAction } from '../components/useFavoriteAction'
+import { useI18n } from '../lib/i18n'
 import {
   fetchFeatured,
   fetchContinueWatching,
@@ -29,6 +30,7 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
+  const { t } = useI18n()
   const { data: featured } = useSuspenseQuery({ queryKey: ['featured'], queryFn: () => fetchFeatured() })
   const { data: continueWatching } = useSuspenseQuery({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatching() })
   const { data: latestMovies } = useSuspenseQuery({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMovies() })
@@ -92,37 +94,37 @@ function HomePage() {
       <div className="page-wrap home-sections">
         <section className="overview-band">
           <div className="overview-card">
-            <p className="eyebrow">Library pulse</p>
+            <p className="eyebrow">{t('home.libraryPulse')}</p>
             <strong>{latestMovies.length + latestSeries.length}</strong>
-            <span>fresh arrivals across films and shows</span>
+            <span>{t('home.libraryPulseCopy')}</span>
           </div>
           <div className="overview-card">
-            <p className="eyebrow">Watch rhythm</p>
+            <p className="eyebrow">{t('home.watchRhythm')}</p>
             <strong>{continueWatching.length}</strong>
-            <span>titles waiting where you left them</span>
+            <span>{t('home.watchRhythmCopy')}</span>
           </div>
           <div className="overview-card">
-            <p className="eyebrow">Tonight's lane</p>
-            <strong>{spotlightItem?.genres[0] ?? 'Curated'}</strong>
-            <span>picked from your Jellyfin collection</span>
+            <p className="eyebrow">{t('home.tonightsLane')}</p>
+            <strong>{spotlightItem?.genres[0] ?? t('home.curatedFallback')}</strong>
+            <span>{t('home.tonightsLaneCopy')}</span>
           </div>
         </section>
 
         <SectionShelf
           id="continue"
-          title="Resume your queue"
-          subtitle="Keep momentum"
+          title={t('home.continue.title')}
+          subtitle={t('home.continue.subtitle')}
           items={continueWatching}
           onSelect={setSelectedItem}
           onPlay={(item) => playMedia(item, continueWatching)}
           onToggleFavorite={handleToggleFavorite}
-          emptyTitle="Your continue queue is still empty"
-          emptyCopy="Open a movie or episode from your library and Aurora will surface it here with progress and quick resume."
+          emptyTitle={t('home.continue.emptyTitle')}
+          emptyCopy={t('home.continue.emptyCopy')}
         />
         <SectionShelf
           id="movies"
-          title="Recent movie arrivals"
-          subtitle="Freshly added"
+          title={t('home.movies.title')}
+          subtitle={t('home.movies.subtitle')}
           items={latestMovies}
           onSelect={setSelectedItem}
           onPlay={(item) => playMedia(item, latestMovies)}
@@ -131,20 +133,20 @@ function HomePage() {
         />
         <SectionShelf
           id="favorites"
-          title="Favorites worth revisiting"
-          subtitle="Your picks"
+          title={t('home.favorites.title')}
+          subtitle={t('home.favorites.subtitle')}
           items={favoriteMovies}
           onSelect={setSelectedItem}
           onPlay={(item) => playMedia(item, favoriteMovies)}
           onToggleFavorite={handleToggleFavorite}
           browseTo="/my-list"
-          emptyTitle="No favorites yet"
-          emptyCopy="Mark a few movies as favorites in Jellyfin and Aurora will bring them together here."
+          emptyTitle={t('home.favorites.emptyTitle')}
+          emptyCopy={t('home.favorites.emptyCopy')}
         />
         <SectionShelf
           id="series"
-          title="Series worth diving into"
-          subtitle="Just landed"
+          title={t('home.series.title')}
+          subtitle={t('home.series.subtitle')}
           items={latestSeries}
           onSelect={setSelectedItem}
           onPlay={(item) => playMedia(item, latestSeries)}
@@ -153,15 +155,15 @@ function HomePage() {
         />
         <SectionShelf
           id="recommended"
-          title="Because you watched this vibe"
-          subtitle="Similar energy"
+          title={t('home.recommended.title')}
+          subtitle={t('home.recommended.subtitle')}
           items={recommendedItems}
           onSelect={setSelectedItem}
           onPlay={(item) => playMedia(item, recommendedItems)}
           onToggleFavorite={handleToggleFavorite}
           browseTo="/library/movies"
-          emptyTitle="Recommendations will appear here"
-          emptyCopy="Aurora uses Jellyfin's similar-title data to turn your current spotlight into a more personalized row."
+          emptyTitle={t('home.recommended.emptyTitle')}
+          emptyCopy={t('home.recommended.emptyCopy')}
         />
       </div>
 

@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
+import { useI18n } from '../lib/i18n'
 import { fetchSearch } from '../server/functions'
 
 export default function Header() {
+  const { locale, setLocale, t } = useI18n()
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,20 +47,20 @@ export default function Header() {
             <Sparkles size={15} />
           </span>
           <span>
-            Aurora <em>for Jellyfin</em>
+            {t('brand.wordmark')} <em>{t('brand.forJellyfin')}</em>
           </span>
         </Link>
 
         <div className="header-nav">
           <Link to="/" className="nav-pill" activeProps={{ className: 'nav-pill nav-pill-active' }}>
-            Home
+            {t('nav.home')}
           </Link>
           <button
             type="button"
             className="nav-pill"
             onClick={() => jumpToSection('continue')}
           >
-            Continue
+            {t('nav.continue')}
           </button>
           <Link
             to="/library/movies"
@@ -66,7 +68,7 @@ export default function Header() {
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
-            Movies
+            {t('nav.movies')}
           </Link>
           <Link
             to="/library/series"
@@ -74,14 +76,14 @@ export default function Header() {
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
-            Series
+            {t('nav.series')}
           </Link>
           <Link
             to="/my-list"
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
-            My List
+            {t('nav.myList')}
           </Link>
         </div>
 
@@ -93,7 +95,7 @@ export default function Header() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
-                placeholder="Search your library"
+                placeholder={t('search.placeholder')}
                 className="search-input"
               />
               <button
@@ -103,16 +105,16 @@ export default function Header() {
                   setSearchOpen(false)
                   setQuery('')
                 }}
-                aria-label="Close search"
+                aria-label={t('search.close')}
               >
                 <X size={16} />
               </button>
 
               {deferredQuery.length > 1 ? (
                 <div className="search-results">
-                  {isFetching ? <p className="search-state">Searching…</p> : null}
+                  {isFetching ? <p className="search-state">{t('search.searching')}</p> : null}
                   {!isFetching && results.length === 0 ? (
-                    <p className="search-state">No matching titles found.</p>
+                    <p className="search-state">{t('search.empty')}</p>
                   ) : null}
                   {results.map((item) => (
                     <button
@@ -124,7 +126,7 @@ export default function Header() {
                       <div className="search-result-copy">
                         <strong>{item.title}</strong>
                         <span>
-                          {[item.type === 'series' ? 'Series' : 'Movie', item.year]
+                          {[item.type === 'series' ? t('search.series') : t('search.movie'), item.year]
                             .filter(Boolean)
                             .join(' • ')}
                         </span>
@@ -139,11 +141,24 @@ export default function Header() {
               type="button"
               onClick={() => setSearchOpen(true)}
               className="icon-button"
-              aria-label="Open search"
+              aria-label={t('search.open')}
             >
               <Search size={20} />
             </button>
           )}
+
+          <label className="library-select-shell">
+            <span className="sr-only">Language</span>
+            <select
+              value={locale}
+              className="library-select"
+              onChange={(event) => setLocale(event.target.value as typeof locale)}
+              aria-label={t('locale.label')}
+            >
+              <option value="en">EN</option>
+              <option value="nl">NL</option>
+            </select>
+          </label>
 
           <div className="avatar-chip" aria-hidden="true">
             EL

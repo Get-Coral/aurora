@@ -1,5 +1,6 @@
 import { Film, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import {
   beginPlaybackSession,
@@ -14,9 +15,16 @@ interface MediaPlayerDialogProps {
   onSelectQueueItem?: (item: MediaItem) => void
 }
 
-function buildSubtitle(item: MediaItem) {
+function buildSubtitle(
+  item: MediaItem,
+  labels: { series: string; episode: string; movie: string },
+) {
   return [
-    item.type === 'series' ? 'Series' : item.type === 'episode' ? 'Episode' : 'Movie',
+    item.type === 'series'
+      ? labels.series
+      : item.type === 'episode'
+        ? labels.episode
+        : labels.movie,
     item.year,
     item.runtimeMinutes ? `${item.runtimeMinutes}m` : null,
   ]
@@ -31,6 +39,7 @@ export function MediaPlayerDialog({
   queue = [],
   onSelectQueueItem,
 }: MediaPlayerDialogProps) {
+  const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playbackSession, setPlaybackSession] = useState<{
     streamUrl: string
@@ -188,16 +197,22 @@ export function MediaPlayerDialog({
       >
         <div className="player-topbar">
           <div className="player-copy">
-            <p className="eyebrow">Now playing</p>
+            <p className="eyebrow">{t('player.nowPlaying')}</p>
             <h2 id="aurora-player-title">{item.title}</h2>
-            <span>{buildSubtitle(item)}</span>
+            <span>
+              {buildSubtitle(item, {
+                series: t('player.series'),
+                episode: t('player.episode'),
+                movie: t('player.movie'),
+              })}
+            </span>
           </div>
 
           <button
             type="button"
             className="icon-button player-close"
             onClick={onClose}
-            aria-label="Close player"
+            aria-label={t('player.close')}
           >
             <X size={18} />
           </button>
@@ -221,8 +236,8 @@ export function MediaPlayerDialog({
               {queue.length > 1 ? (
                 <aside className="player-queue">
                   <div className="player-queue-head">
-                    <p className="eyebrow">Up next</p>
-                    <span>{queue.length - 1} in queue</span>
+                    <p className="eyebrow">{t('player.upNext')}</p>
+                    <span>{t('player.inQueue', { count: queue.length - 1 })}</span>
                   </div>
                   <div className="player-queue-list">
                     {queue
@@ -238,7 +253,12 @@ export function MediaPlayerDialog({
                           <strong>{entry.title}</strong>
                           <span>
                             {[
-                              entry.seriesTitle ?? (entry.type === 'series' ? 'Series' : 'Movie'),
+                              entry.seriesTitle ??
+                                (entry.type === 'series'
+                                  ? t('player.series')
+                                  : entry.type === 'episode'
+                                    ? t('player.episode')
+                                    : t('player.movie')),
                               entry.episodeNumber ? `E${entry.episodeNumber}` : null,
                             ]
                               .filter(Boolean)
@@ -253,7 +273,7 @@ export function MediaPlayerDialog({
           ) : (
             <div className="player-empty">
               <Film size={28} />
-              <p>This title is not directly playable yet.</p>
+              <p>{t('player.notPlayable')}</p>
             </div>
           )}
         </div>

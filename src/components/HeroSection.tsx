@@ -1,5 +1,6 @@
 import { Clock3, Heart, Play, Sparkles, Star } from 'lucide-react'
 import { isResumable, type MediaItem } from '../lib/media'
+import { useI18n } from '../lib/i18n'
 
 interface HeroSectionProps {
   item: MediaItem
@@ -27,6 +28,7 @@ export function HeroSection({
   onMoreInfo,
   onSelectCompanion,
 }: HeroSectionProps) {
+  const { t } = useI18n()
   const runtime = formatRuntime(item.runtimeMinutes)
   const metadata = [item.year, runtime, item.ageRating].filter(Boolean)
   const itemIsResumable = isResumable(item)
@@ -78,27 +80,27 @@ export function HeroSection({
 
           <div className="hero-actions">
             <button className="primary-action" onClick={onPlay} type="button">
-              <Play size={18} fill="currentColor" /> {itemIsResumable ? 'Resume now' : 'Play now'}
+              <Play size={18} fill="currentColor" /> {itemIsResumable ? t('hero.resumeNow') : t('hero.playNow')}
             </button>
             <button className="secondary-action" onClick={onMoreInfo} type="button">
-              More info
+              {t('hero.moreInfo')}
             </button>
           </div>
 
           <div className="hero-stat-strip">
             <div>
-              <span className="hero-stat-value">{item.genres[0] ?? 'Cinematic'}</span>
-              <span className="hero-stat-label">Mood</span>
+              <span className="hero-stat-value">{item.genres[0] ?? t('hero.cinematic')}</span>
+              <span className="hero-stat-label">{t('hero.mood')}</span>
             </div>
             <div>
               <span className="hero-stat-value">
-                {runtime ?? 'Ready tonight'}
+                {runtime ?? t('hero.readyTonight')}
               </span>
-              <span className="hero-stat-label">Runtime</span>
+              <span className="hero-stat-label">{t('hero.runtime')}</span>
             </div>
             <div>
-              <span className="hero-stat-value">{item.year ?? 'Fresh pick'}</span>
-              <span className="hero-stat-label">Release</span>
+              <span className="hero-stat-value">{item.year ?? t('hero.freshPick')}</span>
+              <span className="hero-stat-label">{t('hero.release')}</span>
             </div>
           </div>
         </div>
@@ -107,8 +109,8 @@ export function HeroSection({
           <aside className="continue-panel fade-up">
             <div className="hero-panel-head">
               <div>
-                <p className="eyebrow">Continue watching</p>
-                <strong>Pick up instantly</strong>
+                <p className="eyebrow">{t('hero.continueWatching')}</p>
+                <strong>{t('hero.pickUpInstantly')}</strong>
               </div>
               <Clock3 size={18} />
             </div>
@@ -128,8 +130,11 @@ export function HeroSection({
               <h2>{continueItem.title}</h2>
               <p>
                 {continueItem.seriesTitle
-                  ? `${continueItem.seriesTitle} • Episode ${continueItem.episodeNumber ?? '?'}`
-                  : continueItem.overview ?? 'Pick up where you left off.'}
+                  ? t('hero.episodeLabel', {
+                      seriesTitle: continueItem.seriesTitle,
+                      episodeNumber: continueItem.episodeNumber ?? '?',
+                    })
+                  : continueItem.overview ?? t('hero.pickUpInstantly')}
               </p>
             </div>
 
@@ -142,7 +147,9 @@ export function HeroSection({
 
             <div className="continue-footer">
               <span>
-                {continueItem.progress ? `${Math.round(continueItem.progress)}% watched` : 'Ready to resume'}
+                {continueItem.progress
+                  ? t('hero.progressWatched', { progress: Math.round(continueItem.progress) })
+                  : t('hero.readyToResume')}
               </span>
               <button
                 className="secondary-action"
@@ -151,7 +158,7 @@ export function HeroSection({
                 }
                 type="button"
               >
-                {continueIsResumable ? 'Resume now' : 'Open'}
+                {continueIsResumable ? t('hero.resumeNow') : t('hero.open')}
               </button>
             </div>
 
@@ -159,8 +166,8 @@ export function HeroSection({
               <div className="hero-queue">
                 <div className="hero-panel-head">
                   <div>
-                    <p className="eyebrow">Queue after that</p>
-                    <strong>Hand-picked from your library</strong>
+                    <p className="eyebrow">{t('hero.queueAfterThat')}</p>
+                    <strong>{t('hero.queueCopy')}</strong>
                   </div>
                   <Sparkles size={18} />
                 </div>
@@ -184,7 +191,7 @@ export function HeroSection({
                       <span>
                         <strong>{companion.title}</strong>
                         <em>
-                          {[companion.type === 'series' ? 'Series' : 'Movie', companion.year]
+                          {[companion.type === 'series' ? t('player.series') : t('player.movie'), companion.year]
                             .filter(Boolean)
                             .join(' • ')}
                         </em>
@@ -198,11 +205,11 @@ export function HeroSection({
         ) : (
           <aside className="hero-orbit">
             <div className="orbit-card">
-              <span>Curated by Jellyfin</span>
-              <strong>Streamlined for movie-night energy</strong>
+              <span>{t('hero.curatedByJellyfin')}</span>
+              <strong>{t('hero.curatedCopy')}</strong>
               {item.isFavorite ? (
                 <small>
-                  <Heart size={14} fill="currentColor" /> Already in your favorites
+                  <Heart size={14} fill="currentColor" /> {t('hero.alreadyFavorite')}
                 </small>
               ) : null}
             </div>
