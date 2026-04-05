@@ -2855,6 +2855,11 @@ html.tv-mode .episode-play-button {
   min-width: 3.5rem;
 }
 
+/* Footer */
+html.tv-mode .site-footer {
+  display: none;
+}
+
 /* Skip buttons — show label in TV mode */
 html.tv-mode .player-skip-label {
   display: inline;
