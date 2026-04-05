@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
 import { fetchItemDetails, fetchSeriesDetails, markPlayed } from '../server/functions'
+import { useTvMode } from '../lib/tv-mode'
 import { useLockBodyScroll } from './useLockBodyScroll'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
@@ -32,6 +33,7 @@ export function MediaSpotlightDialog({
   onToggleFavorite,
 }: MediaSpotlightDialogProps) {
   const { t } = useI18n()
+  const { tvMode } = useTvMode()
   useLockBodyScroll(open)
   const prefetchMediaDetails = usePrefetchMediaDetails()
   const [playedOverrides, setPlayedOverrides] = useState<Record<string, boolean>>({})
@@ -75,6 +77,142 @@ export function MediaSpotlightDialog({
     detail.ageRating,
   ].filter(Boolean)
 
+  function playAction() {
+    if (item.type === 'series') {
+      const target = nextUp[0] ?? episodes[0] ?? detail
+      const targetIdx = episodes.findIndex((e) => e.id === target.id)
+      onPlay?.(target, targetIdx >= 0 ? episodes.slice(targetIdx) : episodes)
+    } else {
+      onPlay?.(detail)
+    }
+  }
+
+  const playLabel = item.type === 'series'
+    ? (isResumable(nextUp[0] ?? episodes[0] ?? detail) ? t('hero.resumeNow') : t('hero.playNow'))
+    : (resumable ? t('hero.resumeNow') : t('hero.playNow'))
+
+  // ── TV mode: full-screen detail view ──────────────────────────────────────
+  if (tvMode) {
+    return (
+      <div className="tv-detail-shell" role="dialog" aria-modal="true" aria-labelledby="aurora-dialog-title">
+        {detail.backdropUrl ? (
+          <img src={detail.backdropUrl} alt="" className="tv-detail-backdrop" />
+        ) : null}
+        <div className="tv-detail-overlay" />
+
+        <button
+          type="button"
+          className="icon-button tv-detail-close"
+          onClick={onClose}
+          aria-label={t('dialog.closeDetails')}
+        >
+          <X size={22} />
+        </button>
+
+        <div className="tv-detail-content page-wrap">
+          <div className="tv-detail-copy">
+            {detail.logoUrl ? (
+              <img src={detail.logoUrl} alt={detail.title} className="hero-logo" />
+            ) : (
+              <h2 id="aurora-dialog-title" className="tv-detail-title">{detail.title}</h2>
+            )}
+
+            <div className="dialog-meta">
+              {metadata.map((entry) => <span key={entry}>{entry}</span>)}
+              {detail.rating != null ? (
+                <span className="dialog-rating">
+                  <Star size={14} fill="currentColor" /> {detail.rating.toFixed(1)}
+                </span>
+              ) : null}
+            </div>
+
+            {detail.overview ? (
+              <p className="tv-detail-overview">{detail.overview}</p>
+            ) : null}
+
+            <div className="tv-detail-actions">
+              <button
+                type="button"
+                className="primary-action"
+                onClick={playAction}
+                disabled={!onPlay || (item.type === 'series' && loadingState)}
+              >
+                <Play size={20} fill="currentColor" /> {playLabel}
+              </button>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => onToggleFavorite?.(detail)}
+              >
+                {detail.isFavorite ? (
+                  <><Check size={18} /> {t('dialog.inMyList')}</>
+                ) : (
+                  <><Plus size={18} /> {t('dialog.addToMyList')}</>
+                )}
+              </button>
+            </div>
+
+            {detail.genres.length ? (
+              <div className="chip-row">
+                {detail.genres.slice(0, 5).map((genre) => (
+                  <span key={genre} className="genre-chip">{genre}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="tv-detail-lower">
+            {detail.cast.length > 0 ? (
+              <div>
+                <p className="tv-detail-section-label">{t('dialog.castCrew')}</p>
+                <div className="tv-detail-scroll-row">
+                  {detail.cast.map((person) => (
+                    <div key={person.id} className="tv-cast-card">
+                      {person.imageUrl ? (
+                        <img src={person.imageUrl} alt={person.name} className="tv-cast-photo" />
+                      ) : (
+                        <div className="tv-cast-photo-fallback">{person.name.slice(0, 1)}</div>
+                      )}
+                      <strong>{person.name}</strong>
+                      {person.role ? <span>{person.role}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {similar.length > 0 ? (
+              <div>
+                <p className="tv-detail-section-label">{t('dialog.moreLikeThis')}</p>
+                <div className="tv-detail-scroll-row">
+                  {similar.slice(0, 12).map((similarItem) => (
+                    <button
+                      key={similarItem.id}
+                      type="button"
+                      className="tv-similar-card"
+                      onClick={() => onSelectSimilar?.(similarItem)}
+                      onMouseEnter={() => void prefetchMediaDetails(similarItem).catch(() => undefined)}
+                      onFocus={() => void prefetchMediaDetails(similarItem).catch(() => undefined)}
+                    >
+                      {similarItem.posterUrl ? (
+                        <img src={similarItem.posterUrl} alt={similarItem.title} className="tv-similar-poster" />
+                      ) : (
+                        <div className="tv-similar-poster-fallback" />
+                      )}
+                      <strong>{similarItem.title}</strong>
+                      <span>{[similarItem.year, similarItem.ageRating].filter(Boolean).join(' • ')}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Regular dialog ─────────────────────────────────────────────────────────
   return (
     <div className="dialog-backdrop" onClick={onClose} role="presentation">
       <div
@@ -170,21 +308,11 @@ export function MediaSpotlightDialog({
             <button
               type="button"
               className="primary-action"
-              onClick={() => {
-                if (item.type === 'series') {
-                  const target = nextUp[0] ?? episodes[0] ?? detail
-                  const targetIdx = episodes.findIndex((e) => e.id === target.id)
-                  onPlay?.(target, targetIdx >= 0 ? episodes.slice(targetIdx) : episodes)
-                } else {
-                  onPlay?.(detail)
-                }
-              }}
+              onClick={playAction}
               disabled={!onPlay || (item.type === 'series' && loadingState)}
             >
               <Play size={18} fill="currentColor" />{' '}
-              {item.type === 'series'
-                ? (isResumable(nextUp[0] ?? episodes[0] ?? detail) ? t('hero.resumeNow') : t('hero.playNow'))
-                : (resumable ? t('hero.resumeNow') : t('hero.playNow'))}
+              {playLabel}
             </button>
 
             <button
