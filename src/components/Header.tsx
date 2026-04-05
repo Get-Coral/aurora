@@ -62,7 +62,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/movies"
-            search={{ page: 0, sort: 'DateCreated' }}
+            search={{ sort: 'DateCreated' }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
@@ -70,7 +70,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/series"
-            search={{ page: 0, sort: 'DateCreated' }}
+            search={{ sort: 'DateCreated' }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >

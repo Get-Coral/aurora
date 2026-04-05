@@ -1,19 +1,13 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { LibraryView } from '../../components/LibraryView'
 import { useI18n } from '../../lib/i18n'
-import { fetchLibrary, fetchSetupStatus } from '../../server/functions'
+import { fetchSetupStatus } from '../../server/functions'
 
 type SeriesSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
 type SeriesSortOrder = 'Ascending' | 'Descending'
 
 export const Route = createFileRoute('/library/series')({
   validateSearch: (search: Record<string, unknown>) => ({
-    page:
-      typeof search.page === 'number'
-        ? search.page
-        : typeof search.page === 'string'
-          ? Number.parseInt(search.page, 10) || 0
-          : 0,
     sort:
       search.sort === 'SortName' ||
       search.sort === 'DateCreated' ||
@@ -26,21 +20,12 @@ export const Route = createFileRoute('/library/series')({
         ? (search.order as SeriesSortOrder)
         : 'Descending',
   }),
-  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort, order: search.order }),
-  loader: async ({ context: { queryClient }, deps }) => {
+  loaderDeps: ({ search }) => ({ sort: search.sort, order: search.order }),
+  loader: async () => {
     const setupStatus = await fetchSetupStatus()
-
     if (!setupStatus.configured) {
       throw redirect({ to: '/setup' })
     }
-
-    await queryClient.ensureQueryData({
-      queryKey: ['library', 'Series', deps.page, deps.sort, deps.order],
-      queryFn: () =>
-        fetchLibrary({
-          data: { type: 'Series', page: deps.page, sortBy: deps.sort, sortOrder: deps.order },
-        }),
-    })
   },
   component: SeriesLibraryPage,
 })

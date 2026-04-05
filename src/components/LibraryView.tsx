@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { CURATED_MOVIE_GENRES } from '../lib/genres'
@@ -20,7 +20,6 @@ interface LibraryViewProps {
   title: string
   subtitle: string
   search: {
-    page?: number
     sort?: LibrarySort
     order?: LibrarySortOrder
   }
@@ -47,26 +46,51 @@ export function LibraryView({
 }: LibraryViewProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const page = search.page ?? 0
   const sort = search.sort ?? 'DateCreated'
   const order = search.order ?? 'Descending'
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
   const favoriteMutation = useFavoriteAction()
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const { data } = useQuery({
-    queryKey: ['library', type, page, sort, order, genre],
-    queryFn: () => fetchLibrary({ data: { type, page, sortBy: sort, sortOrder: order, genre } }),
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['library-infinite', type, sort, order, genre],
+    queryFn: ({ pageParam }) =>
+      fetchLibrary({ data: { type, page: pageParam as number, sortBy: sort, sortOrder: order, genre } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const totalPages = Math.ceil(lastPage.total / 24)
+      return lastPage.page + 1 < totalPages ? lastPage.page + 1 : undefined
+    },
     enabled: mode === 'library',
   })
 
-  const resolvedItems = mode === 'my-list' ? (customItems ?? []) : (data?.items ?? [])
-  const resolvedTotal = mode === 'my-list' ? resolvedItems.length : (data?.total ?? 0)
+  const resolvedItems = mode === 'my-list'
+    ? (customItems ?? [])
+    : (data?.pages.flatMap((p) => p.items) ?? [])
+  const resolvedTotal = mode === 'my-list'
+    ? resolvedItems.length
+    : (data?.pages[0]?.total ?? 0)
 
-  const totalPages = Math.max(1, Math.ceil(resolvedTotal / 24))
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || mode !== 'library') return
 
-  function updateSearch(next: Partial<{ page: number; sort: LibrarySort; order: LibrarySortOrder }>) {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, mode])
+
+  function updateSearch(next: Partial<{ sort: LibrarySort; order: LibrarySortOrder }>) {
     if (mode === 'my-list') return
 
     void navigate({
@@ -78,7 +102,6 @@ export function LibraryView({
           : '/library/series',
       params: genre ? { genre } : undefined,
       search: {
-        page: next.page ?? page,
         sort: next.sort ?? sort,
         order: next.order ?? order,
       },
@@ -122,7 +145,7 @@ export function LibraryView({
               <select
                 value={sort}
                 className="library-select"
-                onChange={(event) => updateSearch({ sort: event.target.value as LibrarySort, page: 0 })}
+                onChange={(event) => updateSearch({ sort: event.target.value as LibrarySort })}
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -143,38 +166,12 @@ export function LibraryView({
               <select
                 value={order}
                 className="library-select"
-                onChange={(event) => updateSearch({ order: event.target.value as LibrarySortOrder, page: 0 })}
+                onChange={(event) => updateSearch({ order: event.target.value as LibrarySortOrder })}
               >
                 <option value="Descending">{t('library.order.desc')}</option>
                 <option value="Ascending">{t('library.order.asc')}</option>
               </select>
             </label>
-
-            {totalPages > 1 ? (
-              <div className="library-pagination">
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => updateSearch({ page: Math.max(0, page - 1) })}
-                  disabled={page === 0}
-                  aria-label={t('library.previousPage')}
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <span>
-                  {t('library.pageOf', { page: page + 1, total: totalPages })}
-                </span>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => updateSearch({ page: Math.min(totalPages - 1, page + 1) })}
-                  disabled={page >= totalPages - 1}
-                  aria-label={t('library.nextPage')}
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : null}
       </div>
@@ -183,7 +180,7 @@ export function LibraryView({
         <div className="page-wrap genre-rail">
           <Link
             to="/library/movies"
-            search={{ page: 0, sort, order }}
+            search={{ sort, order }}
             className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
           >
             {t('library.allMovies')}
@@ -193,7 +190,7 @@ export function LibraryView({
               key={genreOption}
               to="/library/movies/genre/$genre"
               params={{ genre: genreOption }}
-              search={{ page: 0, sort, order }}
+              search={{ sort, order }}
               className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
             >
               {genreOption}
@@ -216,33 +213,15 @@ export function LibraryView({
         ))}
       </div>
 
-      {totalPages > 1 ? (
-        <div className="page-wrap library-footer">
-          {page > 0 ? (
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={() => updateSearch({ page: page - 1 })}
-            >
-              {t('library.previousPage')}
-            </button>
-          ) : <span />}
+      <div ref={sentinelRef} />
+
+      <div className="page-wrap library-footer library-footer-compact">
+        {isFetchingNextPage ? (
+          <span className="eyebrow" style={{ opacity: 0.5 }}>{t('search.searching')}</span>
+        ) : (
           <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
-          {page < totalPages - 1 ? (
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={() => updateSearch({ page: page + 1 })}
-            >
-              {t('library.nextPage')}
-            </button>
-          ) : <span />}
-        </div>
-      ) : (
-        <div className="page-wrap library-footer library-footer-compact">
-          <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
-        </div>
-      )}
+        )}
+      </div>
 
       <MediaPlayerDialog
         item={playingItem}
