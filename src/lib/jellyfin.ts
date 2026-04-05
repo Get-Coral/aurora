@@ -478,6 +478,7 @@ export async function getLibraryItems(
     startIndex = 0,
     genre,
     filters,
+    watchStatus,
     officialRatings,
     minCommunityRating,
     minPremiereDate,
@@ -489,6 +490,7 @@ export async function getLibraryItems(
     startIndex?: number
     genre?: string
     filters?: string
+    watchStatus?: 'watched' | 'unwatched' | 'inprogress'
     officialRatings?: string
     minCommunityRating?: number
     minPremiereDate?: string
@@ -506,8 +508,14 @@ export async function getLibraryItems(
     Fields: 'Overview,GenreItems,UserData',
   }
 
+  const filterParts: string[] = []
+  if (filters) filterParts.push(filters)
+  if (watchStatus === 'watched') filterParts.push('IsPlayed')
+  else if (watchStatus === 'unwatched') filterParts.push('IsUnplayed')
+  else if (watchStatus === 'inprogress') filterParts.push('IsResumable')
+  if (filterParts.length) params.Filters = filterParts.join(',')
+
   if (genre) params.Genres = genre
-  if (filters) params.Filters = filters
   if (officialRatings) params.OfficialRatings = officialRatings
   if (minCommunityRating != null) params.MinCommunityRating = String(minCommunityRating)
   if (minPremiereDate) params.MinPremiereDate = minPremiereDate

@@ -22,6 +22,10 @@ export const Route = createFileRoute('/library/series')({
     ratings: typeof search.ratings === 'string' ? search.ratings : '',
     decade: typeof search.decade === 'string' ? search.decade : '',
     minScore: typeof search.minScore === 'number' ? search.minScore : 0,
+    watchStatus:
+      search.watchStatus === 'watched' || search.watchStatus === 'unwatched' || search.watchStatus === 'inprogress'
+        ? (search.watchStatus as 'watched' | 'unwatched' | 'inprogress')
+        : undefined,
   }),
   loaderDeps: ({ search }) => search,
   loader: async () => {

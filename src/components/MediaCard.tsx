@@ -1,4 +1,4 @@
-import { Check, Heart, Info, Play, Plus, Star } from 'lucide-react'
+import { Check, CheckCircle, Heart, Info, Play, Plus, Star } from 'lucide-react'
 import { isResumable, type MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
 import { useTvMode } from '../lib/tv-mode'
@@ -32,7 +32,7 @@ export function MediaCard({
 
   return (
     <div
-      className={`media-card media-card-${variant}`}
+      className={`media-card media-card-${variant}${item.played ? ' media-card-watched' : ''}`}
       onClick={onClick}
       onMouseEnter={handlePrefetch}
       onFocus={handlePrefetch}
@@ -63,13 +63,15 @@ export function MediaCard({
 
       <div className="card-overlay" />
 
-      {item.progress != null && item.progress > 0 && (
-        <div className="absolute bottom-0 left-0 right-0">
-          <div className="progress-bar" style={{ borderRadius: 0 }}>
-            <div className="progress-bar-fill" style={{ width: `${item.progress}%` }} />
-          </div>
+      {item.played ? (
+        <div className="card-watched-badge" aria-label="Watched">
+          <CheckCircle size={14} />
         </div>
-      )}
+      ) : item.progress != null && item.progress > 0 ? (
+        <div className="card-progress-bar">
+          <div className="card-progress-fill" style={{ width: `${item.progress}%` }} />
+        </div>
+      ) : null}
 
       <div className="card-topline">
         <span className="card-format">

@@ -119,6 +119,7 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
     ratings?: string
     decade?: string
     minScore?: number
+    watchStatus?: 'watched' | 'unwatched' | 'inprogress'
   }) => input)
   .handler(async ({ data }) => {
     const [{ getLibraryItems }, { fromJellyfin }] = await Promise.all([
@@ -134,6 +135,7 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
       startIndex: page * 24,
       genre: data.genre,
       filters: data.favoritesOnly ? 'IsFavorite' : undefined,
+      watchStatus: data.watchStatus,
       officialRatings: data.ratings || undefined,
       minCommunityRating: data.minScore ?? undefined,
       minPremiereDate: decadeRange?.min,

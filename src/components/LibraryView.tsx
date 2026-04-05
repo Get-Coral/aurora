@@ -15,6 +15,8 @@ type LibraryType = 'Movie' | 'Series'
 type LibrarySort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
 type LibrarySortOrder = 'Ascending' | 'Descending'
 
+type WatchStatus = 'watched' | 'unwatched' | 'inprogress'
+
 interface LibraryViewProps {
   type: LibraryType
   title: string
@@ -25,6 +27,7 @@ interface LibraryViewProps {
     ratings?: string
     decade?: string
     minScore?: number
+    watchStatus?: WatchStatus
   }
   genre?: string
   mode?: 'library' | 'my-list'
@@ -59,6 +62,7 @@ export function LibraryView({
   const ratings = search.ratings ?? ''
   const decade = search.decade ?? ''
   const minScore = search.minScore ?? 0
+  const watchStatus = search.watchStatus
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
@@ -67,10 +71,11 @@ export function LibraryView({
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const activeRatings = ratings ? ratings.split(',').filter(Boolean) : []
-  const activeFilterCount = (activeRatings.length > 0 ? 1 : 0) + (decade ? 1 : 0) + (minScore > 0 ? 1 : 0)
+  const activeFilterCount =
+    (activeRatings.length > 0 ? 1 : 0) + (decade ? 1 : 0) + (minScore > 0 ? 1 : 0) + (watchStatus ? 1 : 0)
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ['library-infinite', type, sort, order, genre, ratings, decade, minScore],
+    queryKey: ['library-infinite', type, sort, order, genre, ratings, decade, minScore, watchStatus],
     queryFn: ({ pageParam }) =>
       fetchLibrary({
         data: {
@@ -82,6 +87,7 @@ export function LibraryView({
           ratings: ratings || undefined,
           decade: decade || undefined,
           minScore: minScore > 0 ? minScore : undefined,
+          watchStatus,
         },
       }),
     initialPageParam: 0,
@@ -122,6 +128,7 @@ export function LibraryView({
     ratings: string
     decade: string
     minScore: number
+    watchStatus: WatchStatus | undefined
   }>) {
     if (mode === 'my-list') return
 
@@ -139,6 +146,7 @@ export function LibraryView({
         ratings: next.ratings !== undefined ? next.ratings : ratings,
         decade: next.decade !== undefined ? next.decade : decade,
         minScore: next.minScore !== undefined ? next.minScore : minScore,
+        watchStatus: 'watchStatus' in next ? next.watchStatus : watchStatus,
       },
     })
   }
@@ -150,7 +158,7 @@ export function LibraryView({
   }
 
   function clearFilters() {
-    updateSearch({ ratings: '', decade: '', minScore: 0 })
+    updateSearch({ ratings: '', decade: '', minScore: 0, watchStatus: undefined })
   }
 
   function playMedia(item: MediaItem, queue?: MediaItem[]) {
@@ -296,6 +304,22 @@ export function LibraryView({
             </div>
           </div>
 
+          <div className="filter-section">
+            <p className="filter-section-label">{t('library.watchStatus')}</p>
+            <div className="filter-chip-row">
+              {(['unwatched', 'inprogress', 'watched'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`filter-chip${watchStatus === s ? ' filter-chip-active' : ''}`}
+                  onClick={() => updateSearch({ watchStatus: watchStatus === s ? undefined : s })}
+                >
+                  {t(`library.watchStatus.${s}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {activeFilterCount > 0 ? (
             <div className="filter-panel-footer">
               <button type="button" className="filter-clear" onClick={clearFilters}>
@@ -321,6 +345,11 @@ export function LibraryView({
           {minScore > 0 ? (
             <button type="button" className="active-filter-chip" onClick={() => updateSearch({ minScore: 0 })}>
               {minScore}+ ★ <X size={11} />
+            </button>
+          ) : null}
+          {watchStatus ? (
+            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ watchStatus: undefined })}>
+              {t(`library.watchStatus.${watchStatus}`)} <X size={11} />
             </button>
           ) : null}
         </div>

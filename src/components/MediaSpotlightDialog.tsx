@@ -53,6 +53,12 @@ export function MediaSpotlightDialog({
     markPlayedMutation.mutate({ id: episode.id, played: !current })
   }
 
+  function handleToggleItemWatched() {
+    const current = playedOverrides[detail.id] ?? detail.played ?? false
+    setPlayedOverrides((prev) => ({ ...prev, [detail.id]: !current }))
+    markPlayedMutation.mutate({ id: detail.id, played: !current })
+  }
+
   const { data, isLoading } = useQuery({
     queryKey: ['item-details', item?.id],
     queryFn: () => fetchItemDetails({ data: { id: item!.id } }),
@@ -159,6 +165,19 @@ export function MediaSpotlightDialog({
                   <><Plus size={18} /> {t('dialog.addToMyList')}</>
                 )}
               </button>
+              {item.type !== 'series' ? (
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={handleToggleItemWatched}
+                >
+                  {(playedOverrides[detail.id] ?? detail.played) ? (
+                    <><CheckCircle size={18} /> {t('dialog.markUnwatched')}</>
+                  ) : (
+                    <><Circle size={18} /> {t('dialog.markWatched')}</>
+                  )}
+                </button>
+              ) : null}
             </div>
 
             {detail.genres.length ? (
@@ -204,7 +223,7 @@ export function MediaSpotlightDialog({
                         <button
                           key={episode.id}
                           type="button"
-                          className={`tv-episode-row${isNextUp ? ' tv-episode-next-up' : ''}`}
+                          className={`tv-episode-row${isNextUp ? ' tv-episode-next-up' : ''}${episode.played ? ' tv-episode-watched' : ''}`}
                           onClick={() => onPlay?.(episode, globalIdx >= 0 ? episodes.slice(globalIdx) : [episode])}
                         >
                           <div className="tv-episode-thumb-wrap">
@@ -219,7 +238,11 @@ export function MediaSpotlightDialog({
                                 <span>{episode.episodeNumber}</span>
                               </div>
                             )}
-                            {episode.progress ? (
+                            {episode.played ? (
+                              <div className="tv-episode-watched-overlay">
+                                <CheckCircle size={20} />
+                              </div>
+                            ) : episode.progress ? (
                               <div className="tv-episode-progress">
                                 <div className="tv-episode-progress-fill" style={{ width: `${episode.progress}%` }} />
                               </div>
@@ -412,6 +435,20 @@ export function MediaSpotlightDialog({
                 </>
               )}
             </button>
+
+            {item.type !== 'series' ? (
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={handleToggleItemWatched}
+              >
+                {(playedOverrides[detail.id] ?? detail.played) ? (
+                  <><CheckCircle size={18} /> {t('dialog.markUnwatched')}</>
+                ) : (
+                  <><Circle size={18} /> {t('dialog.markWatched')}</>
+                )}
+              </button>
+            ) : null}
           </div>
         </div>
 

@@ -979,6 +979,50 @@ html.tv-mode .hero-copy-in {
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.44);
 }
 
+.media-card-watched img {
+  opacity: 0.75;
+  filter: saturate(0.7);
+}
+
+.media-card-watched:hover img {
+  opacity: 1;
+  filter: saturate(1);
+}
+
+.card-watched-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: rgba(10, 15, 35, 0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.card-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 3;
+}
+
+.card-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0 2px 0 0;
+}
+
 .media-card img {
   width: 100%;
   height: 100%;
@@ -3110,6 +3154,26 @@ html.tv-mode .hero-copy-in {
   height: 100%;
   background: var(--accent);
   border-radius: inherit;
+}
+
+.tv-episode-watched-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 20, 0.55);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tv-episode-watched {
+  opacity: 0.6;
+}
+
+.tv-episode-watched:hover,
+.tv-episode-watched:focus-visible {
+  opacity: 1;
 }
 
 .tv-episode-info {
