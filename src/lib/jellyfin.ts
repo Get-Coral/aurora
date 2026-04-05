@@ -1,8 +1,7 @@
-const BASE_URL = process.env['JELLYFIN_URL'] ?? 'http://localhost:8096'
-const API_KEY = process.env['JELLYFIN_API_KEY'] ?? ''
-const USER_ID = process.env['JELLYFIN_USER_ID'] ?? ''
-const USERNAME = process.env['JELLYFIN_USERNAME'] ?? ''
-const PASSWORD = process.env['JELLYFIN_PASSWORD'] ?? ''
+import {
+  getEffectiveJellyfinSettings,
+  type JellyfinSettings,
+} from './config-store'
 
 const AURORA_CLIENT_NAME = 'Aurora'
 const AURORA_DEVICE_NAME = 'Aurora Web'
@@ -80,9 +79,26 @@ export interface JellyfinResponse<T> {
   TotalRecordCount: number
 }
 
-async function jellyfinFetch<T>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${BASE_URL}${path}`)
-  url.searchParams.set('api_key', API_KEY)
+function getRequiredSettings() {
+  const settings = getEffectiveJellyfinSettings()
+
+  if (!settings) {
+    throw new Error('Aurora is not configured yet. Visit /setup to connect Jellyfin.')
+  }
+
+  return {
+    ...settings,
+    url: settings.url.replace(/\/+$/, ''),
+  }
+}
+
+async function jellyfinFetch<T>(
+  path: string,
+  params?: Record<string, string>,
+  settings: JellyfinSettings = getRequiredSettings(),
+): Promise<T> {
+  const url = new URL(`${settings.url}${path}`)
+  url.searchParams.set('api_key', settings.apiKey)
   if (params) {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
   }
@@ -106,24 +122,37 @@ function buildAuthorizationHeader(token?: string) {
 
 let cachedPlaybackAuth:
   | {
+      cacheKey: string
       token: string
       sessionId?: string
     }
   | null = null
 
-async function getPlaybackAuth(forceRefresh = false) {
-  if (!USERNAME || !PASSWORD) return null
-  if (cachedPlaybackAuth && !forceRefresh) return cachedPlaybackAuth
+function getPlaybackCacheKey(settings: JellyfinSettings) {
+  return `${settings.url}::${settings.userId}::${settings.username}`
+}
 
-  const res = await fetch(`${BASE_URL}/Users/AuthenticateByName`, {
+async function getPlaybackAuth(
+  settings: JellyfinSettings = getRequiredSettings(),
+  forceRefresh = false,
+) {
+  if (!settings.username || !settings.password) return null
+
+  const cacheKey = getPlaybackCacheKey(settings)
+
+  if (cachedPlaybackAuth?.cacheKey === cacheKey && !forceRefresh) {
+    return cachedPlaybackAuth
+  }
+
+  const res = await fetch(`${settings.url}/Users/AuthenticateByName`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Emby-Authorization': buildAuthorizationHeader(),
     },
     body: JSON.stringify({
-      Username: USERNAME,
-      Pw: PASSWORD,
+      Username: settings.username,
+      Pw: settings.password,
     }),
   })
 
@@ -138,6 +167,7 @@ async function getPlaybackAuth(forceRefresh = false) {
   }
 
   cachedPlaybackAuth = {
+    cacheKey,
     token: data.AccessToken,
     sessionId: data.SessionInfo?.Id,
   }
@@ -148,13 +178,14 @@ async function getPlaybackAuth(forceRefresh = false) {
 async function jellyfinPlaybackRequest(
   path: string,
   payload: Record<string, unknown>,
+  settings: JellyfinSettings = getRequiredSettings(),
   forceRefresh = false,
 ) {
-  const auth = await getPlaybackAuth(forceRefresh)
+  const auth = await getPlaybackAuth(settings, forceRefresh)
 
   if (!auth) return false
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${settings.url}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -166,7 +197,7 @@ async function jellyfinPlaybackRequest(
 
   if (res.status === 401 && !forceRefresh) {
     cachedPlaybackAuth = null
-    return jellyfinPlaybackRequest(path, payload, true)
+    return jellyfinPlaybackRequest(path, payload, settings, true)
   }
 
   if (!res.ok) {
@@ -181,11 +212,13 @@ export function jellyfinImageUrl(
   type: 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' = 'Primary',
   width = 400,
 ): string {
-  return `${BASE_URL}/Items/${itemId}/Images/${type}?maxWidth=${width}&api_key=${API_KEY}`
+  const settings = getRequiredSettings()
+  return `${settings.url}/Items/${itemId}/Images/${type}?maxWidth=${width}&api_key=${settings.apiKey}`
 }
 
 export function jellyfinPersonImageUrl(personId: string, width = 240): string {
-  return `${BASE_URL}/Items/${personId}/Images/Primary?maxWidth=${width}&api_key=${API_KEY}`
+  const settings = getRequiredSettings()
+  return `${settings.url}/Items/${personId}/Images/Primary?maxWidth=${width}&api_key=${settings.apiKey}`
 }
 
 export function jellyfinStreamUrl(
@@ -195,9 +228,10 @@ export function jellyfinStreamUrl(
     mediaSourceId?: string
   },
 ): string {
-  const url = new URL(`${BASE_URL}/Videos/${itemId}/stream`)
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Videos/${itemId}/stream`)
   url.searchParams.set('static', 'true')
-  url.searchParams.set('api_key', API_KEY)
+  url.searchParams.set('api_key', settings.apiKey)
 
   if (options?.playSessionId) {
     url.searchParams.set('PlaySessionId', options.playSessionId)
@@ -211,8 +245,9 @@ export function jellyfinStreamUrl(
 }
 
 export async function setFavorite(itemId: string, isFavorite: boolean) {
-  const url = new URL(`${BASE_URL}/Users/${USER_ID}/FavoriteItems/${itemId}`)
-  url.searchParams.set('api_key', API_KEY)
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Users/${settings.userId}/FavoriteItems/${itemId}`)
+  url.searchParams.set('api_key', settings.apiKey)
 
   const res = await fetch(url.toString(), { method: isFavorite ? 'DELETE' : 'POST' })
   if (!res.ok) throw new Error(`Jellyfin favorite error: ${res.status} ${res.statusText}`)
@@ -220,8 +255,9 @@ export async function setFavorite(itemId: string, isFavorite: boolean) {
 }
 
 export async function setPlayed(itemId: string, played: boolean) {
-  const url = new URL(`${BASE_URL}/Users/${USER_ID}/PlayedItems/${itemId}`)
-  url.searchParams.set('api_key', API_KEY)
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Users/${settings.userId}/PlayedItems/${itemId}`)
+  url.searchParams.set('api_key', settings.apiKey)
 
   const res = await fetch(url.toString(), {
     method: played ? 'POST' : 'DELETE',
@@ -232,7 +268,8 @@ export async function setPlayed(itemId: string, played: boolean) {
 }
 
 export async function createPlaybackSession(itemId: string): Promise<JellyfinPlaybackSession> {
-  const auth = await getPlaybackAuth().catch(() => null)
+  const settings = getRequiredSettings()
+  const auth = await getPlaybackAuth(settings).catch(() => null)
 
   if (!auth) {
     return {
@@ -241,8 +278,8 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
     }
   }
 
-  const url = new URL(`${BASE_URL}/Items/${itemId}/PlaybackInfo`)
-  url.searchParams.set('UserId', USER_ID)
+  const url = new URL(`${settings.url}/Items/${itemId}/PlaybackInfo`)
+  url.searchParams.set('UserId', settings.userId)
 
   const res = await fetch(url.toString(), {
     method: 'POST',
@@ -252,7 +289,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
       'X-Emby-Token': auth.token,
     },
     body: JSON.stringify({
-      UserId: USER_ID,
+      UserId: settings.userId,
       StartTimeTicks: 0,
       IsPlayback: true,
       AutoOpenLiveStream: true,
@@ -323,16 +360,19 @@ export async function syncPlaybackState({
 }
 
 export async function getContinueWatching(): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${USER_ID}/Items/Resume`,
+    `/Users/${settings.userId}/Items/Resume`,
     { MediaTypes: 'Video', Limit: '6', Fields: 'Overview,GenreItems,UserData' },
+    settings,
   )
   return data.Items
 }
 
 export async function getFavoriteItems(type: JellyfinMediaType = 'Movie'): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${USER_ID}/Items`,
+    `/Users/${settings.userId}/Items`,
     {
       IncludeItemTypes: type,
       Recursive: 'true',
@@ -342,14 +382,17 @@ export async function getFavoriteItems(type: JellyfinMediaType = 'Movie'): Promi
       SortOrder: 'Descending',
       Fields: 'Overview,GenreItems,UserData',
     },
+    settings,
   )
   return data.Items
 }
 
 export async function getLatestMedia(type: JellyfinMediaType = 'Movie'): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinItem[]>(
-    `/Users/${USER_ID}/Items/Latest`,
+    `/Users/${settings.userId}/Items/Latest`,
     { IncludeItemTypes: type, Limit: '12', Fields: 'Overview,GenreItems,UserData' },
+    settings,
   )
   return data
 }
@@ -371,6 +414,7 @@ export async function getLibraryItems(
     filters?: string
   } = {},
 ): Promise<JellyfinResponse<JellyfinItem>> {
+  const settings = getRequiredSettings()
   const params: Record<string, string> = {
     IncludeItemTypes: type,
     SortBy: sortBy,
@@ -385,44 +429,51 @@ export async function getLibraryItems(
   if (filters) params.Filters = filters
 
   return jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${USER_ID}/Items`,
+    `/Users/${settings.userId}/Items`,
     params,
+    settings,
   )
 }
 
 export async function getItem(itemId: string): Promise<JellyfinItem> {
+  const settings = getRequiredSettings()
   return jellyfinFetch<JellyfinItem>(
-    `/Users/${USER_ID}/Items/${itemId}`,
+    `/Users/${settings.userId}/Items/${itemId}`,
     { Fields: 'Overview,GenreItems,UserData,People,Studios' },
+    settings,
   )
 }
 
 export async function getSimilarItems(itemId: string): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Items/${itemId}/Similar`,
     {
-      UserId: USER_ID,
+      UserId: settings.userId,
       Limit: '8',
       Fields: 'Overview,GenreItems,UserData',
     },
+    settings,
   )
   return data.Items
 }
 
 export async function getEpisodesForSeries(seriesId: string): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const direct = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Shows/${seriesId}/Episodes`,
     {
-      UserId: USER_ID,
+      UserId: settings.userId,
       Limit: '60',
       Fields: 'Overview,GenreItems,UserData',
     },
+    settings,
   ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
 
   if (direct.Items.length) return direct.Items
 
   const fallback = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${USER_ID}/Items`,
+    `/Users/${settings.userId}/Items`,
     {
       IncludeItemTypes: 'Episode',
       Recursive: 'true',
@@ -431,28 +482,32 @@ export async function getEpisodesForSeries(seriesId: string): Promise<JellyfinIt
       SortBy: 'ParentIndexNumber,IndexNumber',
       Fields: 'Overview,GenreItems,UserData',
     },
+    settings,
   ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
 
   return fallback.Items
 }
 
 export async function getNextUpForSeries(seriesId: string): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
     `/Shows/NextUp`,
     {
-      UserId: USER_ID,
+      UserId: settings.userId,
       SeriesId: seriesId,
       Limit: '6',
       Fields: 'Overview,GenreItems,UserData',
     },
+    settings,
   ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
 
   return data.Items
 }
 
 export async function searchItems(query: string): Promise<JellyfinItem[]> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${USER_ID}/Items`,
+    `/Users/${settings.userId}/Items`,
     {
       SearchTerm: query,
       Recursive: 'true',
@@ -460,13 +515,15 @@ export async function searchItems(query: string): Promise<JellyfinItem[]> {
       Fields: 'Overview,GenreItems,UserData',
       IncludeItemTypes: 'Movie,Series',
     },
+    settings,
   )
   return data.Items
 }
 
 export async function getFeaturedItem(): Promise<JellyfinItem | null> {
+  const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${USER_ID}/Items`,
+    `/Users/${settings.userId}/Items`,
     {
       IncludeItemTypes: 'Movie',
       SortBy: 'Random',
@@ -475,6 +532,7 @@ export async function getFeaturedItem(): Promise<JellyfinItem | null> {
       HasBackdrop: 'true',
       Fields: 'Overview,GenreItems,UserData',
     },
+    settings,
   )
   return data.Items[0] ?? null
 }

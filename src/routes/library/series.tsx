@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { LibraryView } from '../../components/LibraryView'
 import { useI18n } from '../../lib/i18n'
-import { fetchLibrary } from '../../server/functions'
+import { fetchLibrary, fetchSetupStatus } from '../../server/functions'
 
 type SeriesSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
 type SeriesSortOrder = 'Ascending' | 'Descending'
@@ -28,6 +28,12 @@ export const Route = createFileRoute('/library/series')({
   }),
   loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort, order: search.order }),
   loader: async ({ context: { queryClient }, deps }) => {
+    const setupStatus = await fetchSetupStatus()
+
+    if (!setupStatus.configured) {
+      throw redirect({ to: '/setup' })
+    }
+
     await queryClient.ensureQueryData({
       queryKey: ['library', 'Series', deps.page, deps.sort, deps.order],
       queryFn: () =>

@@ -12,6 +12,7 @@ Aurora UI is a premium Jellyfin frontend built with TanStack Start and React. It
 - Movie and series library pages with genre browsing, sorting, and pagination
 - `My List` / favorites workflow backed by Jellyfin favorites
 - Translation-ready UI with locale files contributors can extend
+- Local-first onboarding backed by SQLite so self-hosting does not require an external database
 
 ## Stack
 
@@ -29,7 +30,7 @@ Install dependencies:
 pnpm install
 ```
 
-Create your local env file:
+Create your local env file if you want to skip the in-app setup flow during development:
 
 ```bash
 cp .env.example .env
@@ -53,6 +54,8 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+If you do not provide Jellyfin env vars, Aurora will open a local onboarding screen at `/setup` and store the connection details in a local SQLite file under `./data/aurora.sqlite`.
+
 ## Scripts
 
 ```bash
@@ -75,6 +78,16 @@ Workflow files:
 - [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
 - [`.github/workflows/docker-publish.yml`](./.github/workflows/docker-publish.yml)
 
+## Local Storage
+
+Aurora stores local app configuration in SQLite.
+
+- Default database path: `./data/aurora.sqlite`
+- Override with: `AURORA_DATA_DIR=/path/to/data`
+- Main use today: persisted Jellyfin connection details for onboarding and self-hosted installs
+
+This keeps Aurora simple to deploy on a VM or home server because there is no external database requirement.
+
 ## Jellyfin Notes
 
 Aurora uses Jellyfin as the system of record.
@@ -82,6 +95,7 @@ Aurora uses Jellyfin as the system of record.
 - API key access is enough for browsing, favorites, and most library features
 - Username/password are used to create a real Jellyfin playback session so Aurora can sync progress and watched state more reliably
 - `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
+- If you use the onboarding flow, Aurora stores these values in local SQLite instead of requiring env vars
 
 ## Translations
 
@@ -110,10 +124,21 @@ Build locally:
 docker build -t aurora-ui .
 ```
 
-Run locally:
+Run locally with the onboarding flow:
 
 ```bash
 docker run --rm -p 3000:3000 \
+  -v aurora-data:/data \
+  ghcr.io/eliancodes/aurora-ui:latest
+```
+
+Then open [http://localhost:3000](http://localhost:3000) and complete the Jellyfin onboarding form once. Aurora will persist the connection in `/data/aurora.sqlite`.
+
+If you prefer skipping onboarding, you can still pass the Jellyfin env vars directly:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -v aurora-data:/data \
   -e JELLYFIN_URL=http://your-jellyfin:8096 \
   -e JELLYFIN_API_KEY=your_api_key \
   -e JELLYFIN_USER_ID=your_user_id \
@@ -122,7 +147,7 @@ docker run --rm -p 3000:3000 \
   ghcr.io/eliancodes/aurora-ui:latest
 ```
 
-The container listens on port `3000`.
+The container listens on port `3000` and stores local config in `/data`.
 
 Published images go to:
 

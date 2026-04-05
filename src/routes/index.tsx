@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { HeroSection } from '../components/HeroSection'
@@ -14,11 +14,18 @@ import {
   fetchLatestMovies,
   fetchLatestSeries,
   fetchRecommendedFromItem,
+  fetchSetupStatus,
 } from '../server/functions'
 import type { MediaItem } from '../lib/media'
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
+    const setupStatus = await fetchSetupStatus()
+
+    if (!setupStatus.configured) {
+      throw redirect({ to: '/setup' })
+    }
+
     await Promise.all([
       queryClient.ensureQueryData({ queryKey: ['featured'], queryFn: () => fetchFeatured() }),
       queryClient.ensureQueryData({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatching() }),

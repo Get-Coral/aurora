@@ -1,5 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 import {
+  getConfigurationSummary,
+  isAuroraConfigured,
+  saveJellyfinSettings,
+  validateJellyfinSettings,
+} from '../lib/config-store'
+import {
   createPlaybackSession,
   getContinueWatching,
   getEpisodesForSeries,
@@ -15,6 +21,34 @@ import {
   syncPlaybackState,
 } from '../lib/jellyfin'
 import { fromJellyfin, fromJellyfinDetailed } from '../lib/media'
+
+export const fetchSetupStatus = createServerFn({ method: 'GET' }).handler(async () => {
+  return getConfigurationSummary()
+})
+
+export const saveSetupConfiguration = createServerFn({ method: 'POST' })
+  .inputValidator((input: {
+    url: string
+    apiKey: string
+    userId: string
+    username: string
+    password: string
+  }) => input)
+  .handler(async ({ data }) => {
+    const validated = await validateJellyfinSettings({
+      url: data.url,
+      apiKey: data.apiKey,
+      userId: data.userId,
+      username: data.username,
+      password: data.password,
+    })
+
+    saveJellyfinSettings(validated)
+
+    return {
+      configured: isAuroraConfigured(),
+    }
+  })
 
 export const fetchContinueWatching = createServerFn({ method: 'GET' }).handler(async () => {
   const items = await getContinueWatching()

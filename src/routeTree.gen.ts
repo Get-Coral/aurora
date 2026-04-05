@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LibrarySeriesRouteImport } from './routes/library/series'
@@ -16,6 +17,11 @@ import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
 import { Route as LibraryMoviesIndexRouteImport } from './routes/library/movies/index'
 import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/movies/genre/$genre'
 
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyListRoute = MyListRouteImport.update({
   id: '/my-list',
   path: '/my-list',
@@ -50,6 +56,7 @@ const LibraryMoviesGenreGenreRoute = LibraryMoviesGenreGenreRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/my-list': typeof MyListRoute
+  '/setup': typeof SetupRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
   '/library/movies/': typeof LibraryMoviesIndexRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/my-list': typeof MyListRoute
+  '/setup': typeof SetupRoute
   '/library/series': typeof LibrarySeriesRoute
   '/library/movies': typeof LibraryMoviesIndexRoute
   '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
@@ -66,6 +74,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/my-list': typeof MyListRoute
+  '/setup': typeof SetupRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
   '/library/movies/': typeof LibraryMoviesIndexRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/my-list'
+    | '/setup'
     | '/library/movies'
     | '/library/series'
     | '/library/movies/'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/my-list'
+    | '/setup'
     | '/library/series'
     | '/library/movies'
     | '/library/movies/genre/$genre'
@@ -91,6 +102,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/my-list'
+    | '/setup'
     | '/library/movies'
     | '/library/series'
     | '/library/movies/'
@@ -100,12 +112,20 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MyListRoute: typeof MyListRoute
+  SetupRoute: typeof SetupRoute
   LibraryMoviesRoute: typeof LibraryMoviesRouteWithChildren
   LibrarySeriesRoute: typeof LibrarySeriesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-list': {
       id: '/my-list'
       path: '/my-list'
@@ -168,6 +188,7 @@ const LibraryMoviesRouteWithChildren = LibraryMoviesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MyListRoute: MyListRoute,
+  SetupRoute: SetupRoute,
   LibraryMoviesRoute: LibraryMoviesRouteWithChildren,
   LibrarySeriesRoute: LibrarySeriesRoute,
 }
