@@ -147,6 +147,14 @@ export function getConfigurationSummary() {
   }
 }
 
+export function getOpenSubtitlesApiKey(): string | null {
+  return getSetting('opensubtitles.apiKey') ?? null
+}
+
+export function saveOpenSubtitlesApiKey(apiKey: string) {
+  setSetting('opensubtitles.apiKey', apiKey.trim())
+}
+
 export function saveJellyfinSettings(settings: JellyfinSettings) {
   setSetting('jellyfin.url', settings.url.trim())
   setSetting('jellyfin.apiKey', settings.apiKey.trim())

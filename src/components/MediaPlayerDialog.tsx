@@ -1,9 +1,10 @@
-import { Captions, Film, Maximize, Minimize, Pause, Play, Volume2, VolumeX, X } from 'lucide-react'
+import { Captions, Film, Maximize, Minimize, Pause, Play, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useLockBodyScroll } from './useLockBodyScroll'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
-import { beginPlaybackSession, reportPlaybackState } from '../server/functions'
+import { beginPlaybackSession, fetchOnlineSubtitle, fetchOpenSubtitlesKey, reportPlaybackState, searchOnlineSubtitles } from '../server/functions'
 
 interface MediaPlayerDialogProps {
   item: MediaItem | null
@@ -11,6 +12,28 @@ interface MediaPlayerDialogProps {
   onClose: () => void
   queue?: MediaItem[]
   onSelectQueueItem?: (item: MediaItem) => void
+}
+
+interface VttCue { start: number; end: number; text: string }
+
+function parseVttTime(s: string): number {
+  const m = s.trim().match(/^(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})/)
+  if (!m) return 0
+  return Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4]) / 1000
+}
+
+function parseVtt(raw: string): VttCue[] {
+  const cues: VttCue[] = []
+  const blocks = raw.replace(/\r\n/g, '\n').split(/\n\n+/)
+  for (const block of blocks) {
+    const lines = block.trim().split('\n')
+    const timingIdx = lines.findIndex((l) => l.includes('-->'))
+    if (timingIdx === -1) continue
+    const [startStr, endStr] = lines[timingIdx].split('-->')
+    const text = lines.slice(timingIdx + 1).join('\n').replace(/<[^>]+>/g, '').trim()
+    if (text) cues.push({ start: parseVttTime(startStr), end: parseVttTime(endStr), text })
+  }
+  return cues
 }
 
 function formatTime(seconds: number) {
@@ -22,7 +45,7 @@ function formatTime(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProps) {
+export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueItem }: MediaPlayerDialogProps) {
   const { t } = useI18n()
   useLockBodyScroll(open)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -48,9 +71,35 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
   const [controlsVisible, setControlsVisible] = useState(true)
   const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false)
   const [activeSubtitle, setActiveSubtitle] = useState<number | null>(null)
+  const [onlineCues, setOnlineCues] = useState<VttCue[]>([])
+  const [loadingOnlineSubtitle, setLoadingOnlineSubtitle] = useState(false)
+  const [onlineSubtitleError, setOnlineSubtitleError] = useState(false)
+
+  const { data: osApiKey } = useQuery({
+    queryKey: ['opensubtitles-key'],
+    queryFn: () => fetchOpenSubtitlesKey(),
+    staleTime: Infinity,
+  })
+
+  const { data: onlineSubtitles = [], isFetching: searchingSubtitles } = useQuery({
+    queryKey: ['online-subtitles', item?.id],
+    queryFn: () => searchOnlineSubtitles({
+      data: {
+        title: item!.type === 'episode' ? (item!.seriesTitle ?? item!.title) : item!.title,
+        year: item!.year,
+        season: item!.seasonNumber,
+        episode: item!.episodeNumber,
+      },
+    }),
+    enabled: Boolean(open && item && osApiKey),
+    staleTime: 0,
+  })
 
   const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
+  const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1
+  const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null
+  const showNextButton = nextItem?.type === 'episode'
 
   // Reset + start playback session when item changes
   useEffect(() => {
@@ -63,6 +112,8 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     setActiveSubtitle(null)
     setSubtitlePickerOpen(false)
     setAutoplayMuted(false)
+    setOnlineCues([])
+    videoRef.current?.querySelector('track[data-online]')?.remove()
 
     if (!open || !item?.streamUrl) return
 
@@ -184,6 +235,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     }
   }, [open])
 
+
   // Fullscreen tracking
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -254,15 +306,27 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     }
   }
 
+  async function selectOnlineSubtitle(fileId: number) {
+    setLoadingOnlineSubtitle(true)
+    setOnlineSubtitleError(false)
+    try {
+      const { content } = await fetchOnlineSubtitle({ data: { fileId } })
+      setOnlineCues(parseVtt(content))
+      setActiveSubtitle(null)
+      setSubtitlePickerOpen(false)
+    } catch {
+      setOnlineSubtitleError(true)
+    } finally {
+      setLoadingOnlineSubtitle(false)
+    }
+  }
+
   function selectSubtitle(index: number | null) {
+    setOnlineCues([])
     const video = videoRef.current
     if (video) {
-      for (const track of Array.from(video.textTracks)) {
-        track.mode = 'disabled'
-      }
-      if (index !== null && video.textTracks[index]) {
-        video.textTracks[index].mode = 'showing'
-      }
+      for (const track of Array.from(video.textTracks)) track.mode = 'disabled'
+      if (index !== null && video.textTracks[index]) video.textTracks[index].mode = 'showing'
     }
     setActiveSubtitle(index)
     setSubtitlePickerOpen(false)
@@ -305,6 +369,15 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
               />
             ))}
           </video>
+
+          {(() => {
+            const cue = onlineCues.find((c) => currentTime >= c.start && currentTime <= c.end)
+            return cue ? (
+              <div className={`player-subtitle-cue${controlsVisible ? ' player-subtitle-cue-raised' : ''}`}>
+                {cue.text.split('\n').map((line, i) => <span key={i}>{line}</span>)}
+              </div>
+            ) : null
+          })()}
 
           {autoplayMuted ? (
             <button
@@ -380,18 +453,29 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
                   </span>
                 </div>
                 <div className="player-controls-right">
-                  {(playbackSession?.subtitleTracks?.length ?? 0) > 0 ? (
+                  {showNextButton ? (
+                    <button
+                      type="button"
+                      className="player-next-btn"
+                      onClick={() => onSelectQueueItem?.(nextItem)}
+                      aria-label={t('player.nextEpisode')}
+                    >
+                      <SkipForward size={16} fill="currentColor" strokeWidth={0} />
+                      <span>{t('player.nextEpisode')}</span>
+                    </button>
+                  ) : null}
+                  {(playbackSession?.subtitleTracks?.length ?? 0) > 0 || osApiKey ? (
                     <div className="player-subtitle-wrap">
                       {subtitlePickerOpen ? (
                         <div className="player-subtitle-picker">
                           <button
                             type="button"
-                            className={`player-subtitle-option${activeSubtitle === null ? ' active' : ''}`}
+                            className={`player-subtitle-option${activeSubtitle === null && onlineCues.length === 0 ? ' active' : ''}`}
                             onClick={() => selectSubtitle(null)}
                           >
-                            Off
+                            {t('player.subtitlesOff')}
                           </button>
-                          {playbackSession!.subtitleTracks.map((track) => (
+                          {(playbackSession?.subtitleTracks ?? []).map((track) => (
                             <button
                               key={track.index}
                               type="button"
@@ -401,13 +485,34 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
                               {track.label}
                             </button>
                           ))}
+                          {osApiKey ? (
+                            <>
+                              <p className="player-subtitle-section">{t('player.subtitlesOnline')}</p>
+                              {onlineSubtitleError ? (
+                                <p className="player-subtitle-searching">{t('player.subtitlesError')}</p>
+                              ) : searchingSubtitles || loadingOnlineSubtitle ? (
+                                <p className="player-subtitle-searching">{t('player.subtitlesSearching')}</p>
+                              ) : onlineSubtitles.length === 0 ? (
+                                <p className="player-subtitle-searching">{t('player.subtitlesNoneFound')}</p>
+                              ) : onlineSubtitles.map((sub) => (
+                                <button
+                                  key={sub.id}
+                                  type="button"
+                                  className="player-subtitle-option"
+                                  onClick={() => void selectOnlineSubtitle(sub.fileId)}
+                                >
+                                  {sub.label}
+                                </button>
+                              ))}
+                            </>
+                          ) : null}
                         </div>
                       ) : null}
                       <button
                         type="button"
-                        className={`icon-button${activeSubtitle !== null ? ' nav-pill-active' : ''}`}
+                        className={`icon-button${activeSubtitle !== null || onlineCues.length > 0 ? ' nav-pill-active' : ''}`}
                         onClick={() => setSubtitlePickerOpen((o) => !o)}
-                        aria-label="Subtitles"
+                        aria-label={t('player.subtitles')}
                       >
                         <Captions size={20} />
                       </button>

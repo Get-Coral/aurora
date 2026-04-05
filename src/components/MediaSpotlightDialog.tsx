@@ -11,7 +11,7 @@ interface MediaSpotlightDialogProps {
   item: MediaItem | null
   open: boolean
   onClose: () => void
-  onPlay?: (item: MediaItem) => void
+  onPlay?: (item: MediaItem, queue?: MediaItem[]) => void
   onSelectSimilar?: (item: MediaItem) => void
   onToggleFavorite?: (item: MediaItem) => void
 }
@@ -171,8 +171,13 @@ export function MediaSpotlightDialog({
               type="button"
               className="primary-action"
               onClick={() => {
-                const target = item.type === 'series' ? (nextUp[0] ?? episodes[0] ?? detail) : detail
-                onPlay?.(target)
+                if (item.type === 'series') {
+                  const target = nextUp[0] ?? episodes[0] ?? detail
+                  const targetIdx = episodes.findIndex((e) => e.id === target.id)
+                  onPlay?.(target, targetIdx >= 0 ? episodes.slice(targetIdx) : episodes)
+                } else {
+                  onPlay?.(detail)
+                }
               }}
               disabled={!onPlay || (item.type === 'series' && loadingState)}
             >
@@ -250,7 +255,10 @@ export function MediaSpotlightDialog({
                         .join(' • ')}
                     </p>
                   </div>
-                  <button type="button" className="primary-action" onClick={() => onPlay?.(nextUp[0])}>
+                  <button type="button" className="primary-action" onClick={() => {
+                    const idx = episodes.findIndex((e) => e.id === nextUp[0].id)
+                    onPlay?.(nextUp[0], idx >= 0 ? episodes.slice(idx) : episodes)
+                  }}>
                     <Play size={18} fill="currentColor" /> {isResumable(nextUp[0]) ? t('dialog.resumeNextUp') : t('dialog.playNextUp')}
                   </button>
                 </div>
@@ -265,7 +273,10 @@ export function MediaSpotlightDialog({
                         <button
                           type="button"
                           className="episode-row-body"
-                          onClick={() => onPlay?.(episode)}
+                          onClick={() => {
+                            const idx = episodes.indexOf(episode)
+                            onPlay?.(episode, episodes.slice(idx))
+                          }}
                         >
                           <div>
                             <strong>{episode.title}</strong>
