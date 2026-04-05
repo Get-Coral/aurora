@@ -83,6 +83,16 @@ function CollectionDetailPage() {
     setPlayingItem(item)
   }
 
+  function handleWatchedChange(id: string, played: boolean) {
+    queryClient.setQueryData<{ collection: unknown; items: MediaItem[] }>(
+      ['collection-items', params.id],
+      (old) => {
+        if (!old) return old
+        return { ...old, items: old.items.map((i) => (i.id === id ? { ...i, played } : i)) }
+      },
+    )
+  }
+
   function handleToggleFavorite(item: MediaItem) {
     setSelectedItem((current) =>
       current?.id === item.id ? { ...current, isFavorite: !current.isFavorite } : current,
@@ -272,6 +282,7 @@ function CollectionDetailPage() {
         onPlay={playMedia}
         onSelectSimilar={setSelectedItem}
         onToggleFavorite={handleToggleFavorite}
+        onWatchedChange={handleWatchedChange}
       />
     </main>
   )

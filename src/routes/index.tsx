@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { HeroSection } from '../components/HeroSection'
 import { MediaPlayerDialog } from '../components/MediaPlayerDialog'
@@ -54,6 +54,7 @@ function HomePage() {
   const [screensaverTime, setScreensaverTime] = useState('')
   const { tvMode } = useTvMode()
   const favoriteMutation = useFavoriteAction()
+  const queryClient = useQueryClient()
   const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastInteractionRef = useRef(Date.now())
   const screensaverCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -152,6 +153,25 @@ function HomePage() {
       current?.id === item.id ? { ...current, isFavorite: !current.isFavorite } : current,
     )
     favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+  }
+
+  function handleWatchedChange(id: string, played: boolean) {
+    // Patch every home-page query cache that might contain this item
+    const patchList = (items: MediaItem[]) =>
+      items.map((i) => (i.id === id ? { ...i, played } : i))
+
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['continue-watching'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['latest-movies'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['latest-series'] }, (old) =>
+      old ? patchList(old) : old,
+    )
+    queryClient.setQueriesData<MediaItem[]>({ queryKey: ['favorite-movies'] }, (old) =>
+      old ? patchList(old) : old,
+    )
   }
 
   return (
@@ -275,6 +295,7 @@ function HomePage() {
         onPlay={(item, queue) => playMedia(item, queue ?? (item.type === 'episode' ? [item] : [item, ...recommendedItems]))}
         onSelectSimilar={setSelectedItem}
         onToggleFavorite={handleToggleFavorite}
+        onWatchedChange={handleWatchedChange}
       />
 
       {screensaverActive && spotlightItem ? (

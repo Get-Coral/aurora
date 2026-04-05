@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -57,6 +57,7 @@ export function LibraryView({
 }: LibraryViewProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const sort = search.sort ?? 'DateCreated'
   const order = search.order ?? 'Descending'
   const ratings = search.ratings ?? ''
@@ -166,6 +167,22 @@ export function LibraryView({
     setSelectedItem(null)
     setPlayQueue(queue?.length ? queue : resolvedItems)
     setPlayingItem(item)
+  }
+
+  function handleWatchedChange(id: string, played: boolean) {
+    queryClient.setQueriesData<{ pages: { items: MediaItem[] }[] }>(
+      { queryKey: ['library-infinite'] },
+      (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.map((i) => (i.id === id ? { ...i, played } : i)),
+          })),
+        }
+      },
+    )
   }
 
   function handleToggleFavorite(item: MediaItem) {
@@ -428,6 +445,7 @@ export function LibraryView({
         onPlay={playMedia}
         onSelectSimilar={setSelectedItem}
         onToggleFavorite={handleToggleFavorite}
+        onWatchedChange={handleWatchedChange}
       />
     </main>
   )

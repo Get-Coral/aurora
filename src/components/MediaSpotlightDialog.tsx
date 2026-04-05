@@ -15,6 +15,7 @@ interface MediaSpotlightDialogProps {
   onPlay?: (item: MediaItem, queue?: MediaItem[]) => void
   onSelectSimilar?: (item: MediaItem) => void
   onToggleFavorite?: (item: MediaItem) => void
+  onWatchedChange?: (id: string, played: boolean) => void
 }
 
 function formatRuntime(minutes?: number) {
@@ -31,6 +32,7 @@ export function MediaSpotlightDialog({
   onPlay,
   onSelectSimilar,
   onToggleFavorite,
+  onWatchedChange,
 }: MediaSpotlightDialogProps) {
   const { t } = useI18n()
   const { tvMode } = useTvMode()
@@ -49,14 +51,18 @@ export function MediaSpotlightDialog({
 
   function handleToggleWatched(episode: MediaItem) {
     const current = playedOverrides[episode.id] ?? episode.played ?? false
-    setPlayedOverrides((prev) => ({ ...prev, [episode.id]: !current }))
-    markPlayedMutation.mutate({ id: episode.id, played: !current })
+    const next = !current
+    setPlayedOverrides((prev) => ({ ...prev, [episode.id]: next }))
+    markPlayedMutation.mutate({ id: episode.id, played: next })
+    onWatchedChange?.(episode.id, next)
   }
 
   function handleToggleItemWatched() {
     const current = playedOverrides[detail.id] ?? detail.played ?? false
-    setPlayedOverrides((prev) => ({ ...prev, [detail.id]: !current }))
-    markPlayedMutation.mutate({ id: detail.id, played: !current })
+    const next = !current
+    setPlayedOverrides((prev) => ({ ...prev, [detail.id]: next }))
+    markPlayedMutation.mutate({ id: detail.id, played: next })
+    onWatchedChange?.(detail.id, next)
   }
 
   const { data, isLoading } = useQuery({
