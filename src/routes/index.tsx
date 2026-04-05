@@ -186,7 +186,7 @@ function HomePage() {
         item={selectedItem}
         open={selectedItem != null}
         onClose={() => setSelectedItem(null)}
-        onPlay={(item) => playMedia(item, item.type === 'episode' ? [item] : [item, ...recommendedItems])}
+        onPlay={(item, queue) => playMedia(item, queue ?? (item.type === 'episode' ? [item] : [item, ...recommendedItems]))}
         onSelectSimilar={setSelectedItem}
         onToggleFavorite={handleToggleFavorite}
       />

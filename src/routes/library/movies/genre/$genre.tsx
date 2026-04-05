@@ -1,19 +1,13 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { LibraryView } from '../../../../components/LibraryView'
 import { useI18n } from '../../../../lib/i18n'
-import { fetchLibrary, fetchSetupStatus } from '../../../../server/functions'
+import { fetchSetupStatus } from '../../../../server/functions'
 
 type MovieSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
 type MovieSortOrder = 'Ascending' | 'Descending'
 
 export const Route = createFileRoute('/library/movies/genre/$genre')({
   validateSearch: (search: Record<string, unknown>) => ({
-    page:
-      typeof search.page === 'number'
-        ? search.page
-        : typeof search.page === 'string'
-          ? Number.parseInt(search.page, 10) || 0
-          : 0,
     sort:
       search.sort === 'SortName' ||
       search.sort === 'DateCreated' ||
@@ -26,27 +20,12 @@ export const Route = createFileRoute('/library/movies/genre/$genre')({
         ? (search.order as MovieSortOrder)
         : 'Descending',
   }),
-  loaderDeps: ({ search }) => ({ page: search.page, sort: search.sort, order: search.order }),
-  loader: async ({ context: { queryClient }, deps, params }) => {
+  loaderDeps: ({ search }) => ({ sort: search.sort, order: search.order }),
+  loader: async () => {
     const setupStatus = await fetchSetupStatus()
-
     if (!setupStatus.configured) {
       throw redirect({ to: '/setup' })
     }
-
-    await queryClient.ensureQueryData({
-      queryKey: ['library', 'Movie', deps.page, deps.sort, deps.order, params.genre],
-      queryFn: () =>
-        fetchLibrary({
-          data: {
-            type: 'Movie',
-            page: deps.page,
-            sortBy: deps.sort,
-            sortOrder: deps.order,
-            genre: params.genre,
-          },
-        }),
-    })
   },
   component: MovieGenrePage,
 })
