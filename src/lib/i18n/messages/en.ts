@@ -126,6 +126,10 @@ export const enMessages: MessageDictionary = {
   'player.series': 'Series',
   'player.movie': 'Movie',
   'player.episode': 'Episode',
+  'player.skipBack': '−15s',
+  'player.skipForward': '+30s',
+  'player.autoplayCountdown': ({ count }: { count: number }) => `Playing next in ${count}s`,
+  'player.autoplayCancel': 'Cancel autoplay',
   'library.backHome': 'Back home',
   'library.myListSummary':
     'Everything you marked as a favorite in Jellyfin, collected into one streaming-style list.',

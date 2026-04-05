@@ -1316,6 +1316,168 @@ html.tv-mode .hero-backdrop {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.player-skip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.player-skip-label {
+  display: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ── Auto-play next episode banner ───────────────────────────────────────── */
+
+.player-autoplay-banner {
+  position: absolute;
+  bottom: 7rem;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(11, 16, 32, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  max-width: 28rem;
+  z-index: 10;
+  animation: slide-in-right 300ms ease forwards;
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(2rem); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.player-autoplay-thumb {
+  flex-shrink: 0;
+  width: 5rem;
+  aspect-ratio: 16/9;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.player-autoplay-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-autoplay-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.player-autoplay-copy strong {
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-autoplay-copy span {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-autoplay-countdown {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.player-autoplay-cancel {
+  flex-shrink: 0;
+  padding: 0.45rem 0.9rem;
+  min-height: auto;
+  font-size: 0.8rem;
+}
+
+/* ── Screensaver / Ambient mode ──────────────────────────────────────────── */
+
+.screensaver-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  cursor: none;
+  overflow: hidden;
+}
+
+.screensaver-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: screensaver-pan 30s ease-in-out infinite alternate;
+  transform-origin: center center;
+}
+
+@keyframes screensaver-pan {
+  0%   { transform: scale(1.12) translate(-2%, -1%); }
+  33%  { transform: scale(1.14) translate(2%, -2%); }
+  66%  { transform: scale(1.1) translate(-1%, 1%); }
+  100% { transform: scale(1.13) translate(1%, 2%); }
+}
+
+.screensaver-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, rgba(4, 8, 20, 0.85) 0%, transparent 40%),
+    rgba(4, 8, 20, 0.35);
+}
+
+.screensaver-clock {
+  position: absolute;
+  bottom: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 12vw, 9rem);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 32px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+.screensaver-title {
+  position: absolute;
+  bottom: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  user-select: none;
+}
+
+.screensaver-title strong {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.screensaver-title .eyebrow {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
 .player-subtitle-cue {
   position: absolute;
   bottom: 2rem;
@@ -2419,4 +2581,35 @@ html.tv-mode .episode-row {
 html.tv-mode .episode-play-button {
   min-height: 3.5rem;
   min-width: 3.5rem;
+}
+
+/* Skip buttons — show label in TV mode */
+html.tv-mode .player-skip-label {
+  display: inline;
+}
+
+/* Autoplay banner — bigger for TV */
+html.tv-mode .player-autoplay-banner {
+  bottom: 9rem;
+  right: 3rem;
+  max-width: 34rem;
+  padding: 1.5rem;
+  gap: 1.5rem;
+}
+
+html.tv-mode .player-autoplay-thumb {
+  width: 8rem;
+}
+
+html.tv-mode .player-autoplay-copy strong {
+  font-size: 1.15rem;
+}
+
+html.tv-mode .player-autoplay-countdown {
+  font-size: 1rem;
+}
+
+html.tv-mode .player-autoplay-cancel {
+  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
 }

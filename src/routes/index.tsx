@@ -50,9 +50,14 @@ function HomePage() {
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
   const [heroIndex, setHeroIndex] = useState(0)
+  const [screensaverActive, setScreensaverActive] = useState(false)
+  const [screensaverTime, setScreensaverTime] = useState('')
   const { tvMode } = useTvMode()
   const favoriteMutation = useFavoriteAction()
   const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastInteractionRef = useRef(Date.now())
+  const screensaverCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const screensaverClockRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     function handleSelect(event: Event) {
@@ -82,6 +87,48 @@ function HomePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tvMode, heroPool.length])
+
+  // Screensaver: activate after 3 min of no interaction; only when not playing
+  useEffect(() => {
+    const TIMEOUT_MS = 3 * 60 * 1000
+
+    function resetInteraction() {
+      lastInteractionRef.current = Date.now()
+      if (screensaverActive) setScreensaverActive(false)
+    }
+
+    screensaverCheckRef.current = setInterval(() => {
+      if (playingItem) return
+      if (Date.now() - lastInteractionRef.current >= TIMEOUT_MS) setScreensaverActive(true)
+    }, 10_000)
+
+    window.addEventListener('mousemove', resetInteraction)
+    window.addEventListener('keydown', resetInteraction)
+    window.addEventListener('touchstart', resetInteraction)
+    window.addEventListener('click', resetInteraction)
+
+    return () => {
+      if (screensaverCheckRef.current) clearInterval(screensaverCheckRef.current)
+      window.removeEventListener('mousemove', resetInteraction)
+      window.removeEventListener('keydown', resetInteraction)
+      window.removeEventListener('touchstart', resetInteraction)
+      window.removeEventListener('click', resetInteraction)
+    }
+  }, [screensaverActive, playingItem])
+
+  // Screensaver clock
+  useEffect(() => {
+    if (!screensaverActive) {
+      if (screensaverClockRef.current) clearInterval(screensaverClockRef.current)
+      return
+    }
+    function updateClock() {
+      setScreensaverTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    }
+    updateClock()
+    screensaverClockRef.current = setInterval(updateClock, 1000)
+    return () => { if (screensaverClockRef.current) clearInterval(screensaverClockRef.current) }
+  }, [screensaverActive])
 
   const spotlightItem = heroPool[heroIndex % Math.max(heroPool.length, 1)] ?? null
   const { data: recommendedItems = [] } = useQuery({
@@ -227,6 +274,20 @@ function HomePage() {
         onSelectSimilar={setSelectedItem}
         onToggleFavorite={handleToggleFavorite}
       />
+
+      {screensaverActive && spotlightItem ? (
+        <div className="screensaver-shell" onClick={() => setScreensaverActive(false)}>
+          {spotlightItem.backdropUrl ? (
+            <img src={spotlightItem.backdropUrl} alt="" className="screensaver-backdrop" />
+          ) : null}
+          <div className="screensaver-overlay" />
+          <div className="screensaver-clock">{screensaverTime}</div>
+          <div className="screensaver-title">
+            <p className="eyebrow">{spotlightItem.genres[0] ?? ''}</p>
+            <strong>{spotlightItem.title}</strong>
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }

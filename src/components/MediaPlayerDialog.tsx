@@ -1,4 +1,4 @@
-import { Captions, Film, Maximize, Minimize, Pause, Play, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
+import { Captions, Film, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useLockBodyScroll } from './useLockBodyScroll'
@@ -74,6 +74,8 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   const [onlineCues, setOnlineCues] = useState<VttCue[]>([])
   const [loadingOnlineSubtitle, setLoadingOnlineSubtitle] = useState(false)
   const [onlineSubtitleError, setOnlineSubtitleError] = useState(false)
+  const [autoplayCountdown, setAutoplayCountdown] = useState<number | null>(null)
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const { data: osApiKey } = useQuery({
     queryKey: ['opensubtitles-key'],
@@ -113,6 +115,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     setSubtitlePickerOpen(false)
     setAutoplayMuted(false)
     setOnlineCues([])
+    setAutoplayCountdown(null)
     videoRef.current?.querySelector('track[data-online]')?.remove()
 
     if (!open || !item?.streamUrl) return
@@ -243,6 +246,36 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
+  // Auto-play next episode: start countdown when video ends and a next item exists
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !open) return
+
+    function handleEnded() {
+      if (nextItem) setAutoplayCountdown(10)
+    }
+
+    video.addEventListener('ended', handleEnded)
+    return () => video.removeEventListener('ended', handleEnded)
+  }, [open, nextItem?.id])
+
+  // Tick the autoplay countdown down; fire when it reaches 0
+  useEffect(() => {
+    if (autoplayCountdown === null) {
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
+      return
+    }
+    if (autoplayCountdown === 0) {
+      if (nextItem) onSelectQueueItem?.(nextItem)
+      setAutoplayCountdown(null)
+      return
+    }
+    countdownTimerRef.current = setInterval(() => {
+      setAutoplayCountdown((c) => (c !== null ? c - 1 : null))
+    }, 1000)
+    return () => { if (countdownTimerRef.current) clearInterval(countdownTimerRef.current) }
+  }, [autoplayCountdown])
+
   // Auto-hide controls
   useEffect(() => {
     if (!isPlaying) {
@@ -264,9 +297,9 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         e.preventDefault()
         video.paused ? void video.play() : video.pause()
       } else if (e.key === 'ArrowLeft') {
-        video.currentTime = Math.max(0, video.currentTime - 10)
+        video.currentTime = Math.max(0, video.currentTime - 15)
       } else if (e.key === 'ArrowRight') {
-        video.currentTime = Math.min(duration || video.duration || 0, video.currentTime + 10)
+        video.currentTime = Math.min(duration || video.duration || 0, video.currentTime + 30)
       } else if (e.key === 'f') {
         void toggleFullscreen()
       } else if (e.key === 'm') {
@@ -339,6 +372,16 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     if (video && duration > 0) video.currentTime = ratio * duration
   }
 
+  function seekBack() {
+    const video = videoRef.current
+    if (video) video.currentTime = Math.max(0, video.currentTime - 15)
+  }
+
+  function seekForward() {
+    const video = videoRef.current
+    if (video) video.currentTime = Math.min(duration || video.duration || 0, video.currentTime + 30)
+  }
+
   if (!open || !item) return null
 
   return (
@@ -393,6 +436,33 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
             </button>
           ) : null}
 
+          {autoplayCountdown !== null && nextItem ? (
+            <div className="player-autoplay-banner">
+              <div className="player-autoplay-thumb">
+                {nextItem.backdropUrl ?? nextItem.posterUrl ? (
+                  <img src={nextItem.backdropUrl ?? nextItem.posterUrl} alt={nextItem.title} />
+                ) : null}
+              </div>
+              <div className="player-autoplay-copy">
+                <span className="eyebrow">{t('player.upNext')}</span>
+                <strong>{nextItem.title}</strong>
+                {nextItem.seriesTitle ? (
+                  <span>{nextItem.seriesTitle}{nextItem.episodeNumber ? ` · E${nextItem.episodeNumber}` : ''}</span>
+                ) : null}
+                <p className="player-autoplay-countdown">
+                  {t('player.autoplayCountdown', { count: autoplayCountdown })}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="secondary-action player-autoplay-cancel"
+                onClick={() => setAutoplayCountdown(null)}
+              >
+                {t('player.autoplayCancel')}
+              </button>
+            </div>
+          ) : null}
+
           <div className={`player-controls-overlay${controlsVisible ? ' visible' : ''}`}>
             <div className="player-controls-top">
               <div className="player-controls-title">
@@ -439,6 +509,24 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
                     {isPlaying
                       ? <Pause size={22} fill="currentColor" strokeWidth={0} />
                       : <Play size={22} fill="currentColor" strokeWidth={0} />}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button player-skip-btn"
+                    onClick={seekBack}
+                    aria-label={t('player.skipBack')}
+                  >
+                    <RotateCcw size={18} />
+                    <span className="player-skip-label">{t('player.skipBack')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button player-skip-btn"
+                    onClick={seekForward}
+                    aria-label={t('player.skipForward')}
+                  >
+                    <RotateCw size={18} />
+                    <span className="player-skip-label">{t('player.skipForward')}</span>
                   </button>
                   <button
                     type="button"

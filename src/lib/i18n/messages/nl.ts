@@ -126,6 +126,10 @@ export const nlMessages: MessageDictionary = {
   'player.series': 'Serie',
   'player.movie': 'Film',
   'player.episode': 'Aflevering',
+  'player.skipBack': '−15s',
+  'player.skipForward': '+30s',
+  'player.autoplayCountdown': ({ count }: { count: number }) => `Volgende afspelen over ${count}s`,
+  'player.autoplayCancel': 'Annuleren',
   'library.backHome': 'Terug naar home',
   'library.myListSummary':
     'Alles wat je als favoriet markeerde in Jellyfin, verzameld in één streamingstijl-lijst.',
