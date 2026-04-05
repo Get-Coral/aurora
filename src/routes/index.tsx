@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { HeroSection } from '../components/HeroSection'
+import { MediaPlayerDialog } from '../components/MediaPlayerDialog'
 import { MediaSpotlightDialog } from '../components/MediaSpotlightDialog'
 import { SectionShelf } from '../components/SectionShelf'
 import {
@@ -24,17 +25,13 @@ export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
-function playMedia(item: MediaItem) {
-  if (typeof window === 'undefined' || !item.streamUrl || item.type === 'series') return
-  window.open(item.streamUrl, '_blank', 'noopener,noreferrer')
-}
-
 function HomePage() {
   const { data: featured } = useSuspenseQuery({ queryKey: ['featured'], queryFn: () => fetchFeatured() })
   const { data: continueWatching } = useSuspenseQuery({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatching() })
   const { data: latestMovies } = useSuspenseQuery({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMovies() })
   const { data: latestSeries } = useSuspenseQuery({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeries() })
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
+  const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
 
   useEffect(() => {
     function handleSelect(event: Event) {
@@ -50,6 +47,12 @@ function HomePage() {
   const companionItems = [...continueWatching, ...latestMovies, ...latestSeries]
     .filter((item, index, array) => item.id !== spotlightItem?.id && array.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5)
+
+  function playMedia(item: MediaItem) {
+    if (!item.streamUrl || item.type === 'series') return
+    setSelectedItem(null)
+    setPlayingItem(item)
+  }
 
   return (
     <main className="home-shell">
@@ -92,6 +95,8 @@ function HomePage() {
           items={continueWatching}
           onSelect={setSelectedItem}
           onPlay={playMedia}
+          emptyTitle="Your continue queue is still empty"
+          emptyCopy="Open a movie or episode from your library and Aurora will surface it here with progress and quick resume."
         />
         <SectionShelf
           id="movies"
@@ -100,6 +105,7 @@ function HomePage() {
           items={latestMovies}
           onSelect={setSelectedItem}
           onPlay={playMedia}
+          browseTo="/library/movies"
         />
         <SectionShelf
           id="series"
@@ -108,8 +114,15 @@ function HomePage() {
           items={latestSeries}
           onSelect={setSelectedItem}
           onPlay={playMedia}
+          browseTo="/library/series"
         />
       </div>
+
+      <MediaPlayerDialog
+        item={playingItem}
+        open={playingItem != null}
+        onClose={() => setPlayingItem(null)}
+      />
 
       <MediaSpotlightDialog
         item={selectedItem}

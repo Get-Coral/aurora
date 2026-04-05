@@ -30,10 +30,18 @@ export const fetchLatestSeries = createServerFn({ method: 'GET' }).handler(async
 })
 
 export const fetchLibrary = createServerFn({ method: 'GET' })
-  .inputValidator((input: { type: 'Movie' | 'Series'; page?: number }) => input)
+  .inputValidator((input: {
+    type: 'Movie' | 'Series'
+    page?: number
+    sortBy?: 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
+  }) => input)
   .handler(async ({ data }) => {
     const page = data.page ?? 0
-    const result = await getLibraryItems(data.type, { limit: 24, startIndex: page * 24 })
+    const result = await getLibraryItems(data.type, {
+      sortBy: data.sortBy ?? 'DateCreated',
+      limit: 24,
+      startIndex: page * 24,
+    })
     return {
       items: result.Items.map(fromJellyfin),
       total: result.TotalRecordCount,

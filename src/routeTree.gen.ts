@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LibrarySeriesRouteImport } from './routes/library/series'
+import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibrarySeriesRoute = LibrarySeriesRouteImport.update({
+  id: '/library/series',
+  path: '/library/series',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryMoviesRoute = LibraryMoviesRouteImport.update({
+  id: '/library/movies',
+  path: '/library/movies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/library/movies': typeof LibraryMoviesRoute
+  '/library/series': typeof LibrarySeriesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/library/movies': typeof LibraryMoviesRoute
+  '/library/series': typeof LibrarySeriesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/library/movies': typeof LibraryMoviesRoute
+  '/library/series': typeof LibrarySeriesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/library/movies' | '/library/series'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/library/movies' | '/library/series'
+  id: '__root__' | '/' | '/library/movies' | '/library/series'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LibraryMoviesRoute: typeof LibraryMoviesRoute
+  LibrarySeriesRoute: typeof LibrarySeriesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/library/series': {
+      id: '/library/series'
+      path: '/library/series'
+      fullPath: '/library/series'
+      preLoaderRoute: typeof LibrarySeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library/movies': {
+      id: '/library/movies'
+      path: '/library/movies'
+      fullPath: '/library/movies'
+      preLoaderRoute: typeof LibraryMoviesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LibraryMoviesRoute: LibraryMoviesRoute,
+  LibrarySeriesRoute: LibrarySeriesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,3 +1,4 @@
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
@@ -9,6 +10,8 @@ export default function Header() {
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const deferredQuery = useDeferredValue(query.trim())
+  const navigate = useNavigate()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   const { data: results = [], isFetching } = useQuery({
     queryKey: ['search', deferredQuery],
@@ -21,6 +24,10 @@ export default function Header() {
   }, [searchOpen])
 
   function jumpToSection(id: string) {
+    if (pathname !== '/') {
+      void navigate({ to: '/' })
+      return
+    }
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -33,35 +40,42 @@ export default function Header() {
   return (
     <header className="app-header">
       <nav className="page-wrap header-bar">
-        <button
-          type="button"
-          className="brand-mark"
-          onClick={() => jumpToSection('spotlight')}
-        >
+        <Link to="/" className="brand-mark">
           <span className="brand-glyph">
             <Sparkles size={15} />
           </span>
           <span>
             Aurora <em>for Jellyfin</em>
           </span>
-        </button>
+        </Link>
 
         <div className="header-nav">
-          {[
-            { label: 'Home', id: 'spotlight' },
-            { label: 'Continue', id: 'continue' },
-            { label: 'Movies', id: 'movies' },
-            { label: 'Series', id: 'series' },
-          ].map(({ label, id }) => (
-            <button
-              key={id}
-              type="button"
-              className="nav-pill"
-              onClick={() => jumpToSection(id)}
-            >
-              {label}
-            </button>
-          ))}
+          <Link to="/" className="nav-pill" activeProps={{ className: 'nav-pill nav-pill-active' }}>
+            Home
+          </Link>
+          <button
+            type="button"
+            className="nav-pill"
+            onClick={() => jumpToSection('continue')}
+          >
+            Continue
+          </button>
+          <Link
+            to="/library/movies"
+            search={{ page: 0, sort: 'DateCreated' }}
+            className="nav-pill"
+            activeProps={{ className: 'nav-pill nav-pill-active' }}
+          >
+            Movies
+          </Link>
+          <Link
+            to="/library/series"
+            search={{ page: 0, sort: 'DateCreated' }}
+            className="nav-pill"
+            activeProps={{ className: 'nav-pill nav-pill-active' }}
+          >
+            Series
+          </Link>
         </div>
 
         <div className="header-actions">
