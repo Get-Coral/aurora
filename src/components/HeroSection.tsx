@@ -30,32 +30,85 @@ export function HeroSection({
   onSelectCompanion,
 }: HeroSectionProps) {
   const { t } = useI18n()
-  const runtime = formatRuntime(item.runtimeMinutes)
-  const metadata = [item.year, runtime, item.ageRating].filter(Boolean)
   const itemIsResumable = isResumable(item)
   const continueIsResumable = continueItem ? isResumable(continueItem) : false
 
-  // Cross-fade: keep the previous backdrop visible while the new one fades in
-  const [prevBackdropUrl, setPrevBackdropUrl] = useState<string | null>(null)
+  // Cross-fade: track previous item so both backdrop and content can transition
+  const [prevItem, setPrevItem] = useState<MediaItem | null>(null)
   const [fadeKey, setFadeKey] = useState(0)
   const prevItemIdRef = useRef(item.id)
-  const prevBackdropRef = useRef(item.backdropUrl ?? null)
+  const prevItemRef = useRef<MediaItem>(item)
 
   useEffect(() => {
     if (item.id === prevItemIdRef.current) return
-    // Capture the outgoing backdrop before updating refs
-    setPrevBackdropUrl(prevBackdropRef.current)
+    setPrevItem(prevItemRef.current)
     setFadeKey((k) => k + 1)
     prevItemIdRef.current = item.id
-    prevBackdropRef.current = item.backdropUrl ?? null
-  }, [item.id, item.backdropUrl])
+    prevItemRef.current = item
+  }, [item.id])
+
+  function renderCopyContent(i: MediaItem, isResumableItem: boolean) {
+    const rt = formatRuntime(i.runtimeMinutes)
+    const meta = [i.year, rt, i.ageRating].filter(Boolean)
+    return (
+      <>
+        {i.genres.length > 0 ? (
+          <p className="eyebrow hero-kicker">{i.genres.slice(0, 3).join(' • ')}</p>
+        ) : null}
+
+        {i.logoUrl ? (
+          <img src={i.logoUrl} alt={i.title} className="hero-logo" />
+        ) : (
+          <h1 className="hero-title">{i.title}</h1>
+        )}
+
+        <div className="hero-meta">
+          {meta.map((entry) => (
+            <span key={entry}>{entry}</span>
+          ))}
+          {i.rating != null ? (
+            <span className="hero-rating">
+              <Star size={14} fill="currentColor" /> {i.rating.toFixed(1)}
+            </span>
+          ) : null}
+        </div>
+
+        {i.overview ? <p className="hero-overview">{i.overview}</p> : null}
+
+        <div className="hero-actions">
+          <button className="primary-action" onClick={onPlay} type="button">
+            <Play size={18} fill="currentColor" />
+            {isResumableItem ? t('hero.resumeNow') : t('hero.playNow')}
+          </button>
+          <button className="secondary-action" onClick={onMoreInfo} type="button">
+            {t('hero.moreInfo')}
+          </button>
+        </div>
+
+        <div className="hero-stat-strip">
+          <div>
+            <span className="hero-stat-value">{i.genres[0] ?? t('hero.cinematic')}</span>
+            <span className="hero-stat-label">{t('hero.mood')}</span>
+          </div>
+          <div>
+            <span className="hero-stat-value">{rt ?? t('hero.readyTonight')}</span>
+            <span className="hero-stat-label">{t('hero.runtime')}</span>
+          </div>
+          <div>
+            <span className="hero-stat-value">{i.year ?? t('hero.freshPick')}</span>
+            <span className="hero-stat-label">{t('hero.release')}</span>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   return (
     <section id="spotlight" className="hero-shell">
-      {/* Outgoing backdrop sits underneath and fades out */}
-      {prevBackdropUrl ? (
+      {/* Outgoing backdrop fades out */}
+      {prevItem?.backdropUrl ? (
         <img
-          src={prevBackdropUrl}
+          src={prevItem.backdropUrl}
           alt=""
           className="hero-backdrop hero-backdrop-out"
           style={{ objectPosition: 'center 18%' }}
@@ -77,58 +130,19 @@ export function HeroSection({
       <div className="hero-backdrop-overlay" />
 
       <div className="hero-content page-wrap">
-        <div className="hero-copy fade-up">
-          {item.genres.length > 0 ? (
-            <p className="eyebrow hero-kicker">
-              {item.genres.slice(0, 3).join(' • ')}
-            </p>
+        <div style={{ position: 'relative' }}>
+          {/* Outgoing text content fades out absolutely */}
+          {prevItem ? (
+            <div className="hero-copy hero-copy-out" aria-hidden="true">
+              {renderCopyContent(prevItem, isResumable(prevItem))}
+            </div>
           ) : null}
-
-          {item.logoUrl ? (
-            <img src={item.logoUrl} alt={item.title} className="hero-logo" />
-          ) : (
-            <h1 className="hero-title">{item.title}</h1>
-          )}
-
-          <div className="hero-meta">
-            {metadata.map((entry) => (
-              <span key={entry}>{entry}</span>
-            ))}
-            {item.rating != null ? (
-              <span className="hero-rating">
-                <Star size={14} fill="currentColor" /> {item.rating.toFixed(1)}
-              </span>
-            ) : null}
-          </div>
-
-          {item.overview ? (
-            <p className="hero-overview">{item.overview}</p>
-          ) : null}
-
-          <div className="hero-actions">
-            <button className="primary-action" onClick={onPlay} type="button">
-              <Play size={18} fill="currentColor" /> {itemIsResumable ? t('hero.resumeNow') : t('hero.playNow')}
-            </button>
-            <button className="secondary-action" onClick={onMoreInfo} type="button">
-              {t('hero.moreInfo')}
-            </button>
-          </div>
-
-          <div className="hero-stat-strip">
-            <div>
-              <span className="hero-stat-value">{item.genres[0] ?? t('hero.cinematic')}</span>
-              <span className="hero-stat-label">{t('hero.mood')}</span>
-            </div>
-            <div>
-              <span className="hero-stat-value">
-                {runtime ?? t('hero.readyTonight')}
-              </span>
-              <span className="hero-stat-label">{t('hero.runtime')}</span>
-            </div>
-            <div>
-              <span className="hero-stat-value">{item.year ?? t('hero.freshPick')}</span>
-              <span className="hero-stat-label">{t('hero.release')}</span>
-            </div>
+          {/* Incoming text content fades in */}
+          <div
+            key={fadeKey}
+            className={`hero-copy ${fadeKey === 0 ? 'fade-up' : 'hero-copy-in'}`}
+          >
+            {renderCopyContent(item, itemIsResumable)}
           </div>
         </div>
 
