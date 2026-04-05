@@ -51,8 +51,16 @@ interface JellyfinMediaStream {
   IsTextSubtitleStream?: boolean
 }
 
+interface JellyfinMediaSource {
+  Id?: string | null
+  MediaStreams?: JellyfinMediaStream[]
+  SupportsDirectPlay?: boolean
+  SupportsDirectStream?: boolean
+  TranscodingUrl?: string | null
+}
+
 interface JellyfinPlaybackInfo {
-  MediaSources?: { Id?: string | null; MediaStreams?: JellyfinMediaStream[] }[]
+  MediaSources?: JellyfinMediaSource[]
   PlaySessionId?: string | null
 }
 
@@ -249,13 +257,28 @@ export function jellyfinStreamUrl(
   url.searchParams.set('static', 'true')
   url.searchParams.set('api_key', settings.apiKey)
 
-  if (options?.playSessionId) {
-    url.searchParams.set('PlaySessionId', options.playSessionId)
-  }
+  if (options?.playSessionId) url.searchParams.set('PlaySessionId', options.playSessionId)
+  if (options?.mediaSourceId) url.searchParams.set('MediaSourceId', options.mediaSourceId)
 
-  if (options?.mediaSourceId) {
-    url.searchParams.set('MediaSourceId', options.mediaSourceId)
-  }
+  return url.toString()
+}
+
+export function jellyfinTranscodeUrl(
+  itemId: string,
+  options?: {
+    playSessionId?: string
+    mediaSourceId?: string
+  },
+): string {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Videos/${itemId}/stream.mp4`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('VideoCodec', 'h264')
+  url.searchParams.set('AudioCodec', 'aac')
+  url.searchParams.set('DeviceId', AURORA_DEVICE_ID)
+
+  if (options?.playSessionId) url.searchParams.set('PlaySessionId', options.playSessionId)
+  if (options?.mediaSourceId) url.searchParams.set('MediaSourceId', options.mediaSourceId)
 
   return url.toString()
 }
@@ -310,6 +333,18 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
       StartTimeTicks: 0,
       IsPlayback: true,
       AutoOpenLiveStream: true,
+      DeviceProfile: {
+        DirectPlayProfiles: [
+          { Type: 'Video', Container: 'mp4,mkv,webm', VideoCodec: 'h264,vp8,vp9,av1', AudioCodec: 'aac,mp3,opus,flac,vorbis' },
+          { Type: 'Audio', Container: 'mp3,aac,flac,ogg,opus' },
+        ],
+        TranscodingProfiles: [],
+        CodecProfiles: [],
+        SubtitleProfiles: [
+          { Format: 'vtt', Method: 'External' },
+          { Format: 'srt', Method: 'External' },
+        ],
+      },
     }),
   })
 
@@ -327,6 +362,14 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
   const mediaSource = data.MediaSources?.[0]
   const mediaSourceId = mediaSource?.Id ?? undefined
 
+  // When direct play isn't supported (e.g. AC3/DTS audio), use a progressive
+  // MP4 transcode. Jellyfin's TranscodingUrl points to HLS which requires
+  // hls.js in Chrome/Firefox — the stream.mp4 endpoint works natively in all browsers.
+  const supportsDirectPlay = mediaSource?.SupportsDirectPlay !== false
+  const streamUrl = supportsDirectPlay
+    ? jellyfinStreamUrl(itemId, { playSessionId, mediaSourceId })
+    : jellyfinTranscodeUrl(itemId, { playSessionId, mediaSourceId })
+
   const subtitleTracks: SubtitleTrack[] = (mediaSource?.MediaStreams ?? [])
     .filter((s) => s.Type === 'Subtitle' && s.IsTextSubtitleStream)
     .map((s, position) => ({
@@ -337,7 +380,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
     }))
 
   return {
-    streamUrl: jellyfinStreamUrl(itemId, { playSessionId, mediaSourceId }),
+    streamUrl,
     canSyncProgress: Boolean(playSessionId),
     playSessionId,
     mediaSourceId,
