@@ -1040,8 +1040,18 @@ button { font: inherit; }
 .card-body {
   bottom: 0;
   justify-content: space-between;
+  align-items: flex-end;
   gap: 1rem;
   padding: 0 1rem 1rem;
+}
+
+.card-copy {
+  flex: 1;
+  min-width: 0;
+  min-height: calc(1.2em * 2 + 0.32rem + 1.2em);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .card-title {
@@ -1049,6 +1059,10 @@ button { font: inherit; }
   font-size: 1.08rem;
   font-weight: 700;
   line-height: 1.2;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .card-subtitle {

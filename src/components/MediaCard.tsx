@@ -115,7 +115,7 @@ export function MediaCard({
       </div>
 
       <div className="card-body">
-        <div>
+        <div className="card-copy">
           <p className="card-title">{item.title}</p>
           <p className="card-subtitle">
             {[item.year, item.ageRating, item.runtimeMinutes ? `${item.runtimeMinutes}m` : null]
