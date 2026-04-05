@@ -1,11 +1,8 @@
-import { Film, X } from 'lucide-react'
+import { Film, Maximize, Minimize, Pause, Play, Volume2, VolumeX, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
-import {
-  beginPlaybackSession,
-  reportPlaybackState,
-} from '../server/functions'
+import { beginPlaybackSession, reportPlaybackState } from '../server/functions'
 
 interface MediaPlayerDialogProps {
   item: MediaItem | null
@@ -15,32 +12,21 @@ interface MediaPlayerDialogProps {
   onSelectQueueItem?: (item: MediaItem) => void
 }
 
-function buildSubtitle(
-  item: MediaItem,
-  labels: { series: string; episode: string; movie: string },
-) {
-  return [
-    item.type === 'series'
-      ? labels.series
-      : item.type === 'episode'
-        ? labels.episode
-        : labels.movie,
-    item.year,
-    item.runtimeMinutes ? `${item.runtimeMinutes}m` : null,
-  ]
-    .filter(Boolean)
-    .join(' • ')
+function formatTime(seconds: number) {
+  if (!seconds || Number.isNaN(seconds)) return '0:00'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export function MediaPlayerDialog({
-  item,
-  open,
-  onClose,
-  queue = [],
-  onSelectQueueItem,
-}: MediaPlayerDialogProps) {
+export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProps) {
   const { t } = useI18n()
+  const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const [playbackSession, setPlaybackSession] = useState<{
     streamUrl: string
     canSyncProgress: boolean
@@ -51,108 +37,75 @@ export function MediaPlayerDialog({
   const lastReportedSecondRef = useRef(0)
   const stopReportedRef = useRef(false)
 
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
+
   const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
-  useEffect(() => {
-    if (!open) return
-
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
-  }, [open, onClose])
-
+  // Reset + start playback session when item changes
   useEffect(() => {
     stopReportedRef.current = false
     lastReportedSecondRef.current = 0
     setPlaybackSession(null)
+    setCurrentTime(0)
+    setDuration(0)
+    setIsPlaying(false)
 
     if (!open || !item?.streamUrl) return
 
     let cancelled = false
 
     void beginPlaybackSession({ data: { id: item.id } })
-      .then((session) => {
-        if (!cancelled) setPlaybackSession(session)
-      })
+      .then((session) => { if (!cancelled) setPlaybackSession(session) })
       .catch(() => {
-        if (!cancelled) {
-          setPlaybackSession({
-            streamUrl: item.streamUrl!,
-            canSyncProgress: false,
-          })
-        }
+        if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false })
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [open, item])
 
+  // Reload video when stream URL changes
   useEffect(() => {
     if (!open || !streamUrl) return
     videoRef.current?.load()
   }, [open, streamUrl])
 
+  // Jellyfin progress sync
   useEffect(() => {
     const video = videoRef.current
-
     if (!video || !open || !item?.streamUrl) return
 
-    function secondsToTicks(seconds: number) {
-      return Math.max(0, Math.floor(seconds * 10_000_000))
-    }
+    function secondsToTicks(s: number) { return Math.max(0, Math.floor(s * 10_000_000)) }
 
-    function buildPayload(overrides?: {
-      isPaused?: boolean
-      isStopped?: boolean
-      played?: boolean
-    }) {
+    function buildPayload(overrides?: { isPaused?: boolean; isStopped?: boolean; played?: boolean }) {
       return {
-        id: item.id,
-        positionTicks: secondsToTicks(video.currentTime),
+        id: item!.id,
+        positionTicks: secondsToTicks(video!.currentTime),
         playSessionId: playbackSession?.playSessionId,
         mediaSourceId: playbackSession?.mediaSourceId,
         sessionId: playbackSession?.sessionId,
-        isPaused: overrides?.isPaused,
-        isStopped: overrides?.isStopped,
-        played: overrides?.played,
+        ...overrides,
       }
     }
 
-    function syncProgress(overrides?: {
-      isPaused?: boolean
-      isStopped?: boolean
-      played?: boolean
-      force?: boolean
-    }) {
+    function syncProgress(overrides?: { isPaused?: boolean; isStopped?: boolean; played?: boolean; force?: boolean }) {
       if (!item) return
-
-      const currentSecond = Math.floor(video.currentTime)
-
+      const currentSecond = Math.floor(video!.currentTime)
       if (!overrides?.force && currentSecond - lastReportedSecondRef.current < 8) return
-
       lastReportedSecondRef.current = currentSecond
       void reportPlaybackState({ data: buildPayload(overrides) }).catch(() => undefined)
     }
 
     function handleLoadedMetadata() {
-      if (item.playbackPositionTicks) {
-        video.currentTime = item.playbackPositionTicks / 10_000_000
-      }
+      if (item!.playbackPositionTicks) video!.currentTime = item!.playbackPositionTicks / 10_000_000
     }
-
-    function handleTimeUpdate() {
-      if (!playbackSession?.canSyncProgress) return
-      syncProgress()
-    }
-
-    function handlePause() {
-      syncProgress({ isPaused: true, force: true })
-    }
-
+    function handleTimeUpdate() { if (playbackSession?.canSyncProgress) syncProgress() }
+    function handlePause() { syncProgress({ isPaused: true, force: true }) }
     function handleEnded() {
       if (stopReportedRef.current) return
       stopReportedRef.current = true
@@ -171,113 +124,219 @@ export function MediaPlayerDialog({
       video.removeEventListener('ended', handleEnded)
 
       if (stopReportedRef.current || video.ended) return
-
-      const played =
-        video.duration && video.currentTime / video.duration >= 0.94 ? true : undefined
+      const played = video.duration && video.currentTime / video.duration >= 0.94 ? true : undefined
       stopReportedRef.current = true
-      void reportPlaybackState({
-        data: buildPayload({
-          isStopped: true,
-          played,
-        }),
-      }).catch(() => undefined)
+      void reportPlaybackState({ data: buildPayload({ isStopped: true, played }) }).catch(() => undefined)
     }
   }, [open, item, playbackSession, streamUrl])
+
+  // Player UI state tracking
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const onTimeUpdate = () => setCurrentTime(video.currentTime)
+    const onDurationChange = () => setDuration(video.duration || 0)
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+    const onVolumeChange = () => setIsMuted(video.muted)
+
+    video.addEventListener('timeupdate', onTimeUpdate)
+    video.addEventListener('durationchange', onDurationChange)
+    video.addEventListener('play', onPlay)
+    video.addEventListener('pause', onPause)
+    video.addEventListener('volumechange', onVolumeChange)
+
+    return () => {
+      video.removeEventListener('timeupdate', onTimeUpdate)
+      video.removeEventListener('durationchange', onDurationChange)
+      video.removeEventListener('play', onPlay)
+      video.removeEventListener('pause', onPause)
+      video.removeEventListener('volumechange', onVolumeChange)
+    }
+  }, [open])
+
+  // Fullscreen tracking
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  // Auto-hide controls
+  useEffect(() => {
+    if (!isPlaying) {
+      setControlsVisible(true)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      return
+    }
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000)
+    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current) }
+  }, [isPlaying])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return
+    function handleKeydown(e: KeyboardEvent) {
+      const video = videoRef.current
+      if (!video) return
+      if (e.key === ' ' || e.key === 'k') {
+        e.preventDefault()
+        video.paused ? void video.play() : video.pause()
+      } else if (e.key === 'ArrowLeft') {
+        video.currentTime = Math.max(0, video.currentTime - 10)
+      } else if (e.key === 'ArrowRight') {
+        video.currentTime = Math.min(video.duration || 0, video.currentTime + 10)
+      } else if (e.key === 'f') {
+        void toggleFullscreen()
+      } else if (e.key === 'm') {
+        video.muted = !video.muted
+      } else if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  }, [open, onClose])
+
+  function revealControls() {
+    setControlsVisible(true)
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    if (isPlaying) {
+      hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000)
+    }
+  }
+
+  function togglePlay() {
+    const video = videoRef.current
+    if (!video) return
+    video.paused ? void video.play() : video.pause()
+  }
+
+  function toggleMute() {
+    const video = videoRef.current
+    if (video) video.muted = !video.muted
+  }
+
+  async function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+    } else {
+      await containerRef.current?.requestFullscreen()
+    }
+  }
+
+  function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const video = videoRef.current
+    if (video) video.currentTime = ratio * (video.duration || 0)
+  }
 
   if (!open || !item) return null
 
   return (
-    <div className="dialog-backdrop player-backdrop" onClick={onClose} role="presentation">
-      <div
-        className="player-shell"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="aurora-player-title"
-      >
-        <div className="player-topbar">
-          <div className="player-copy">
-            <p className="eyebrow">{t('player.nowPlaying')}</p>
-            <h2 id="aurora-player-title">{item.title}</h2>
-            <span>
-              {buildSubtitle(item, {
-                series: t('player.series'),
-                episode: t('player.episode'),
-                movie: t('player.movie'),
-              })}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            className="icon-button player-close"
-            onClick={onClose}
-            aria-label={t('player.close')}
+    <div
+      ref={containerRef}
+      className={`player-fullscreen${controlsVisible ? ' controls-visible' : ''}`}
+      onMouseMove={revealControls}
+    >
+      {streamUrl ? (
+        <>
+          <video
+            ref={videoRef}
+            className="player-fullscreen-video"
+            autoPlay
+            playsInline
+            poster={item.backdropUrl ?? item.posterUrl}
+            preload="metadata"
+            onClick={togglePlay}
           >
-            <X size={18} />
+            <source src={streamUrl} />
+          </video>
+
+          <div className={`player-controls-overlay${controlsVisible ? ' visible' : ''}`}>
+            <div className="player-controls-top">
+              <div className="player-controls-title">
+                <p className="eyebrow">{t('player.nowPlaying')}</p>
+                <h2>{item.title}</h2>
+                {item.type === 'episode' && item.seriesTitle ? (
+                  <span>{item.seriesTitle}{item.episodeNumber ? ` · E${item.episodeNumber}` : ''}</span>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={onClose}
+                aria-label={t('player.close')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="player-controls-bottom">
+              <div
+                className="player-progress"
+                onClick={handleSeek}
+                role="slider"
+                aria-label="Seek"
+                aria-valuenow={Math.floor(currentTime)}
+                aria-valuemin={0}
+                aria-valuemax={Math.floor(duration)}
+              >
+                <div className="player-progress-track">
+                  <div className="player-progress-fill" style={{ width: `${progress}%` }} />
+                  <div className="player-progress-thumb" style={{ left: `${progress}%` }} />
+                </div>
+              </div>
+
+              <div className="player-controls-row">
+                <div className="player-controls-left">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={togglePlay}
+                    aria-label={isPlaying ? 'Pause' : 'Play'}
+                  >
+                    {isPlaying
+                      ? <Pause size={22} fill="currentColor" strokeWidth={0} />
+                      : <Play size={22} fill="currentColor" strokeWidth={0} />}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={toggleMute}
+                    aria-label={isMuted ? 'Unmute' : 'Mute'}
+                  >
+                    {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                  </button>
+                  <span className="player-time">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </span>
+                </div>
+                <div className="player-controls-right">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => void toggleFullscreen()}
+                    aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                  >
+                    {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="player-empty-fullscreen">
+          <Film size={32} />
+          <p>{t('player.notPlayable')}</p>
+          <button type="button" className="secondary-action" onClick={onClose}>
+            {t('player.close')}
           </button>
         </div>
-
-        <div className="player-stage">
-          {streamUrl ? (
-            <div className="player-layout">
-              <video
-                ref={videoRef}
-                className="player-video"
-                controls
-                autoPlay
-                playsInline
-                poster={item.backdropUrl ?? item.posterUrl}
-                preload="metadata"
-              >
-                <source src={streamUrl} />
-              </video>
-
-              {queue.length > 1 ? (
-                <aside className="player-queue">
-                  <div className="player-queue-head">
-                    <p className="eyebrow">{t('player.upNext')}</p>
-                    <span>{t('player.inQueue', { count: queue.length - 1 })}</span>
-                  </div>
-                  <div className="player-queue-list">
-                    {queue
-                      .filter((entry) => entry.id !== item.id)
-                      .slice(0, 6)
-                      .map((entry) => (
-                        <button
-                          key={entry.id}
-                          type="button"
-                          className="player-queue-item"
-                          onClick={() => onSelectQueueItem?.(entry)}
-                        >
-                          <strong>{entry.title}</strong>
-                          <span>
-                            {[
-                              entry.seriesTitle ??
-                                (entry.type === 'series'
-                                  ? t('player.series')
-                                  : entry.type === 'episode'
-                                    ? t('player.episode')
-                                    : t('player.movie')),
-                              entry.episodeNumber ? `E${entry.episodeNumber}` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' • ')}
-                          </span>
-                        </button>
-                      ))}
-                  </div>
-                </aside>
-              ) : null}
-            </div>
-          ) : (
-            <div className="player-empty">
-              <Film size={28} />
-              <p>{t('player.notPlayable')}</p>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -1094,129 +1094,142 @@ button { font: inherit; }
   backdrop-filter: blur(18px);
 }
 
-.player-backdrop {
+.player-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  cursor: none;
+}
+
+.player-fullscreen.controls-visible {
+  cursor: default;
+}
+
+.player-fullscreen-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.player-controls-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   background:
-    radial-gradient(circle at top, rgba(112, 168, 255, 0.14), transparent 30%),
-    rgba(4, 8, 18, 0.86);
+    linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, transparent 22%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, transparent 28%);
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
 }
 
-.player-shell {
-  width: min(90rem, 100%);
-  overflow: hidden;
-  border-radius: 1.8rem;
-  border: 1px solid var(--line);
-  background: rgba(6, 10, 21, 0.96);
-  box-shadow: var(--shadow-xl);
+.player-controls-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.player-topbar {
+.player-controls-top {
   display: flex;
   align-items: start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.2rem 1.2rem 0;
+  padding: 2rem 2rem 0;
 }
 
-.player-copy h2 {
-  margin: 0.35rem 0 0;
+.player-controls-title h2 {
+  margin: 0.3rem 0 0;
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 3vw, 2.3rem);
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
   line-height: 1.05;
 }
 
-.player-copy span {
+.player-controls-title span {
   display: inline-block;
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
   color: var(--ink-faint);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
-.player-close {
-  position: static;
+.player-controls-bottom {
+  padding: 0 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.player-stage {
-  padding: 1rem 1.2rem 1.2rem;
+.player-progress {
+  cursor: pointer;
+  padding: 0.6rem 0;
 }
 
-.player-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 19rem;
+.player-progress-track {
+  position: relative;
+  height: 0.3rem;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  transition: height 150ms ease;
+}
+
+.player-progress:hover .player-progress-track {
+  height: 0.45rem;
+}
+
+.player-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+  border-radius: 999px;
+}
+
+.player-progress-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: white;
+  transition: transform 150ms ease;
+}
+
+.player-progress:hover .player-progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.player-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
 }
 
-.player-video,
-.player-empty {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 1.4rem;
-  background: #000;
+.player-controls-left,
+.player-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.player-video {
-  display: block;
+.player-time {
+  margin-left: 0.5rem;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.player-empty {
+.player-empty-fullscreen {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  gap: 0.7rem;
+  place-content: center;
+  gap: 1rem;
   color: var(--ink-muted);
-  border: 1px solid var(--line);
-  background: linear-gradient(135deg, rgba(12, 18, 34, 0.95), rgba(8, 12, 24, 0.95));
-}
-
-.player-queue {
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: 1.4rem;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.player-queue-head {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.player-queue-head span {
-  color: var(--ink-faint);
-  font-size: 0.82rem;
-}
-
-.player-queue-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 0.9rem;
-}
-
-.player-queue-item {
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 1rem;
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  text-align: left;
-  padding: 0.8rem;
-}
-
-.player-queue-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--line);
-}
-
-.player-queue-item strong {
-  display: block;
-}
-
-.player-queue-item span {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--ink-faint);
-  font-size: 0.8rem;
+  text-align: center;
 }
 
 .dialog-panel {
