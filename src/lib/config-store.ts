@@ -1,3 +1,7 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
+
 export interface JellyfinSettings {
   url: string
   apiKey: string
@@ -8,64 +12,30 @@ export interface JellyfinSettings {
 
 type SettingsSource = 'database' | 'env' | 'merged' | 'missing'
 
-type DatabaseStatement = {
-  get: (...params: unknown[]) => unknown
-  run: (...params: unknown[]) => unknown
-}
-
-type DatabaseInstance = {
-  exec: (sql: string) => void
-  prepare: (sql: string) => DatabaseStatement
-}
-
-function getBuiltinModule<T>(specifier: string): T {
-  const nodeProcess = globalThis.process as
-    | (NodeJS.Process & {
-        getBuiltinModule?: (name: string) => unknown
-      })
-    | undefined
-
-  if (!nodeProcess?.getBuiltinModule) {
-    throw new Error('Aurora config storage is only available on the server.')
-  }
-
-  const module = nodeProcess.getBuiltinModule(specifier)
-
-  if (!module) {
-    throw new Error(`Could not load Node builtin module: ${specifier}`)
-  }
-
-  return module as T
-}
-
 function getDataDirectory() {
-  const path = getBuiltinModule<typeof import('node:path')>('node:path')
   return process.env['AURORA_DATA_DIR'] ?? path.join(process.cwd(), 'data')
 }
 
 function getDatabasePath() {
-  const path = getBuiltinModule<typeof import('node:path')>('node:path')
   return path.join(getDataDirectory(), 'aurora.sqlite')
 }
 
-let database: DatabaseInstance | null = null
+let database: DatabaseSync | null = null
+
+const CREATE_TABLE_SQL = [
+  'CREATE TABLE IF NOT EXISTS app_settings (',
+  '  key TEXT PRIMARY KEY,',
+  '  value TEXT NOT NULL,',
+  '  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP',
+  ');',
+].join('\n')
 
 function getDatabase() {
   if (database) return database
 
-  const fs = getBuiltinModule<typeof import('node:fs')>('node:fs')
-  const { DatabaseSync } =
-    getBuiltinModule<typeof import('node:sqlite')>('node:sqlite')
-
   fs.mkdirSync(getDataDirectory(), { recursive: true })
   database = new DatabaseSync(getDatabasePath())
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS app_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-  `)
+  database.exec(CREATE_TABLE_SQL)
 
   return database
 }
@@ -76,15 +46,16 @@ function getSetting(key: string) {
   return row?.value
 }
 
-function setSetting(key: string, value: string) {
-  const statement = getDatabase().prepare(`
-    INSERT INTO app_settings (key, value, updated_at)
-    VALUES (?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(key) DO UPDATE SET
-      value = excluded.value,
-      updated_at = CURRENT_TIMESTAMP
-  `)
+const UPSERT_SQL = [
+  'INSERT INTO app_settings (key, value, updated_at)',
+  'VALUES (?, ?, CURRENT_TIMESTAMP)',
+  'ON CONFLICT(key) DO UPDATE SET',
+  '  value = excluded.value,',
+  '  updated_at = CURRENT_TIMESTAMP',
+].join('\n')
 
+function setSetting(key: string, value: string) {
+  const statement = getDatabase().prepare(UPSERT_SQL)
   statement.run(key, value)
 }
 
