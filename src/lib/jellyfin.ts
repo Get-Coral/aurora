@@ -43,9 +43,24 @@ export interface JellyfinItem {
   }
 }
 
+interface JellyfinMediaStream {
+  Type: string
+  Index: number
+  Language?: string
+  DisplayTitle?: string
+  IsTextSubtitleStream?: boolean
+}
+
 interface JellyfinPlaybackInfo {
-  MediaSources?: { Id?: string | null }[]
+  MediaSources?: { Id?: string | null; MediaStreams?: JellyfinMediaStream[] }[]
   PlaySessionId?: string | null
+}
+
+export interface SubtitleTrack {
+  index: number
+  label: string
+  language: string
+  url: string
 }
 
 interface JellyfinAuthResponse {
@@ -61,6 +76,7 @@ export interface JellyfinPlaybackSession {
   playSessionId?: string
   mediaSourceId?: string
   sessionId?: string
+  subtitleTracks: SubtitleTrack[]
 }
 
 interface JellyfinPlaybackSyncInput {
@@ -275,6 +291,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
     return {
       streamUrl: jellyfinStreamUrl(itemId),
       canSyncProgress: false,
+      subtitleTracks: [],
     }
   }
 
@@ -307,7 +324,17 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
 
   const data = (await res.json()) as JellyfinPlaybackInfo
   const playSessionId = data.PlaySessionId ?? undefined
-  const mediaSourceId = data.MediaSources?.[0]?.Id ?? undefined
+  const mediaSource = data.MediaSources?.[0]
+  const mediaSourceId = mediaSource?.Id ?? undefined
+
+  const subtitleTracks: SubtitleTrack[] = (mediaSource?.MediaStreams ?? [])
+    .filter((s) => s.Type === 'Subtitle' && s.IsTextSubtitleStream)
+    .map((s, position) => ({
+      index: position,
+      label: s.DisplayTitle ?? s.Language ?? `Track ${s.Index}`,
+      language: s.Language ?? 'und',
+      url: `${settings.url}/Videos/${itemId}/${mediaSourceId}/Subtitles/${s.Index}/Stream.vtt?api_key=${settings.apiKey}`,
+    }))
 
   return {
     streamUrl: jellyfinStreamUrl(itemId, { playSessionId, mediaSourceId }),
@@ -315,6 +342,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
     playSessionId,
     mediaSourceId,
     sessionId: auth.sessionId,
+    subtitleTracks,
   }
 }
 

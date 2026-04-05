@@ -1,4 +1,4 @@
-import { Film, Maximize, Minimize, Pause, Play, Volume2, VolumeX, X } from 'lucide-react'
+import { Captions, Film, Maximize, Minimize, Pause, Play, Volume2, VolumeX, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
@@ -43,6 +43,8 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
+  const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false)
+  const [activeSubtitle, setActiveSubtitle] = useState<number | null>(null)
 
   const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
@@ -55,6 +57,8 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     setCurrentTime(0)
     setDuration(0)
     setIsPlaying(false)
+    setActiveSubtitle(null)
+    setSubtitlePickerOpen(false)
 
     if (!open || !item?.streamUrl) return
 
@@ -63,7 +67,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     void beginPlaybackSession({ data: { id: item.id } })
       .then((session) => { if (!cancelled) setPlaybackSession(session) })
       .catch(() => {
-        if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false })
+        if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false, subtitleTracks: [] })
       })
 
     return () => { cancelled = true }
@@ -226,6 +230,20 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     }
   }
 
+  function selectSubtitle(index: number | null) {
+    const video = videoRef.current
+    if (video) {
+      for (const track of Array.from(video.textTracks)) {
+        track.mode = 'disabled'
+      }
+      if (index !== null && video.textTracks[index]) {
+        video.textTracks[index].mode = 'showing'
+      }
+    }
+    setActiveSubtitle(index)
+    setSubtitlePickerOpen(false)
+  }
+
   function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
@@ -253,6 +271,15 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
             onClick={togglePlay}
           >
             <source src={streamUrl} />
+            {(playbackSession?.subtitleTracks ?? []).map((track) => (
+              <track
+                key={track.index}
+                kind="subtitles"
+                src={track.url}
+                srcLang={track.language}
+                label={track.label}
+              />
+            ))}
           </video>
 
           <div className={`player-controls-overlay${controlsVisible ? ' visible' : ''}`}>
@@ -315,6 +342,39 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
                   </span>
                 </div>
                 <div className="player-controls-right">
+                  {(playbackSession?.subtitleTracks?.length ?? 0) > 0 ? (
+                    <div className="player-subtitle-wrap">
+                      {subtitlePickerOpen ? (
+                        <div className="player-subtitle-picker">
+                          <button
+                            type="button"
+                            className={`player-subtitle-option${activeSubtitle === null ? ' active' : ''}`}
+                            onClick={() => selectSubtitle(null)}
+                          >
+                            Off
+                          </button>
+                          {playbackSession!.subtitleTracks.map((track) => (
+                            <button
+                              key={track.index}
+                              type="button"
+                              className={`player-subtitle-option${activeSubtitle === track.index ? ' active' : ''}`}
+                              onClick={() => selectSubtitle(track.index)}
+                            >
+                              {track.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        className={`icon-button${activeSubtitle !== null ? ' nav-pill-active' : ''}`}
+                        onClick={() => setSubtitlePickerOpen((o) => !o)}
+                        aria-label="Subtitles"
+                      >
+                        <Captions size={20} />
+                      </button>
+                    </div>
+                  ) : null}
                   <button
                     type="button"
                     className="icon-button"

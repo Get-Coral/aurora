@@ -1221,6 +1221,49 @@ button { font: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
+.player-subtitle-wrap {
+  position: relative;
+}
+
+.player-subtitle-picker {
+  position: absolute;
+  bottom: calc(100% + 0.75rem);
+  right: 0;
+  min-width: 12rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  background: rgba(8, 13, 28, 0.96);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.player-subtitle-option {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.player-subtitle-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+}
+
+.player-subtitle-option.active {
+  color: var(--accent-strong);
+  border-color: var(--line);
+}
+
 .player-empty-fullscreen {
   position: absolute;
   inset: 0;
