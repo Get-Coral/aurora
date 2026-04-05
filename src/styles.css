@@ -143,6 +143,7 @@ button { font: inherit; }
   padding: 0.65rem 0.95rem;
   border-radius: 999px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .nav-pill:hover,
@@ -398,6 +399,11 @@ button { font: inherit; }
 
 .hero-backdrop {
   object-fit: cover;
+  transition: opacity 1s ease;
+}
+
+html.tv-mode .hero-backdrop {
+  transition: opacity 1.5s ease;
 }
 
 .hero-backdrop-fallback {
@@ -2258,4 +2264,159 @@ button { font: inherit; }
   .error-shell {
     padding-inline: 1.5rem;
   }
+}
+
+/* ── TV Mode ──────────────────────────────────────────────────────────────── */
+
+html.tv-mode {
+  font-size: 120%;
+  scroll-padding-top: 6rem;
+}
+
+/* Always-visible focus ring for D-pad / remote navigation */
+html.tv-mode *:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 0.4rem;
+}
+
+/* Suppress hover micro-lifts — TV uses focus not hover */
+html.tv-mode .media-card:hover {
+  transform: none;
+}
+
+/* Grid: fewer, wider columns */
+html.tv-mode .library-grid,
+html.tv-mode .shelf-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+html.tv-mode .media-card-feature {
+  grid-column: span 4;
+}
+
+html.tv-mode .media-card-poster,
+html.tv-mode .media-card-standard {
+  grid-column: span 2;
+}
+
+/* Taller cards so artwork is comfortably visible from a couch */
+html.tv-mode .media-card {
+  min-height: 22rem;
+}
+
+html.tv-mode .media-card-feature {
+  min-height: 26rem;
+}
+
+/* Card text — bigger, bolder */
+html.tv-mode .card-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+html.tv-mode .card-subtitle {
+  font-size: 0.9rem;
+}
+
+/* Card actions: always visible on focus so user knows what to press */
+html.tv-mode .media-card:focus-within .card-hover-actions,
+html.tv-mode .media-card:focus-visible .card-hover-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scale + glow on focused card */
+html.tv-mode .media-card:focus-visible,
+html.tv-mode .media-card:focus-within {
+  transform: scale(1.03);
+  box-shadow: 0 0 0 3px var(--accent), 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  outline: none;
+}
+
+/* Bigger card action buttons */
+html.tv-mode .card-action-button {
+  min-height: 3rem;
+  min-width: 3rem;
+  font-size: 0.95rem;
+}
+
+/* Navigation pills */
+html.tv-mode .nav-pill {
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+}
+
+/* Genre pills */
+html.tv-mode .genre-pill {
+  min-height: 3.2rem;
+  padding: 0 1.4rem;
+  font-size: 0.95rem;
+}
+
+/* Primary / secondary actions */
+html.tv-mode .primary-action,
+html.tv-mode .secondary-action {
+  min-height: 4rem;
+  padding: 0 2rem;
+  font-size: 1.05rem;
+}
+
+/* Hero buttons */
+html.tv-mode .hero-cta-primary,
+html.tv-mode .hero-cta-secondary {
+  min-height: 4rem;
+  padding: 0 2rem;
+  font-size: 1.05rem;
+}
+
+/* Section headers */
+html.tv-mode .section-title {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+}
+
+html.tv-mode .section-eyebrow {
+  font-size: 0.95rem;
+}
+
+/* Player controls — bigger targets */
+html.tv-mode .player-controls-row button,
+html.tv-mode .player-controls-overlay button {
+  min-height: 3.5rem;
+  min-width: 3.5rem;
+  font-size: 1.1rem;
+}
+
+/* Library / filter controls */
+html.tv-mode .library-select {
+  min-height: 3.2rem;
+  font-size: 1rem;
+}
+
+html.tv-mode .filter-chip {
+  min-height: 3rem;
+  padding: 0 1.25rem;
+  font-size: 0.95rem;
+}
+
+/* Dialog: bigger and easier to navigate */
+html.tv-mode .dialog-panel {
+  padding: 2.5rem;
+}
+
+html.tv-mode .dialog-close-button {
+  min-height: 3.5rem;
+  min-width: 3.5rem;
+}
+
+/* Episode rows */
+html.tv-mode .episode-row {
+  padding: 1.25rem;
+}
+
+html.tv-mode .episode-play-button {
+  min-height: 3.5rem;
+  min-width: 3.5rem;
 }

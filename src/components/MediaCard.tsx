@@ -1,6 +1,7 @@
 import { Check, Heart, Info, Play, Plus, Star } from 'lucide-react'
 import { isResumable, type MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
+import { useTvMode } from '../lib/tv-mode'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
 interface MediaCardProps {
@@ -21,6 +22,7 @@ export function MediaCard({
   onToggleFavorite,
 }: MediaCardProps) {
   const { t } = useI18n()
+  const { tvMode } = useTvMode()
   const resumable = isResumable(item)
   const prefetchMediaDetails = usePrefetchMediaDetails()
 
@@ -37,7 +39,15 @@ export function MediaCard({
       onTouchStart={handlePrefetch}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          if (tvMode && onPlay) {
+            onPlay(item)
+          } else {
+            onClick?.()
+          }
+        }
+      }}
     >
       {item.backdropUrl ?? item.posterUrl ? (
         <img

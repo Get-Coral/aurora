@@ -1,12 +1,13 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HeroSection } from '../components/HeroSection'
 import { MediaPlayerDialog } from '../components/MediaPlayerDialog'
 import { MediaSpotlightDialog } from '../components/MediaSpotlightDialog'
 import { SectionShelf } from '../components/SectionShelf'
 import { useFavoriteAction } from '../components/useFavoriteAction'
 import { useI18n } from '../lib/i18n'
+import { useTvMode } from '../lib/tv-mode'
 import {
   fetchFeatured,
   fetchContinueWatching,
@@ -48,7 +49,10 @@ function HomePage() {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
+  const [heroIndex, setHeroIndex] = useState(0)
+  const { tvMode } = useTvMode()
   const favoriteMutation = useFavoriteAction()
+  const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     function handleSelect(event: Event) {
@@ -60,7 +64,26 @@ function HomePage() {
     return () => window.removeEventListener('aurora:select-media', handleSelect as EventListener)
   }, [])
 
-  const spotlightItem = featured ?? latestMovies[0] ?? latestSeries[0] ?? null
+  const heroPool = [
+    ...(featured ? [featured] : []),
+    ...latestMovies,
+    ...latestSeries,
+  ].filter((item, index, arr) => arr.findIndex((c) => c.id === item.id) === index)
+
+  useEffect(() => {
+    if (heroTimerRef.current) clearInterval(heroTimerRef.current)
+    if (tvMode && heroPool.length > 1) {
+      heroTimerRef.current = setInterval(() => {
+        setHeroIndex((i) => (i + 1) % heroPool.length)
+      }, 15000)
+    }
+    return () => {
+      if (heroTimerRef.current) clearInterval(heroTimerRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tvMode, heroPool.length])
+
+  const spotlightItem = heroPool[heroIndex % Math.max(heroPool.length, 1)] ?? null
   const { data: recommendedItems = [] } = useQuery({
     queryKey: ['recommended-from-item', spotlightItem?.id],
     queryFn: () => fetchRecommendedFromItem({ data: { id: spotlightItem!.id } }),

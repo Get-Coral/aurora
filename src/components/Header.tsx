@@ -90,13 +90,6 @@ export default function Header() {
           >
             {t('nav.myList')}
           </Link>
-          <Link
-            to="/history"
-            className="nav-pill"
-            activeProps={{ className: 'nav-pill nav-pill-active' }}
-          >
-            {t('nav.history')}
-          </Link>
         </div>
 
         <div className="header-actions">
