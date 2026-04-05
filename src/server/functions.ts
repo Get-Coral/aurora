@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import {
+  createPlaybackSession,
   getContinueWatching,
   getEpisodesForSeries,
   getFavoriteItems,
@@ -11,6 +12,7 @@ import {
   getSimilarItems,
   searchItems,
   setFavorite,
+  syncPlaybackState,
 } from '../lib/jellyfin'
 import { fromJellyfin, fromJellyfinDetailed } from '../lib/media'
 
@@ -131,4 +133,34 @@ export const toggleFavorite = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const result = await setFavorite(data.id, data.isFavorite)
     return { id: data.id, isFavorite: result.IsFavorite }
+  })
+
+export const beginPlaybackSession = createServerFn({ method: 'POST' })
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    return createPlaybackSession(data.id)
+  })
+
+export const reportPlaybackState = createServerFn({ method: 'POST' })
+  .inputValidator((input: {
+    id: string
+    positionTicks: number
+    playSessionId?: string
+    mediaSourceId?: string
+    sessionId?: string
+    isPaused?: boolean
+    isStopped?: boolean
+    played?: boolean
+  }) => input)
+  .handler(async ({ data }) => {
+    return syncPlaybackState({
+      itemId: data.id,
+      positionTicks: data.positionTicks,
+      playSessionId: data.playSessionId,
+      mediaSourceId: data.mediaSourceId,
+      sessionId: data.sessionId,
+      isPaused: data.isPaused,
+      isStopped: data.isStopped,
+      played: data.played,
+    })
   })

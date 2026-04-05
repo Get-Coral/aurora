@@ -1,5 +1,5 @@
 import { Check, Heart, Info, Play, Plus, Star } from 'lucide-react'
-import type { MediaItem } from '../lib/media'
+import { isResumable, type MediaItem } from '../lib/media'
 
 interface MediaCardProps {
   item: MediaItem
@@ -18,6 +18,8 @@ export function MediaCard({
   onPlay,
   onToggleFavorite,
 }: MediaCardProps) {
+  const resumable = isResumable(item)
+
   return (
     <div
       className={`media-card media-card-${variant}`}
@@ -74,10 +76,10 @@ export function MediaCard({
             event.stopPropagation()
             onPlay?.(item)
           }}
-          aria-label="Play"
+          aria-label={resumable ? 'Resume' : 'Play'}
         >
           <Play size={14} fill="currentColor" />
-          <span className="card-action-label">Play</span>
+          <span className="card-action-label">{resumable ? 'Resume' : 'Play'}</span>
         </button>
         <button
           type="button"

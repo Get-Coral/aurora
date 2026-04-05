@@ -81,6 +81,7 @@ function HomePage() {
           continueItem={continueWatching[0] ?? null}
           companionItems={companionItems}
           onPlay={() => playMedia(spotlightItem, [spotlightItem, ...recommendedItems])}
+          onPlayContinue={(resumeItem) => playMedia(resumeItem, continueWatching)}
           onMoreInfo={() => setSelectedItem(spotlightItem)}
           onSelectCompanion={setSelectedItem}
         />

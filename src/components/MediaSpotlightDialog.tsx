@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Check, Play, Plus, Star, X } from 'lucide-react'
-import type { DetailedMediaItem, MediaItem } from '../lib/media'
+import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
 import { fetchItemDetails, fetchSeriesDetails } from '../server/functions'
 
 interface MediaSpotlightDialogProps {
@@ -48,6 +48,7 @@ export function MediaSpotlightDialog({
   const episodes = item.type === 'series' ? (seriesData?.episodes ?? []) : []
   const nextUp = item.type === 'series' ? (seriesData?.nextUp ?? []) : []
   const loadingState = item.type === 'series' ? seriesLoading : isLoading
+  const resumable = isResumable(detail)
 
   const metadata = [
     detail.year,
@@ -153,7 +154,7 @@ export function MediaSpotlightDialog({
               onClick={() => onPlay?.(detail)}
               disabled={!onPlay}
             >
-              <Play size={18} fill="currentColor" /> Play now
+              <Play size={18} fill="currentColor" /> {resumable ? 'Resume now' : 'Play now'}
             </button>
 
             <button
@@ -225,7 +226,7 @@ export function MediaSpotlightDialog({
                     </p>
                   </div>
                   <button type="button" className="primary-action" onClick={() => onPlay?.(nextUp[0])}>
-                    <Play size={18} fill="currentColor" /> Play next up
+                    <Play size={18} fill="currentColor" /> {isResumable(nextUp[0]) ? 'Resume next up' : 'Play next up'}
                   </button>
                 </div>
               ) : null}
@@ -252,7 +253,11 @@ export function MediaSpotlightDialog({
                         </span>
                       </div>
                       <span className="episode-progress">
-                        {episode.progress ? `${Math.round(episode.progress)}% watched` : 'Play'}
+                        {episode.progress
+                          ? `${Math.round(episode.progress)}% watched`
+                          : isResumable(episode)
+                            ? 'Resume'
+                            : 'Play'}
                       </span>
                     </button>
                   ))}

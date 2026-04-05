@@ -1,6 +1,10 @@
 import { Film, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
+import {
+  beginPlaybackSession,
+  reportPlaybackState,
+} from '../server/functions'
 
 interface MediaPlayerDialogProps {
   item: MediaItem | null
@@ -28,6 +32,17 @@ export function MediaPlayerDialog({
   onSelectQueueItem,
 }: MediaPlayerDialogProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [playbackSession, setPlaybackSession] = useState<{
+    streamUrl: string
+    canSyncProgress: boolean
+    playSessionId?: string
+    mediaSourceId?: string
+    sessionId?: string
+  } | null>(null)
+  const lastReportedSecondRef = useRef(0)
+  const stopReportedRef = useRef(false)
+
+  const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl
 
   useEffect(() => {
     if (!open) return
@@ -41,9 +56,124 @@ export function MediaPlayerDialog({
   }, [open, onClose])
 
   useEffect(() => {
+    stopReportedRef.current = false
+    lastReportedSecondRef.current = 0
+    setPlaybackSession(null)
+
     if (!open || !item?.streamUrl) return
-    videoRef.current?.load()
+
+    let cancelled = false
+
+    void beginPlaybackSession({ data: { id: item.id } })
+      .then((session) => {
+        if (!cancelled) setPlaybackSession(session)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlaybackSession({
+            streamUrl: item.streamUrl!,
+            canSyncProgress: false,
+          })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [open, item])
+
+  useEffect(() => {
+    if (!open || !streamUrl) return
+    videoRef.current?.load()
+  }, [open, streamUrl])
+
+  useEffect(() => {
+    const video = videoRef.current
+
+    if (!video || !open || !item?.streamUrl) return
+
+    function secondsToTicks(seconds: number) {
+      return Math.max(0, Math.floor(seconds * 10_000_000))
+    }
+
+    function buildPayload(overrides?: {
+      isPaused?: boolean
+      isStopped?: boolean
+      played?: boolean
+    }) {
+      return {
+        id: item.id,
+        positionTicks: secondsToTicks(video.currentTime),
+        playSessionId: playbackSession?.playSessionId,
+        mediaSourceId: playbackSession?.mediaSourceId,
+        sessionId: playbackSession?.sessionId,
+        isPaused: overrides?.isPaused,
+        isStopped: overrides?.isStopped,
+        played: overrides?.played,
+      }
+    }
+
+    function syncProgress(overrides?: {
+      isPaused?: boolean
+      isStopped?: boolean
+      played?: boolean
+      force?: boolean
+    }) {
+      if (!item) return
+
+      const currentSecond = Math.floor(video.currentTime)
+
+      if (!overrides?.force && currentSecond - lastReportedSecondRef.current < 8) return
+
+      lastReportedSecondRef.current = currentSecond
+      void reportPlaybackState({ data: buildPayload(overrides) }).catch(() => undefined)
+    }
+
+    function handleLoadedMetadata() {
+      if (item.playbackPositionTicks) {
+        video.currentTime = item.playbackPositionTicks / 10_000_000
+      }
+    }
+
+    function handleTimeUpdate() {
+      if (!playbackSession?.canSyncProgress) return
+      syncProgress()
+    }
+
+    function handlePause() {
+      syncProgress({ isPaused: true, force: true })
+    }
+
+    function handleEnded() {
+      if (stopReportedRef.current) return
+      stopReportedRef.current = true
+      syncProgress({ isStopped: true, played: true, force: true })
+    }
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata)
+    video.addEventListener('timeupdate', handleTimeUpdate)
+    video.addEventListener('pause', handlePause)
+    video.addEventListener('ended', handleEnded)
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      video.removeEventListener('timeupdate', handleTimeUpdate)
+      video.removeEventListener('pause', handlePause)
+      video.removeEventListener('ended', handleEnded)
+
+      if (stopReportedRef.current || video.ended) return
+
+      const played =
+        video.duration && video.currentTime / video.duration >= 0.94 ? true : undefined
+      stopReportedRef.current = true
+      void reportPlaybackState({
+        data: buildPayload({
+          isStopped: true,
+          played,
+        }),
+      }).catch(() => undefined)
+    }
+  }, [open, item, playbackSession, streamUrl])
 
   if (!open || !item) return null
 
@@ -74,7 +204,7 @@ export function MediaPlayerDialog({
         </div>
 
         <div className="player-stage">
-          {item.streamUrl ? (
+          {streamUrl ? (
             <div className="player-layout">
               <video
                 ref={videoRef}
@@ -85,7 +215,7 @@ export function MediaPlayerDialog({
                 poster={item.backdropUrl ?? item.posterUrl}
                 preload="metadata"
               >
-                <source src={item.streamUrl} />
+                <source src={streamUrl} />
               </video>
 
               {queue.length > 1 ? (

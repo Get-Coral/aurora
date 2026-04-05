@@ -1,11 +1,12 @@
 import { Clock3, Heart, Play, Sparkles, Star } from 'lucide-react'
-import type { MediaItem } from '../lib/media'
+import { isResumable, type MediaItem } from '../lib/media'
 
 interface HeroSectionProps {
   item: MediaItem
   continueItem?: MediaItem | null
   companionItems?: MediaItem[]
   onPlay?: () => void
+  onPlayContinue?: (item: MediaItem) => void
   onMoreInfo?: () => void
   onSelectCompanion?: (item: MediaItem) => void
 }
@@ -22,11 +23,14 @@ export function HeroSection({
   continueItem,
   companionItems = [],
   onPlay,
+  onPlayContinue,
   onMoreInfo,
   onSelectCompanion,
 }: HeroSectionProps) {
   const runtime = formatRuntime(item.runtimeMinutes)
   const metadata = [item.year, runtime, item.ageRating].filter(Boolean)
+  const itemIsResumable = isResumable(item)
+  const continueIsResumable = continueItem ? isResumable(continueItem) : false
 
   return (
     <section id="spotlight" className="hero-shell">
@@ -74,7 +78,7 @@ export function HeroSection({
 
           <div className="hero-actions">
             <button className="primary-action" onClick={onPlay} type="button">
-              <Play size={18} fill="currentColor" /> Play now
+              <Play size={18} fill="currentColor" /> {itemIsResumable ? 'Resume now' : 'Play now'}
             </button>
             <button className="secondary-action" onClick={onMoreInfo} type="button">
               More info
@@ -140,8 +144,14 @@ export function HeroSection({
               <span>
                 {continueItem.progress ? `${Math.round(continueItem.progress)}% watched` : 'Ready to resume'}
               </span>
-              <button className="secondary-action" onClick={onMoreInfo} type="button">
-                Open
+              <button
+                className="secondary-action"
+                onClick={() =>
+                  continueIsResumable ? onPlayContinue?.(continueItem) : onMoreInfo?.()
+                }
+                type="button"
+              >
+                {continueIsResumable ? 'Resume now' : 'Open'}
               </button>
             </div>
 

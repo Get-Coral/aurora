@@ -17,6 +17,7 @@ export interface MediaItem {
   thumbUrl?: string
   logoUrl?: string
   progress?: number
+  playbackPositionTicks?: number
   played?: boolean
   isFavorite?: boolean
   seriesTitle?: string
@@ -44,6 +45,14 @@ export interface SeriesDetailPayload {
   episodes: MediaItem[]
   nextUp: MediaItem[]
   similar: MediaItem[]
+}
+
+export function isResumable(item: Pick<MediaItem, 'progress' | 'playbackPositionTicks' | 'played'>) {
+  return Boolean(
+    !item.played &&
+      ((item.progress != null && item.progress > 0) ||
+        (item.playbackPositionTicks != null && item.playbackPositionTicks > 0)),
+  )
 }
 
 import type { JellyfinItem } from './jellyfin'
@@ -83,6 +92,7 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
       ? jellyfinImageUrl(item.Id, 'Logo', 900)
       : undefined,
     progress: item.UserData?.PlayedPercentage,
+    playbackPositionTicks: item.UserData?.PlaybackPositionTicks,
     played: item.UserData?.Played,
     isFavorite: item.UserData?.IsFavorite,
     seriesTitle: item.SeriesName,
