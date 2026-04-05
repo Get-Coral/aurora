@@ -325,6 +325,22 @@ button { font: inherit; }
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.05);
   color: var(--ink);
+  color-scheme: dark;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.library-select:hover,
+.library-select:focus-visible {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.library-select option {
+  background: #0f1628;
+  color: var(--ink);
 }
 
 .library-pagination {
