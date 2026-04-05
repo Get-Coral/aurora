@@ -218,23 +218,25 @@ export function LibraryView({
 
       {totalPages > 1 ? (
         <div className="page-wrap library-footer">
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => updateSearch({ page: Math.max(0, page - 1) })}
-            disabled={page === 0 || mode === 'my-list'}
-          >
-            {t('library.previousPage')}
-          </button>
+          {page > 0 ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => updateSearch({ page: page - 1 })}
+            >
+              {t('library.previousPage')}
+            </button>
+          ) : <span />}
           <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => updateSearch({ page: Math.min(totalPages - 1, page + 1) })}
-            disabled={page >= totalPages - 1 || mode === 'my-list'}
-          >
-            {t('library.nextPage')}
-          </button>
+          {page < totalPages - 1 ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => updateSearch({ page: page + 1 })}
+            >
+              {t('library.nextPage')}
+            </button>
+          ) : <span />}
         </div>
       ) : (
         <div className="page-wrap library-footer library-footer-compact">
