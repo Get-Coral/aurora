@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
 import { fetchItemDetails, fetchSeriesDetails, markPlayed } from '../server/functions'
+import { useLockBodyScroll } from './useLockBodyScroll'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
 interface MediaSpotlightDialogProps {
@@ -31,6 +32,7 @@ export function MediaSpotlightDialog({
   onToggleFavorite,
 }: MediaSpotlightDialogProps) {
   const { t } = useI18n()
+  useLockBodyScroll(open)
   const prefetchMediaDetails = usePrefetchMediaDetails()
   const [playedOverrides, setPlayedOverrides] = useState<Record<string, boolean>>({})
 

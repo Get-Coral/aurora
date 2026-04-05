@@ -1,5 +1,6 @@
 import { Captions, Film, Maximize, Minimize, Pause, Play, Volume2, VolumeX, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useLockBodyScroll } from './useLockBodyScroll'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { beginPlaybackSession, reportPlaybackState } from '../server/functions'
@@ -23,6 +24,7 @@ function formatTime(seconds: number) {
 
 export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProps) {
   const { t } = useI18n()
+  useLockBodyScroll(open)
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
