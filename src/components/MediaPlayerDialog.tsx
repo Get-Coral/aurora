@@ -99,7 +99,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
   const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1
   const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null
-  const showNextButton = nextItem?.type === 'episode'
+  const showNextButton = item?.type === 'episode' && nextItem !== null
 
   // Reset + start playback session when item changes
   useEffect(() => {

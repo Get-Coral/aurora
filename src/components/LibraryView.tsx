@@ -108,10 +108,10 @@ export function LibraryView({
     })
   }
 
-  function playMedia(item: MediaItem) {
+  function playMedia(item: MediaItem, queue?: MediaItem[]) {
     if (!item.streamUrl || item.type === 'series') return
     setSelectedItem(null)
-    setPlayQueue(resolvedItems)
+    setPlayQueue(queue?.length ? queue : resolvedItems)
     setPlayingItem(item)
   }
 

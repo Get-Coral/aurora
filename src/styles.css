@@ -1204,7 +1204,8 @@ button { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .player-controls-left,
@@ -1212,6 +1213,11 @@ button { font: inherit; }
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.player-controls-right {
+  gap: 0.4rem;
 }
 
 .player-time {
@@ -1293,6 +1299,10 @@ button { font: inherit; }
   font-size: 0.82rem;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: background 150ms ease;
 }
 
