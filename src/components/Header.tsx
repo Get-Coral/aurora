@@ -62,7 +62,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/movies"
-            search={{ sort: 'DateCreated' }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
@@ -70,11 +70,18 @@ export default function Header() {
           </Link>
           <Link
             to="/library/series"
-            search={{ sort: 'DateCreated' }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
             {t('nav.series')}
+          </Link>
+          <Link
+            to="/collections"
+            className="nav-pill"
+            activeProps={{ className: 'nav-pill nav-pill-active' }}
+          >
+            {t('nav.collections')}
           </Link>
           <Link
             to="/my-list"
@@ -82,6 +89,13 @@ export default function Header() {
             activeProps={{ className: 'nav-pill nav-pill-active' }}
           >
             {t('nav.myList')}
+          </Link>
+          <Link
+            to="/history"
+            className="nav-pill"
+            activeProps={{ className: 'nav-pill nav-pill-active' }}
+          >
+            {t('nav.history')}
           </Link>
         </div>
 

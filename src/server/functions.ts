@@ -99,6 +99,15 @@ export const fetchRecommendedFromItem = createServerFn({ method: 'GET' })
     return items.map(fromJellyfin)
   })
 
+const DECADE_RANGES: Record<string, { min: string; max: string }> = {
+  '2020s': { min: '2020-01-01', max: '2029-12-31' },
+  '2010s': { min: '2010-01-01', max: '2019-12-31' },
+  '2000s': { min: '2000-01-01', max: '2009-12-31' },
+  '1990s': { min: '1990-01-01', max: '1999-12-31' },
+  '1980s': { min: '1980-01-01', max: '1989-12-31' },
+  'Older': { min: '1900-01-01', max: '1979-12-31' },
+}
+
 export const fetchLibrary = createServerFn({ method: 'GET' })
   .inputValidator((input: {
     type: 'Movie' | 'Series'
@@ -107,6 +116,9 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
     sortOrder?: 'Ascending' | 'Descending'
     genre?: string
     favoritesOnly?: boolean
+    ratings?: string
+    decade?: string
+    minScore?: number
   }) => input)
   .handler(async ({ data }) => {
     const [{ getLibraryItems }, { fromJellyfin }] = await Promise.all([
@@ -114,6 +126,7 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
       import('../lib/media-server'),
     ])
     const page = data.page ?? 0
+    const decadeRange = data.decade ? DECADE_RANGES[data.decade] : undefined
     const result = await getLibraryItems(data.type, {
       sortBy: data.sortBy ?? 'DateCreated',
       sortOrder: data.sortOrder ?? 'Descending',
@@ -121,6 +134,10 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
       startIndex: page * 24,
       genre: data.genre,
       filters: data.favoritesOnly ? 'IsFavorite' : undefined,
+      officialRatings: data.ratings || undefined,
+      minCommunityRating: data.minScore ?? undefined,
+      minPremiereDate: decadeRange?.min,
+      maxPremiereDate: decadeRange?.max,
     })
     return {
       items: result.Items.map(fromJellyfin),
@@ -128,6 +145,57 @@ export const fetchLibrary = createServerFn({ method: 'GET' })
       page,
     }
   })
+
+export const fetchWatchHistory = createServerFn({ method: 'GET' })
+  .inputValidator((input: { page?: number }) => input)
+  .handler(async ({ data }) => {
+    const [{ getWatchHistory }, { fromJellyfin }] = await Promise.all([
+      import('../lib/jellyfin'),
+      import('../lib/media-server'),
+    ])
+    const page = data.page ?? 0
+    const result = await getWatchHistory({ limit: 24, startIndex: page * 24 })
+    return {
+      items: result.Items.map(fromJellyfin),
+      total: result.TotalRecordCount,
+      page,
+    }
+  })
+
+export const fetchCollections = createServerFn({ method: 'GET' }).handler(async () => {
+  const [{ getCollections }, { fromJellyfin }] = await Promise.all([
+    import('../lib/jellyfin'),
+    import('../lib/media-server'),
+  ])
+  const items = await getCollections()
+  return items.map(fromJellyfin)
+})
+
+export const fetchCollectionItems = createServerFn({ method: 'GET' })
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    const [{ getCollectionItems, getItem }, { fromJellyfin }] = await Promise.all([
+      import('../lib/jellyfin'),
+      import('../lib/media-server'),
+    ])
+    const [items, collection] = await Promise.all([
+      getCollectionItems(data.id),
+      getItem(data.id),
+    ])
+    return {
+      collection: fromJellyfin(collection),
+      items: items.map(fromJellyfin),
+    }
+  })
+
+export const fetchMostPlayed = createServerFn({ method: 'GET' }).handler(async () => {
+  const [{ getMostPlayed }, { fromJellyfin }] = await Promise.all([
+    import('../lib/jellyfin'),
+    import('../lib/media-server'),
+  ])
+  const items = await getMostPlayed('Movie', 12)
+  return items.map(fromJellyfin)
+})
 
 export const fetchItem = createServerFn({ method: 'GET' })
   .inputValidator((input: { id: string }) => input)

@@ -13,6 +13,7 @@ import {
   fetchFavoriteMovies,
   fetchLatestMovies,
   fetchLatestSeries,
+  fetchMostPlayed,
   fetchRecommendedFromItem,
   fetchSetupStatus,
 } from '../server/functions'
@@ -43,6 +44,7 @@ function HomePage() {
   const { data: latestMovies } = useSuspenseQuery({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMovies() })
   const { data: latestSeries } = useSuspenseQuery({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeries() })
   const { data: favoriteMovies = [] } = useQuery({ queryKey: ['favorite-movies'], queryFn: () => fetchFavoriteMovies() })
+  const { data: mostPlayed = [] } = useQuery({ queryKey: ['most-played'], queryFn: () => fetchMostPlayed() })
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
@@ -172,6 +174,18 @@ function HomePage() {
           emptyTitle={t('home.recommended.emptyTitle')}
           emptyCopy={t('home.recommended.emptyCopy')}
         />
+        {mostPlayed.length > 0 ? (
+          <SectionShelf
+            id="most-played"
+            title={t('home.mostPlayed.title')}
+            subtitle={t('home.mostPlayed.subtitle')}
+            items={mostPlayed}
+            onSelect={setSelectedItem}
+            onPlay={(item) => playMedia(item, mostPlayed)}
+            onToggleFavorite={handleToggleFavorite}
+            browseTo="/history"
+          />
+        ) : null}
       </div>
 
       <MediaPlayerDialog

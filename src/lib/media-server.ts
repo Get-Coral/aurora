@@ -4,7 +4,10 @@ import type { DetailedMediaItem, MediaItem, MediaPerson, MediaType } from './med
 
 export function fromJellyfin(item: JellyfinItem): MediaItem {
   const type: MediaType =
-    item.Type === 'Movie' ? 'movie' : item.Type === 'Episode' ? 'episode' : 'series'
+    item.Type === 'Movie' ? 'movie'
+    : item.Type === 'Episode' ? 'episode'
+    : item.Type === 'BoxSet' ? 'collection'
+    : 'series'
 
   return {
     id: item.Id,
@@ -38,7 +41,9 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
     seriesTitle: item.SeriesName,
     seasonNumber: item.ParentIndexNumber,
     episodeNumber: item.IndexNumber,
-    streamUrl: jellyfinStreamUrl(item.Id),
+    childCount: item.ChildCount,
+    watchedAt: item.UserData?.LastPlayedDate,
+    streamUrl: type === 'collection' ? undefined : jellyfinStreamUrl(item.Id),
   }
 }
 
