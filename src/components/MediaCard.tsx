@@ -1,5 +1,6 @@
 import { Check, Heart, Info, Play, Plus, Star } from 'lucide-react'
 import { isResumable, type MediaItem } from '../lib/media'
+import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
 interface MediaCardProps {
   item: MediaItem
@@ -19,11 +20,19 @@ export function MediaCard({
   onToggleFavorite,
 }: MediaCardProps) {
   const resumable = isResumable(item)
+  const prefetchMediaDetails = usePrefetchMediaDetails()
+
+  function handlePrefetch() {
+    void prefetchMediaDetails(item).catch(() => undefined)
+  }
 
   return (
     <div
       className={`media-card media-card-${variant}`}
       onClick={onClick}
+      onMouseEnter={handlePrefetch}
+      onFocus={handlePrefetch}
+      onTouchStart={handlePrefetch}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick?.()}

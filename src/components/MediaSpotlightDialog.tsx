@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Check, Play, Plus, Star, X } from 'lucide-react'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
 import { fetchItemDetails, fetchSeriesDetails } from '../server/functions'
+import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
 
 interface MediaSpotlightDialogProps {
   item: MediaItem | null
@@ -27,6 +28,7 @@ export function MediaSpotlightDialog({
   onSelectSimilar,
   onToggleFavorite,
 }: MediaSpotlightDialogProps) {
+  const prefetchMediaDetails = usePrefetchMediaDetails()
   const { data, isLoading } = useQuery({
     queryKey: ['item-details', item?.id],
     queryFn: () => fetchItemDetails({ data: { id: item!.id } }),
@@ -280,6 +282,8 @@ export function MediaSpotlightDialog({
                     type="button"
                     className="similar-card"
                     onClick={() => onSelectSimilar?.(similarItem)}
+                    onMouseEnter={() => void prefetchMediaDetails(similarItem).catch(() => undefined)}
+                    onFocus={() => void prefetchMediaDetails(similarItem).catch(() => undefined)}
                   >
                     {similarItem.posterUrl ? (
                       <img
