@@ -2,9 +2,11 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
+  useRouter,
 } from '@tanstack/react-router'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import { ErrorPage } from '../components/ErrorPage'
 
 import appCss from '../styles.css?url'
 
@@ -39,6 +41,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: NotFoundPage,
+  errorComponent: RootErrorPage,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
@@ -57,5 +61,28 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </I18nProvider>
       </body>
     </html>
+  )
+}
+
+function NotFoundPage() {
+  return (
+    <I18nProvider>
+      <ErrorPage variant="not-found" />
+    </I18nProvider>
+  )
+}
+
+function RootErrorPage({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter()
+
+  function handleRetry() {
+    reset()
+    void router.invalidate()
+  }
+
+  return (
+    <I18nProvider>
+      <ErrorPage variant="error" error={error} onRetry={handleRetry} />
+    </I18nProvider>
   )
 }
