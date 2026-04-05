@@ -1,204 +1,110 @@
-Welcome to your new TanStack Start app! 
+# Aurora UI
 
-# Getting Started
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-ElianCodes-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ElianCodes)
 
-To run this application:
+Aurora UI is a premium Jellyfin frontend built with TanStack Start and React. It keeps Jellyfin as the source of truth while layering on a more cinematic home experience, richer detail views, embedded playback, favorites, genre browsing, and translation-ready UI foundations.
 
-```bash
-npm install
-npm run dev
-```
+## Highlights
 
-# Building For Production
+- Jellyfin-powered home screen with featured, continue watching, favorites, and recommendation rails
+- Embedded playback with progress sync back to Jellyfin
+- Rich title detail views with cast, related titles, and series episode context
+- Movie and series library pages with genre browsing, sorting, and pagination
+- `My List` / favorites workflow backed by Jellyfin favorites
+- Translation-ready UI with locale files contributors can extend
 
-To build this application for production:
+## Stack
 
-```bash
-npm run build
-```
+- [TanStack Start](https://tanstack.com/start)
+- React 19
+- TanStack Router + TanStack Query
+- Tailwind CSS v4
+- Jellyfin API
 
-## Testing
+## Getting Started
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
-
-```bash
-npm run test
-```
-
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
-
-## Linting & Formatting
-
-This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
-
+Install dependencies:
 
 ```bash
-npm run lint
-npm run format
-npm run check
+pnpm install
 ```
 
+Create your local env file:
 
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```bash
+cp .env.example .env
 ```
 
-Then anywhere in your JSX you can use it like so:
+Fill in the Jellyfin settings in `.env`:
 
-```tsx
-<Link to="/about">About</Link>
+```bash
+JELLYFIN_URL=http://localhost:8096
+JELLYFIN_API_KEY=your_api_key_here
+JELLYFIN_USER_ID=your_user_id_here
+JELLYFIN_USERNAME=your_username_here
+JELLYFIN_PASSWORD=your_password_here
 ```
 
-This will create a link that will navigate to the `/about` route.
+Start the app:
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
+```bash
+pnpm dev
 ```
 
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
+Open [http://localhost:3000](http://localhost:3000).
 
-## Server Functions
+## Scripts
 
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
+```bash
+pnpm dev
+pnpm build
+pnpm preview
+pnpm test
 ```
 
-## API Routes
+## Jellyfin Notes
 
-You can create API routes by using the `server` property in your route definitions:
+Aurora uses Jellyfin as the system of record.
 
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
+- API key access is enough for browsing, favorites, and most library features
+- Username/password are used to create a real Jellyfin playback session so Aurora can sync progress and watched state more reliably
+- `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
 
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
+## Translations
 
-## Data Fetching
+Translations live in dedicated locale files so contributors can add languages without touching the runtime logic.
 
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
+Files:
 
-For example:
+- [`src/lib/i18n/messages/en.ts`](./src/lib/i18n/messages/en.ts)
+- [`src/lib/i18n/messages/nl.ts`](./src/lib/i18n/messages/nl.ts)
+- [`src/lib/i18n/messages/index.ts`](./src/lib/i18n/messages/index.ts)
 
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
+To add a new language:
 
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
+1. Copy `src/lib/i18n/messages/en.ts` to a new file such as `fr.ts`
+2. Translate the strings
+3. Export and register the file in `src/lib/i18n/messages/index.ts`
+4. Add the locale to the language picker if you want it selectable in the UI
 
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
+## Contributing
 
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
+Issues and pull requests are welcome.
 
-# Demo files
+If you want to contribute:
 
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
+1. Fork the repo
+2. Create a branch
+3. Make your changes
+4. Run `pnpm build`
+5. Open a pull request
 
-# Learn More
+## Sponsoring
 
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+If Aurora helps you or you want to support ongoing work, you can sponsor the project here:
 
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+- [GitHub Sponsors: ElianCodes](https://github.com/sponsors/ElianCodes)
+
+## License
+
+Aurora UI is released under the [MIT License](./LICENSE).
