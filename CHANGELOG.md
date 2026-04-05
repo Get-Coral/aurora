@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.1.0](https://github.com/ElianCodes/aurora-ui/compare/v1.0.0...v1.1.0) (2026-04-05)
+
+
+### Features
+
+* add settings page ([0c4e7ae](https://github.com/ElianCodes/aurora-ui/commit/0c4e7aeb48896d3fb43a6f42c8845c03ac6cc2ca))
+* add subtitle support ([b1a2484](https://github.com/ElianCodes/aurora-ui/commit/b1a2484ea87f4ee4334088c8ef88b1741eff5b0e))
+* allow subtitles from opensubtitles ([b8a89bd](https://github.com/ElianCodes/aurora-ui/commit/b8a89bd10cf980d972fea7f448117f5b9873e1a3))
+* do inifinite scrolling instead of pages ([a3276fd](https://github.com/ElianCodes/aurora-ui/commit/a3276fd69e065df48b2692cc4cb937c6309f2195))
+* update Player UI ([eaac5c9](https://github.com/ElianCodes/aurora-ui/commit/eaac5c9a7c30892956b669e134f8e157ebe6e6f6))
+* use Username in header ([3717a35](https://github.com/ElianCodes/aurora-ui/commit/3717a352d41ccceae9cedd4b8c66712361153da0))
+
+
+### Bug Fixes
+
+* add next episode button ([e370f83](https://github.com/ElianCodes/aurora-ui/commit/e370f8317e490aa13148920bfa03363f8108decf))
+* allow old codex ([222c68e](https://github.com/ElianCodes/aurora-ui/commit/222c68ee5a714cdedec0e989c0dbfc120448c42a))
+* correct episodes on shows ([51fcae6](https://github.com/ElianCodes/aurora-ui/commit/51fcae65bcb3d21a7782afdd75e73485620374ac))
+* disable autoplay ([ca11a1c](https://github.com/ElianCodes/aurora-ui/commit/ca11a1ca4b478ed6b0f26f27448f19c96703b592))
+* seed duration in progress bar ([514c75f](https://github.com/ElianCodes/aurora-ui/commit/514c75f5c8117688f651aa0cefc4530a0b001640))
+* stop scrolling body when modal is open ([c4aaf19](https://github.com/ElianCodes/aurora-ui/commit/c4aaf196372020f9a931fa8eada4b85029ce6765))
+* update buttons ([470d3a9](https://github.com/ElianCodes/aurora-ui/commit/470d3a9b4a41079c41f6d4f394b961e659059bcd))
+
 ## 1.0.0 (2026-04-05)
 
 
