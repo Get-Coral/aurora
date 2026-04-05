@@ -58,7 +58,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     lastReportedSecondRef.current = 0
     setPlaybackSession(null)
     setCurrentTime(0)
-    setDuration(0)
+    setDuration((item?.runtimeMinutes ?? 0) * 60)
     setIsPlaying(false)
     setActiveSubtitle(null)
     setSubtitlePickerOpen(false)
@@ -144,7 +144,21 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     if (!video) return
 
     const onTimeUpdate = () => setCurrentTime(video.currentTime)
-    const onDurationChange = () => setDuration(video.duration || 0)
+    const onDurationChange = () => {
+      const d = video.duration
+      // Only trust the video's reported duration when it's finite and plausible.
+      // Transcoded streams served progressively often report a fluctuating or
+      // near-zero duration until the full moov atom is received — fall back to
+      // the known runtime from Jellyfin metadata instead.
+      const knownRuntime = (item?.runtimeMinutes ?? 0) * 60
+      if (Number.isFinite(d) && d > 60) {
+        setDuration(d)
+      } else if (knownRuntime > 0) {
+        setDuration(knownRuntime)
+      } else if (Number.isFinite(d) && d > 0) {
+        setDuration(d)
+      }
+    }
     const onPlay = () => {
       setIsPlaying(true)
       if (video.muted) setAutoplayMuted(true)
@@ -200,7 +214,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
       } else if (e.key === 'ArrowLeft') {
         video.currentTime = Math.max(0, video.currentTime - 10)
       } else if (e.key === 'ArrowRight') {
-        video.currentTime = Math.min(video.duration || 0, video.currentTime + 10)
+        video.currentTime = Math.min(duration || video.duration || 0, video.currentTime + 10)
       } else if (e.key === 'f') {
         void toggleFullscreen()
       } else if (e.key === 'm') {
@@ -258,7 +272,7 @@ export function MediaPlayerDialog({ item, open, onClose }: MediaPlayerDialogProp
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     const video = videoRef.current
-    if (video) video.currentTime = ratio * (video.duration || 0)
+    if (video && duration > 0) video.currentTime = ratio * duration
   }
 
   if (!open || !item) return null
