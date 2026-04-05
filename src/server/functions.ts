@@ -188,6 +188,41 @@ export const fetchCollectionItems = createServerFn({ method: 'GET' })
     }
   })
 
+export const createCollection = createServerFn({ method: 'POST' })
+  .inputValidator((input: { name: string }) => input)
+  .handler(async ({ data }) => {
+    const { createCollection: apiCreate } = await import('../lib/jellyfin')
+    return apiCreate(data.name)
+  })
+
+export const deleteCollection = createServerFn({ method: 'POST' })
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    const { deleteItem } = await import('../lib/jellyfin')
+    await deleteItem(data.id)
+  })
+
+export const renameCollection = createServerFn({ method: 'POST' })
+  .inputValidator((input: { id: string; name: string }) => input)
+  .handler(async ({ data }) => {
+    const { updateItemName } = await import('../lib/jellyfin')
+    await updateItemName(data.id, data.name)
+  })
+
+export const addToCollection = createServerFn({ method: 'POST' })
+  .inputValidator((input: { collectionId: string; itemIds: string[] }) => input)
+  .handler(async ({ data }) => {
+    const { addItemsToCollection } = await import('../lib/jellyfin')
+    await addItemsToCollection(data.collectionId, data.itemIds)
+  })
+
+export const removeFromCollection = createServerFn({ method: 'POST' })
+  .inputValidator((input: { collectionId: string; itemId: string }) => input)
+  .handler(async ({ data }) => {
+    const { removeItemsFromCollection } = await import('../lib/jellyfin')
+    await removeItemsFromCollection(data.collectionId, [data.itemId])
+  })
+
 export const fetchMostPlayed = createServerFn({ method: 'GET' }).handler(async () => {
   const [{ getMostPlayed }, { fromJellyfin }] = await Promise.all([
     import('../lib/jellyfin'),

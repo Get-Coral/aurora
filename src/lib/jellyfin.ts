@@ -661,6 +661,56 @@ export async function searchItems(query: string): Promise<JellyfinItem[]> {
   return data.Items
 }
 
+export async function createCollection(name: string, itemIds: string[] = []): Promise<{ Id: string }> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Collections`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('Name', name)
+  if (itemIds.length) url.searchParams.set('Ids', itemIds.join(','))
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`Jellyfin collection create error: ${res.status}`)
+  return res.json() as Promise<{ Id: string }>
+}
+
+export async function deleteItem(id: string): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Items/${id}`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Jellyfin delete error: ${res.status}`)
+}
+
+export async function updateItemName(id: string, name: string): Promise<void> {
+  const settings = getRequiredSettings()
+  const item = await getItem(id)
+  const url = new URL(`${settings.url}/Items/${id}`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...item, Name: name }),
+  })
+  if (!res.ok) throw new Error(`Jellyfin update error: ${res.status}`)
+}
+
+export async function addItemsToCollection(collectionId: string, itemIds: string[]): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Collections/${collectionId}/Items`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('Ids', itemIds.join(','))
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`Jellyfin add to collection error: ${res.status}`)
+}
+
+export async function removeItemsFromCollection(collectionId: string, itemIds: string[]): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Collections/${collectionId}/Items`)
+  url.searchParams.set('api_key', settings.apiKey)
+  url.searchParams.set('Ids', itemIds.join(','))
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Jellyfin remove from collection error: ${res.status}`)
+}
+
 export async function getFeaturedItem(): Promise<JellyfinItem | null> {
   const settings = getRequiredSettings()
   const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
