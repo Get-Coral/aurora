@@ -1,4 +1,5 @@
 import { Clock3, Heart, Play, Sparkles, Star } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { isResumable, type MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
 
@@ -34,13 +35,39 @@ export function HeroSection({
   const itemIsResumable = isResumable(item)
   const continueIsResumable = continueItem ? isResumable(continueItem) : false
 
+  // Cross-fade: keep the previous backdrop visible while the new one fades in
+  const [prevBackdropUrl, setPrevBackdropUrl] = useState<string | null>(null)
+  const [fadeKey, setFadeKey] = useState(0)
+  const prevItemIdRef = useRef(item.id)
+  const prevBackdropRef = useRef(item.backdropUrl ?? null)
+
+  useEffect(() => {
+    if (item.id === prevItemIdRef.current) return
+    // Capture the outgoing backdrop before updating refs
+    setPrevBackdropUrl(prevBackdropRef.current)
+    setFadeKey((k) => k + 1)
+    prevItemIdRef.current = item.id
+    prevBackdropRef.current = item.backdropUrl ?? null
+  }, [item.id, item.backdropUrl])
+
   return (
     <section id="spotlight" className="hero-shell">
+      {/* Outgoing backdrop sits underneath and fades out */}
+      {prevBackdropUrl ? (
+        <img
+          src={prevBackdropUrl}
+          alt=""
+          className="hero-backdrop hero-backdrop-out"
+          style={{ objectPosition: 'center 18%' }}
+        />
+      ) : null}
+      {/* Incoming backdrop fades in on top */}
       {item.backdropUrl ? (
         <img
+          key={fadeKey}
           src={item.backdropUrl}
           alt=""
-          className="hero-backdrop"
+          className="hero-backdrop hero-backdrop-in"
           style={{ objectPosition: 'center 18%' }}
         />
       ) : (

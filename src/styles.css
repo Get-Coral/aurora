@@ -399,11 +399,32 @@ button { font: inherit; }
 
 .hero-backdrop {
   object-fit: cover;
-  transition: opacity 1s ease;
 }
 
-html.tv-mode .hero-backdrop {
-  transition: opacity 1.5s ease;
+.hero-backdrop-in {
+  animation: hero-crossfade-in 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.hero-backdrop-out {
+  animation: hero-crossfade-out 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes hero-crossfade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes hero-crossfade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+html.tv-mode .hero-backdrop-in {
+  animation-duration: 2s;
+}
+
+html.tv-mode .hero-backdrop-out {
+  animation-duration: 2s;
 }
 
 .hero-backdrop-fallback {
