@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.2.0](https://github.com/ElianCodes/aurora-ui/compare/v1.1.0...v1.2.0) (2026-04-05)
+
+
+### Features
+
+* add ambient mode ([2d5f7cc](https://github.com/ElianCodes/aurora-ui/commit/2d5f7cc9ae3240b5af0259a7d3b6c1fb35071f2c))
+* add collection CRUD ([0bc6d74](https://github.com/ElianCodes/aurora-ui/commit/0bc6d740d173a5696c45d365c9ecf8dfafdfe473))
+* add history and collections ([201d7f3](https://github.com/ElianCodes/aurora-ui/commit/201d7f3f412fa513577674edba3e4143863795bd))
+* add TV mode toggle ([eeb94b2](https://github.com/ElianCodes/aurora-ui/commit/eeb94b2acfeda029b05ced3e1cac2f9d77e08e84))
+* add watched status ([fbf844f](https://github.com/ElianCodes/aurora-ui/commit/fbf844f895a10301456eaa691f28a7c95a6f5beb))
+* clean up homepage on TV mode ([c88d10f](https://github.com/ElianCodes/aurora-ui/commit/c88d10f968da93d127786acd6a4d665d2f81eb03))
+* hide footer on TV mode ([219cab3](https://github.com/ElianCodes/aurora-ui/commit/219cab32bfb2722159a972daba57ac85a25a4b9e))
+* improve TV mode ([6df90ac](https://github.com/ElianCodes/aurora-ui/commit/6df90acdff22f54a7fc8c5c3d190553e49e3b49b))
+* make new render route for TVMode ([dfd945f](https://github.com/ElianCodes/aurora-ui/commit/dfd945f2ed1015648b0d03982e42cb07ec87359c))
+* update collection UI ([9f6ad8a](https://github.com/ElianCodes/aurora-ui/commit/9f6ad8a8a02a8f8626e996eafed3dc48bcbabf70))
+* update Episode selector UI ([5bc600b](https://github.com/ElianCodes/aurora-ui/commit/5bc600bcfc99773d858acce9b2d383be95c85524))
+
+
+### Bug Fixes
+
+* make selects better ([c6339d7](https://github.com/ElianCodes/aurora-ui/commit/c6339d725bb67186a483a1a9f537656640a9ed11))
+* make text smooth transition ([3500946](https://github.com/ElianCodes/aurora-ui/commit/3500946d11d8a94bda36337788322665eb539ebf))
+* make the ambient mode more ease in ([37a859c](https://github.com/ElianCodes/aurora-ui/commit/37a859cb45e1bfac5187ba1837a7171942ecc5f4))
+* update animation style ([db05789](https://github.com/ElianCodes/aurora-ui/commit/db05789ed43b82f23d31602bb492c3741adb3829))
+* update styling for non-tv mode ([7fb0e5f](https://github.com/ElianCodes/aurora-ui/commit/7fb0e5ff5ea27333de061d55cbd6c0d5df16f835))
+* update watch state on modal close ([3f08d54](https://github.com/ElianCodes/aurora-ui/commit/3f08d54d47d9915237e20e4b60233a24c5d2acd4))
+
 ## [1.1.0](https://github.com/ElianCodes/aurora-ui/compare/v1.0.0...v1.1.0) (2026-04-05)
 
 
