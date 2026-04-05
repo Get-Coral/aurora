@@ -8,6 +8,7 @@ interface SectionShelfProps {
   subtitle: string
   items: MediaItem[]
   onSelect: (item: MediaItem) => void
+  onPlay: (item: MediaItem) => void
 }
 
 export function SectionShelf({
@@ -16,6 +17,7 @@ export function SectionShelf({
   subtitle,
   items,
   onSelect,
+  onPlay,
 }: SectionShelfProps) {
   if (!items.length) return null
 
@@ -37,7 +39,9 @@ export function SectionShelf({
             key={item.id}
             item={item}
             priority={index < 4}
+            variant={index === 0 ? 'feature' : index < 3 ? 'poster' : 'standard'}
             onClick={() => onSelect(item)}
+            onPlay={onPlay}
           />
         ))}
       </div>

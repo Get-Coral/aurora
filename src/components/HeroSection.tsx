@@ -1,11 +1,13 @@
-import { Play, Star } from 'lucide-react'
+import { Clock3, Heart, Play, Sparkles, Star } from 'lucide-react'
 import type { MediaItem } from '../lib/media'
 
 interface HeroSectionProps {
   item: MediaItem
   continueItem?: MediaItem | null
+  companionItems?: MediaItem[]
   onPlay?: () => void
   onMoreInfo?: () => void
+  onSelectCompanion?: (item: MediaItem) => void
 }
 
 function formatRuntime(minutes?: number) {
@@ -18,8 +20,10 @@ function formatRuntime(minutes?: number) {
 export function HeroSection({
   item,
   continueItem,
+  companionItems = [],
   onPlay,
   onMoreInfo,
+  onSelectCompanion,
 }: HeroSectionProps) {
   const runtime = formatRuntime(item.runtimeMinutes)
   const metadata = [item.year, runtime, item.ageRating].filter(Boolean)
@@ -47,7 +51,11 @@ export function HeroSection({
             </p>
           ) : null}
 
-          <h1 className="hero-title">{item.title}</h1>
+          {item.logoUrl ? (
+            <img src={item.logoUrl} alt={item.title} className="hero-logo" />
+          ) : (
+            <h1 className="hero-title">{item.title}</h1>
+          )}
 
           <div className="hero-meta">
             {metadata.map((entry) => (
@@ -93,7 +101,13 @@ export function HeroSection({
 
         {continueItem ? (
           <aside className="continue-panel fade-up">
-            <p className="eyebrow">Continue watching</p>
+            <div className="hero-panel-head">
+              <div>
+                <p className="eyebrow">Continue watching</p>
+                <strong>Pick up instantly</strong>
+              </div>
+              <Clock3 size={18} />
+            </div>
             <div className="continue-media">
               {continueItem.backdropUrl ?? continueItem.posterUrl ? (
                 <img
@@ -130,12 +144,57 @@ export function HeroSection({
                 Open
               </button>
             </div>
+
+            {companionItems.length ? (
+              <div className="hero-queue">
+                <div className="hero-panel-head">
+                  <div>
+                    <p className="eyebrow">Queue after that</p>
+                    <strong>Hand-picked from your library</strong>
+                  </div>
+                  <Sparkles size={18} />
+                </div>
+                <div className="hero-queue-list">
+                  {companionItems.slice(0, 3).map((companion) => (
+                    <button
+                      key={companion.id}
+                      type="button"
+                      className="hero-queue-item"
+                      onClick={() => onSelectCompanion?.(companion)}
+                    >
+                      {companion.posterUrl ? (
+                        <img
+                          src={companion.posterUrl}
+                          alt={companion.title}
+                          className="hero-queue-poster"
+                        />
+                      ) : (
+                        <div className="hero-queue-poster hero-queue-poster-fallback" />
+                      )}
+                      <span>
+                        <strong>{companion.title}</strong>
+                        <em>
+                          {[companion.type === 'series' ? 'Series' : 'Movie', companion.year]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </em>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </aside>
         ) : (
           <aside className="hero-orbit">
             <div className="orbit-card">
               <span>Curated by Jellyfin</span>
               <strong>Streamlined for movie-night energy</strong>
+              {item.isFavorite ? (
+                <small>
+                  <Heart size={14} fill="currentColor" /> Already in your favorites
+                </small>
+              ) : null}
             </div>
           </aside>
         )}

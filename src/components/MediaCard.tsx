@@ -1,16 +1,24 @@
-import { Play, Star } from 'lucide-react'
+import { Heart, Info, Play, Star } from 'lucide-react'
 import type { MediaItem } from '../lib/media'
 
 interface MediaCardProps {
   item: MediaItem
   onClick?: () => void
   priority?: boolean
+  variant?: 'feature' | 'poster' | 'standard'
+  onPlay?: (item: MediaItem) => void
 }
 
-export function MediaCard({ item, onClick, priority = false }: MediaCardProps) {
+export function MediaCard({
+  item,
+  onClick,
+  priority = false,
+  variant = 'standard',
+  onPlay,
+}: MediaCardProps) {
   return (
     <div
-      className="media-card"
+      className={`media-card media-card-${variant}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -18,7 +26,7 @@ export function MediaCard({ item, onClick, priority = false }: MediaCardProps) {
     >
       {item.backdropUrl ?? item.posterUrl ? (
         <img
-          src={item.backdropUrl ?? item.posterUrl}
+          src={variant === 'poster' ? item.posterUrl ?? item.backdropUrl : item.backdropUrl ?? item.posterUrl}
           alt={item.title}
           loading={priority ? 'eager' : 'lazy'}
         />
@@ -40,26 +48,56 @@ export function MediaCard({ item, onClick, priority = false }: MediaCardProps) {
 
       <div className="card-topline">
         <span className="card-format">
-          {item.type === 'series' ? 'Series' : 'Feature'}
+          {item.type === 'series' ? 'Series' : variant === 'feature' ? 'Tonight' : 'Feature'}
         </span>
-        {item.rating != null ? (
-          <span className="card-rating">
-            <Star size={12} fill="currentColor" /> {item.rating.toFixed(1)}
-          </span>
-        ) : null}
+        <div className="card-badges">
+          {item.isFavorite ? (
+            <span className="card-favorite">
+              <Heart size={12} fill="currentColor" /> Favorite
+            </span>
+          ) : null}
+          {item.rating != null ? (
+            <span className="card-rating">
+              <Star size={12} fill="currentColor" /> {item.rating.toFixed(1)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="card-hover-actions">
+        <button
+          type="button"
+          className="card-action-button card-action-primary"
+          onClick={(event) => {
+            event.stopPropagation()
+            onPlay?.(item)
+          }}
+        >
+          <Play size={14} fill="currentColor" /> Play
+        </button>
+        <button
+          type="button"
+          className="card-action-button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onClick?.()
+          }}
+        >
+          <Info size={14} /> Details
+        </button>
       </div>
 
       <div className="card-body">
         <div>
           <p className="card-title">{item.title}</p>
           <p className="card-subtitle">
-            {[item.year, item.runtimeMinutes ? `${item.runtimeMinutes}m` : null]
+            {[item.year, item.ageRating, item.runtimeMinutes ? `${item.runtimeMinutes}m` : null]
               .filter(Boolean)
               .join(' • ') || 'Instantly available'}
           </p>
         </div>
 
-        <span className="card-action">
+        <span className="card-action" aria-hidden="true">
           <Play size={14} fill="currentColor" />
         </span>
       </div>

@@ -15,6 +15,7 @@ export interface MediaItem {
   posterUrl?: string
   backdropUrl?: string
   thumbUrl?: string
+  logoUrl?: string
   progress?: number
   played?: boolean
   isFavorite?: boolean
@@ -52,6 +53,9 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
       : undefined,
     thumbUrl: item.ImageTags?.Thumb
       ? jellyfinImageUrl(item.Id, 'Thumb', 600)
+      : undefined,
+    logoUrl: item.ImageTags?.Logo
+      ? jellyfinImageUrl(item.Id, 'Logo', 900)
       : undefined,
     progress: item.UserData?.PlayedPercentage,
     played: item.UserData?.Played,

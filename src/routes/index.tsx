@@ -47,6 +47,9 @@ function HomePage() {
   }, [])
 
   const spotlightItem = featured ?? latestMovies[0] ?? latestSeries[0] ?? null
+  const companionItems = [...continueWatching, ...latestMovies, ...latestSeries]
+    .filter((item, index, array) => item.id !== spotlightItem?.id && array.findIndex((candidate) => candidate.id === item.id) === index)
+    .slice(0, 5)
 
   return (
     <main className="home-shell">
@@ -54,8 +57,10 @@ function HomePage() {
         <HeroSection
           item={spotlightItem}
           continueItem={continueWatching[0] ?? null}
+          companionItems={companionItems}
           onPlay={() => playMedia(spotlightItem)}
           onMoreInfo={() => setSelectedItem(spotlightItem)}
+          onSelectCompanion={setSelectedItem}
         />
       ) : null}
 
@@ -86,6 +91,7 @@ function HomePage() {
           subtitle="Keep momentum"
           items={continueWatching}
           onSelect={setSelectedItem}
+          onPlay={playMedia}
         />
         <SectionShelf
           id="movies"
@@ -93,6 +99,7 @@ function HomePage() {
           subtitle="Freshly added"
           items={latestMovies}
           onSelect={setSelectedItem}
+          onPlay={playMedia}
         />
         <SectionShelf
           id="series"
@@ -100,6 +107,7 @@ function HomePage() {
           subtitle="Just landed"
           items={latestSeries}
           onSelect={setSelectedItem}
+          onPlay={playMedia}
         />
       </div>
 

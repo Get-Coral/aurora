@@ -13,7 +13,7 @@ export interface JellyfinItem {
   OfficialRating?: string
   Overview?: string
   CommunityRating?: number
-  ImageTags?: { Primary?: string; Backdrop?: string; Thumb?: string }
+  ImageTags?: { Primary?: string; Backdrop?: string; Thumb?: string; Logo?: string }
   BackdropImageTags?: string[]
   GenreItems?: { Id: string; Name: string }[]
   SeriesName?: string
@@ -46,7 +46,7 @@ async function jellyfinFetch<T>(path: string, params?: Record<string, string>): 
 
 export function jellyfinImageUrl(
   itemId: string,
-  type: 'Primary' | 'Backdrop' | 'Thumb' = 'Primary',
+  type: 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' = 'Primary',
   width = 400,
 ): string {
   return `${BASE_URL}/Items/${itemId}/Images/${type}?maxWidth=${width}&api_key=${API_KEY}`
