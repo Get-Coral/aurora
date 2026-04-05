@@ -6,6 +6,57 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+const MIME_TYPES = {
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.json': 'application/json; charset=utf-8',
+}
+
+const CLIENT_DIR = path.join(__dirname, 'dist', 'client')
+
+function serveStatic(url, response) {
+  const pathname = url.pathname
+  const filePath = path.join(CLIENT_DIR, pathname)
+
+  // Prevent path traversal
+  if (!filePath.startsWith(CLIENT_DIR)) return false
+
+  let stat
+  try {
+    stat = fs.statSync(filePath)
+  } catch {
+    return false
+  }
+
+  if (!stat.isFile()) return false
+
+  const ext = path.extname(filePath).toLowerCase()
+  const contentType = MIME_TYPES[ext] ?? 'application/octet-stream'
+
+  // Long-lived cache for hashed assets
+  const isHashed = /\.[a-zA-Z0-9]{8,}\.\w+$/.test(pathname)
+  const cacheControl = isHashed
+    ? 'public, max-age=31536000, immutable'
+    : 'public, max-age=3600'
+
+  response.writeHead(200, {
+    'content-type': contentType,
+    'cache-control': cacheControl,
+    'content-length': stat.size,
+  })
+  fs.createReadStream(filePath).pipe(response)
+  return true
+}
+
 function loadEnvFile(filename) {
   const filePath = path.join(__dirname, filename)
 
@@ -62,6 +113,8 @@ function getOrigin(request) {
 const nodeServer = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', getOrigin(request))
+
+    if (serveStatic(url, response)) return
     const headers = new Headers()
 
     for (const [key, value] of Object.entries(request.headers)) {
