@@ -19,6 +19,7 @@
     "cap:run:ios": "pnpm build && cap run ios"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-devtools": "latest",

@@ -130,6 +130,7 @@ export function MediaSpotlightDialog({
           type="button"
           className="icon-button tv-detail-close"
           onClick={onClose}
+          data-aurora-overlay-close
           aria-label={t('dialog.closeDetails')}
         >
           <X size={22} />
@@ -342,6 +343,7 @@ export function MediaSpotlightDialog({
           type="button"
           className="icon-button dialog-close"
           onClick={onClose}
+          data-aurora-overlay-close
           aria-label={t('dialog.closeDetails')}
         >
           <X size={18} />

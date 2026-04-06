@@ -524,6 +524,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
                 type="button"
                 className="icon-button"
                 onClick={onClose}
+                data-aurora-overlay-close
                 aria-label={t('player.close')}
               >
                 <X size={20} />
