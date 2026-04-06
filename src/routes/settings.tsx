@@ -4,12 +4,17 @@ import { Tv } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n, supportedLocales } from '../lib/i18n'
 import type { Locale } from '../lib/i18n'
+import {
+  fetchOpenSubtitlesKeyRuntime,
+  fetchSetupStatusRuntime,
+  saveOpenSubtitlesKeyRuntime,
+  saveSettingsRuntime,
+} from '../lib/runtime-functions'
 import { useTvMode } from '../lib/tv-mode'
-import { fetchOpenSubtitlesKey, fetchSetupStatus, saveOpenSubtitlesKey, saveSettings } from '../server/functions'
 
 export const Route = createFileRoute('/settings')({
   loader: async () => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
     if (!setupStatus.configured) {
       throw redirect({ to: '/setup' })
     }
@@ -38,17 +43,17 @@ function SettingsPage() {
 
   const { data: existingOsKey } = useQuery({
     queryKey: ['opensubtitles-key'],
-    queryFn: () => fetchOpenSubtitlesKey(),
+    queryFn: () => fetchOpenSubtitlesKeyRuntime(),
   })
   const [osApiKey, setOsApiKey] = useState('')
 
   const saveOsMutation = useMutation({
-    mutationFn: () => saveOpenSubtitlesKey({ data: { apiKey: osApiKey } }),
+    mutationFn: () => saveOpenSubtitlesKeyRuntime(osApiKey),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['opensubtitles-key'] }),
   })
 
   const saveMutation = useMutation({
-    mutationFn: () => saveSettings({ data: { url, apiKey, userId, username, password } }),
+    mutationFn: () => saveSettingsRuntime({ url, apiKey, userId, username, password }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['current-user'] }),
   })
 

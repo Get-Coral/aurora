@@ -10,9 +10,16 @@
     "build": "vite build",
     "start": "node server.mjs",
     "preview": "vite preview",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "cap:sync": "pnpm build && cap sync",
+    "cap:copy": "pnpm build && cap copy",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "cap:run:android": "pnpm build && cap run android",
+    "cap:run:ios": "pnpm build && cap run ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-query": "^5.96.2",
@@ -27,6 +34,9 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-vite": "latest",
     "@testing-library/dom": "^10.4.1",

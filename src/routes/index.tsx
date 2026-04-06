@@ -7,32 +7,32 @@ import { MediaSpotlightDialog } from '../components/MediaSpotlightDialog'
 import { SectionShelf } from '../components/SectionShelf'
 import { useFavoriteAction } from '../components/useFavoriteAction'
 import { useI18n } from '../lib/i18n'
-import { useTvMode } from '../lib/tv-mode'
 import {
-  fetchFeatured,
-  fetchContinueWatching,
-  fetchFavoriteMovies,
-  fetchLatestMovies,
-  fetchLatestSeries,
-  fetchMostPlayed,
-  fetchRecommendedFromItem,
-  fetchSetupStatus,
-} from '../server/functions'
+  fetchContinueWatchingRuntime,
+  fetchFavoriteMoviesRuntime,
+  fetchFeaturedRuntime,
+  fetchLatestMoviesRuntime,
+  fetchLatestSeriesRuntime,
+  fetchMostPlayedRuntime,
+  fetchRecommendedFromItemRuntime,
+  fetchSetupStatusRuntime,
+} from '../lib/runtime-functions'
+import { useTvMode } from '../lib/tv-mode'
 import type { MediaItem } from '../lib/media'
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
 
     if (!setupStatus.configured) {
       throw redirect({ to: '/setup' })
     }
 
     await Promise.all([
-      queryClient.ensureQueryData({ queryKey: ['featured'], queryFn: () => fetchFeatured() }),
-      queryClient.ensureQueryData({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatching() }),
-      queryClient.ensureQueryData({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMovies() }),
-      queryClient.ensureQueryData({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeries() }),
+      queryClient.ensureQueryData({ queryKey: ['featured'], queryFn: () => fetchFeaturedRuntime() }),
+      queryClient.ensureQueryData({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatchingRuntime() }),
+      queryClient.ensureQueryData({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMoviesRuntime() }),
+      queryClient.ensureQueryData({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeriesRuntime() }),
     ])
   },
   component: HomePage,
@@ -40,12 +40,12 @@ export const Route = createFileRoute('/')({
 
 function HomePage() {
   const { t } = useI18n()
-  const { data: featured } = useSuspenseQuery({ queryKey: ['featured'], queryFn: () => fetchFeatured() })
-  const { data: continueWatching } = useSuspenseQuery({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatching() })
-  const { data: latestMovies } = useSuspenseQuery({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMovies() })
-  const { data: latestSeries } = useSuspenseQuery({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeries() })
-  const { data: favoriteMovies = [] } = useQuery({ queryKey: ['favorite-movies'], queryFn: () => fetchFavoriteMovies() })
-  const { data: mostPlayed = [] } = useQuery({ queryKey: ['most-played'], queryFn: () => fetchMostPlayed() })
+  const { data: featured } = useSuspenseQuery({ queryKey: ['featured'], queryFn: () => fetchFeaturedRuntime() })
+  const { data: continueWatching } = useSuspenseQuery({ queryKey: ['continue-watching'], queryFn: () => fetchContinueWatchingRuntime() })
+  const { data: latestMovies } = useSuspenseQuery({ queryKey: ['latest-movies'], queryFn: () => fetchLatestMoviesRuntime() })
+  const { data: latestSeries } = useSuspenseQuery({ queryKey: ['latest-series'], queryFn: () => fetchLatestSeriesRuntime() })
+  const { data: favoriteMovies = [] } = useQuery({ queryKey: ['favorite-movies'], queryFn: () => fetchFavoriteMoviesRuntime() })
+  const { data: mostPlayed = [] } = useQuery({ queryKey: ['most-played'], queryFn: () => fetchMostPlayedRuntime() })
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
@@ -134,7 +134,7 @@ function HomePage() {
   const spotlightItem = heroPool[heroIndex % Math.max(heroPool.length, 1)] ?? null
   const { data: recommendedItems = [] } = useQuery({
     queryKey: ['recommended-from-item', spotlightItem?.id],
-    queryFn: () => fetchRecommendedFromItem({ data: { id: spotlightItem!.id } }),
+    queryFn: () => fetchRecommendedFromItemRuntime({ data: { id: spotlightItem!.id } }),
     enabled: Boolean(spotlightItem?.id),
   })
   const companionItems = [...continueWatching, ...latestMovies, ...latestSeries]

@@ -3,7 +3,11 @@ import { Check, CheckCircle, Circle, Play, Plus, Star, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
-import { fetchItemDetails, fetchSeriesDetails, markPlayed } from '../server/functions'
+import {
+  fetchItemDetailsRuntime,
+  fetchSeriesDetailsRuntime,
+  markPlayedRuntime,
+} from '../lib/runtime-functions'
 import { useTvMode } from '../lib/tv-mode'
 import { useLockBodyScroll } from './useLockBodyScroll'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
@@ -46,7 +50,7 @@ export function MediaSpotlightDialog({
   }, [item?.id])
 
   const markPlayedMutation = useMutation({
-    mutationFn: (vars: { id: string; played: boolean }) => markPlayed({ data: vars }),
+    mutationFn: (vars: { id: string; played: boolean }) => markPlayedRuntime({ data: vars }),
   })
 
   function handleToggleWatched(episode: MediaItem) {
@@ -67,13 +71,13 @@ export function MediaSpotlightDialog({
 
   const { data, isLoading } = useQuery({
     queryKey: ['item-details', item?.id],
-    queryFn: () => fetchItemDetails({ data: { id: item!.id } }),
+    queryFn: () => fetchItemDetailsRuntime({ data: { id: item!.id } }),
     enabled: open && Boolean(item?.id) && item?.type !== 'series',
   })
 
   const { data: seriesData, isLoading: seriesLoading } = useQuery({
     queryKey: ['series-details', item?.id],
-    queryFn: () => fetchSeriesDetails({ data: { id: item!.id } }),
+    queryFn: () => fetchSeriesDetailsRuntime({ data: { id: item!.id } }),
     enabled: open && Boolean(item?.id) && item?.type === 'series',
   })
 

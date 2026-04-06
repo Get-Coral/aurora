@@ -1,11 +1,11 @@
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Settings, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
+import { fetchSearchRuntime, fetchUsernameRuntime } from '../lib/runtime-functions'
 import { useTvMode } from '../lib/tv-mode'
-import { fetchSearch, fetchUsername } from '../server/functions'
 
 export default function Header() {
   const { t } = useI18n()
@@ -13,33 +13,22 @@ export default function Header() {
 
   const { data: username = '' } = useQuery({
     queryKey: ['current-user'],
-    queryFn: () => fetchUsername(),
+    queryFn: () => fetchUsernameRuntime(),
   })
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const deferredQuery = useDeferredValue(query.trim())
-  const navigate = useNavigate()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   const { data: results = [], isFetching } = useQuery({
     queryKey: ['search', deferredQuery],
-    queryFn: () => fetchSearch({ data: { query: deferredQuery } }),
+    queryFn: () => fetchSearchRuntime({ data: { query: deferredQuery } }),
     enabled: deferredQuery.length > 1,
   })
-
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus()
   }, [searchOpen])
-
-  function jumpToSection(id: string) {
-    if (pathname !== '/') {
-      void navigate({ to: '/' })
-      return
-    }
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 
   function selectItem(item: MediaItem) {
     window.dispatchEvent(new CustomEvent('aurora:select-media', { detail: item }))
@@ -65,7 +54,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/movies"
-            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0, watchStatus: undefined }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
@@ -74,7 +63,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/series"
-            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0, watchStatus: undefined }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
