@@ -10,6 +10,7 @@ export const enMessages: MessageDictionary = {
   'nav.collections': 'Collections',
   'nav.myList': 'My List',
   'nav.history': 'History',
+  'nav.openBrowse': 'Open browse menu',
   'locale.label': 'Language',
   'search.placeholder': 'Search your library',
   'search.close': 'Close search',
@@ -21,13 +22,29 @@ export const enMessages: MessageDictionary = {
   'footer.builtWith': 'Built with',
   'footer.by': 'by',
   'footer.contribute': 'Contribute',
+  'footer.reportBug': 'Report a bug',
   'home.libraryPulse': 'Library pulse',
   'home.libraryPulseCopy': 'fresh arrivals across films and shows',
   'home.watchRhythm': 'Watch rhythm',
   'home.watchRhythmCopy': 'titles waiting where you left them',
-  'home.tonightsLane': "Tonight's lane",
-  'home.tonightsLaneCopy': 'picked from your Jellyfin collection',
-  'home.curatedFallback': 'Curated',
+  'home.pickReason': 'Why this pick',
+  'home.pickReasonFallbackValue': 'Featured now',
+  'home.pickReasonFallbackCopy': "Built around tonight's spotlight title.",
+  'home.pickReasonQueueCopy': (params) => {
+    const count = Number(params?.count ?? 0)
+    const genre = String(params?.genre ?? '')
+    return `${count} title${count === 1 ? '' : 's'} in your queue share this ${genre.toLowerCase()} vibe.`
+  },
+  'home.pickReasonFavoritesCopy': (params) => {
+    const count = Number(params?.count ?? 0)
+    const genre = String(params?.genre ?? '')
+    return `${count} favorite${count === 1 ? '' : 's'} lean toward this ${genre.toLowerCase()} lane.`
+  },
+  'home.pickReasonRecentCopy': (params) => {
+    const count = Number(params?.count ?? 0)
+    const genre = String(params?.genre ?? '')
+    return `${count} recent arrival${count === 1 ? '' : 's'} land in the same ${genre.toLowerCase()} pocket.`
+  },
   'home.continue.title': 'Resume your queue',
   'home.continue.subtitle': 'Keep momentum',
   'home.continue.emptyTitle': 'Your continue queue is still empty',
@@ -58,9 +75,9 @@ export const enMessages: MessageDictionary = {
   'hero.release': 'Release',
   'hero.continueWatching': 'Continue watching',
   'hero.pickUpInstantly': 'Pick up instantly',
-  'hero.episodeLabel': ({ seriesTitle, episodeNumber }) =>
-    `${seriesTitle} • Episode ${episodeNumber ?? '?'}`,
-  'hero.progressWatched': ({ progress }) => `${progress}% watched`,
+  'hero.episodeLabel': (params) =>
+    `${params?.seriesTitle} • Episode ${params?.episodeNumber ?? '?'}`,
+  'hero.progressWatched': (params) => `${params?.progress}% watched`,
   'hero.readyToResume': 'Ready to resume',
   'hero.open': 'Open',
   'hero.queueAfterThat': 'Queue after that',
@@ -113,7 +130,7 @@ export const enMessages: MessageDictionary = {
   'player.nowPlaying': 'Now playing',
   'player.close': 'Close player',
   'player.upNext': 'Up next',
-  'player.inQueue': ({ count }) => `${count} in queue`,
+  'player.inQueue': (params) => `${params?.count} in queue`,
   'player.tapToUnmute': 'Tap to unmute',
   'player.nextEpisode': 'Next episode',
   'player.subtitles': 'Subtitles',
@@ -128,13 +145,13 @@ export const enMessages: MessageDictionary = {
   'player.episode': 'Episode',
   'player.skipBack': '−15s',
   'player.skipForward': '+30s',
-  'player.autoplayCountdown': ({ count }: { count: number }) => `Playing next in ${count}s`,
+  'player.autoplayCountdown': (params) => `Playing next in ${params?.count}s`,
   'player.autoplayCancel': 'Cancel autoplay',
   'library.backHome': 'Back home',
   'library.myListSummary':
     'Everything you marked as a favorite in Jellyfin, collected into one streaming-style list.',
-  'library.summary': ({ type }) =>
-    `Explore your full ${type === 'movie' ? 'movie' : 'series'} library with sort controls and a scannable grid.`,
+  'library.summary': (params) =>
+    `Explore your full ${params?.type === 'movie' ? 'movie' : 'series'} library with sort controls and a scannable grid.`,
   'library.sortBy': 'Sort by',
   'library.direction': 'Direction',
   'library.sort.dateCreated': 'Recently added',
@@ -143,11 +160,11 @@ export const enMessages: MessageDictionary = {
   'library.sort.sortName': 'Alphabetical',
   'library.order.desc': 'Descending',
   'library.order.asc': 'Ascending',
-  'library.pageOf': ({ page, total }) => `Page ${page} of ${total}`,
+  'library.pageOf': (params) => `Page ${params?.page} of ${params?.total}`,
   'library.previousPage': 'Previous page',
   'library.nextPage': 'Next page',
   'library.allMovies': 'All movies',
-  'library.totalTitles': ({ count }) => `${count} total titles`,
+  'library.totalTitles': (params) => `${params?.count} total titles`,
   'library.filter': 'Filter',
   'library.filters': 'Filters',
   'library.ageRating': 'Age rating',
@@ -172,7 +189,10 @@ export const enMessages: MessageDictionary = {
   'route.collections.summary': 'Movie collections and box sets organised in your Jellyfin library.',
   'route.collections.emptyTitle': 'No collections found',
   'route.collections.emptyCopy': 'Create a collection in Jellyfin and it will appear here.',
-  'route.collections.itemCount': ({ count }) => `${count} ${Number(count) === 1 ? 'title' : 'titles'}`,
+  'route.collections.itemCount': (params) => {
+    const count = Number(params?.count ?? 0)
+    return `${count} ${count === 1 ? 'title' : 'titles'}`
+  },
   'route.collections.new': 'New collection',
   'route.collections.newTitle': 'Create collection',
   'route.collections.newName': 'Collection name',
@@ -184,7 +204,7 @@ export const enMessages: MessageDictionary = {
   'route.collections.saving': 'Saving…',
   'route.collections.delete': 'Delete',
   'route.collections.deleteTitle': 'Delete collection',
-  'route.collections.deleteConfirm': ({ name }: { name: string }) => `Delete "${name}"? This cannot be undone.`,
+  'route.collections.deleteConfirm': (params) => `Delete "${params?.name}"? This cannot be undone.`,
   'route.collections.deleting': 'Deleting…',
   'route.collections.addItems': 'Add items',
   'route.collections.addItemsTitle': 'Add to collection',
@@ -199,7 +219,7 @@ export const enMessages: MessageDictionary = {
   'route.movies.subtitle': 'Browse the full catalog',
   'route.series.title': 'Series library',
   'route.series.subtitle': 'Browse the full catalog',
-  'route.genre.title': ({ genre }) => `${genre} movies`,
+  'route.genre.title': (params) => `${params?.genre} movies`,
   'route.genre.subtitle': 'Browse by genre',
   'setup.title': 'Connect Aurora to Jellyfin',
   'setup.subtitle': 'Local first setup',
@@ -229,6 +249,7 @@ export const enMessages: MessageDictionary = {
   'nav.settings': 'Settings',
   'settings.title': 'Settings',
   'settings.subtitle': 'Preferences',
+  'settings.aboutCopy': "Aurora is an open-source front-end for Jellyfin. Found a bug or have an idea? We'd love to hear from you.",
   'settings.jellyfinSection': 'Jellyfin connection',
   'settings.jellyfinCopy': 'Update your Jellyfin server details. Leave API key or password blank to keep the current values.',
   'settings.appearanceSection': 'Appearance',

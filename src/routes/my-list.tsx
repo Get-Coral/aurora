@@ -2,11 +2,11 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { LibraryView } from '../components/LibraryView'
 import { useI18n } from '../lib/i18n'
-import { fetchMyList, fetchSetupStatus } from '../server/functions'
+import { fetchMyListRuntime, fetchSetupStatusRuntime } from '../lib/runtime-functions'
 
 export const Route = createFileRoute('/my-list')({
   loader: async ({ context: { queryClient } }) => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
 
     if (!setupStatus.configured) {
       throw redirect({ to: '/setup' })
@@ -14,7 +14,7 @@ export const Route = createFileRoute('/my-list')({
 
     await queryClient.ensureQueryData({
       queryKey: ['my-list'],
-      queryFn: () => fetchMyList(),
+      queryFn: () => fetchMyListRuntime(),
     })
   },
   component: MyListPage,
@@ -24,7 +24,7 @@ function MyListPage() {
   const { t } = useI18n()
   const { data } = useSuspenseQuery({
     queryKey: ['my-list'],
-    queryFn: () => fetchMyList(),
+    queryFn: () => fetchMyListRuntime(),
   })
 
   return (

@@ -10,9 +10,18 @@
     "build": "vite build",
     "start": "node server.mjs",
     "preview": "vite preview",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "cap:sync": "pnpm build && cap sync",
+    "cap:copy": "pnpm build && cap copy",
+    "android:assemble:debug": "cd android && ./gradlew assembleDebug",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "cap:run:android": "export JAVA_HOME=\"$([ -d /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ] && printf %s /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home || /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home)\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && pnpm build && cap run android",
+    "cap:run:ios": "pnpm build && cap run ios"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/core": "^8.3.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-query": "^5.96.2",
@@ -27,6 +36,9 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-vite": "latest",
     "@testing-library/dom": "^10.4.1",

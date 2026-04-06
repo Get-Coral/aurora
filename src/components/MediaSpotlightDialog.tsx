@@ -3,7 +3,11 @@ import { Check, CheckCircle, Circle, Play, Plus, Star, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { isResumable, type DetailedMediaItem, type MediaItem } from '../lib/media'
-import { fetchItemDetails, fetchSeriesDetails, markPlayed } from '../server/functions'
+import {
+  fetchItemDetailsRuntime,
+  fetchSeriesDetailsRuntime,
+  markPlayedRuntime,
+} from '../lib/runtime-functions'
 import { useTvMode } from '../lib/tv-mode'
 import { useLockBodyScroll } from './useLockBodyScroll'
 import { usePrefetchMediaDetails } from './usePrefetchMediaDetails'
@@ -46,7 +50,7 @@ export function MediaSpotlightDialog({
   }, [item?.id])
 
   const markPlayedMutation = useMutation({
-    mutationFn: (vars: { id: string; played: boolean }) => markPlayed({ data: vars }),
+    mutationFn: (vars: { id: string; played: boolean }) => markPlayedRuntime({ data: vars }),
   })
 
   function handleToggleWatched(episode: MediaItem) {
@@ -67,25 +71,26 @@ export function MediaSpotlightDialog({
 
   const { data, isLoading } = useQuery({
     queryKey: ['item-details', item?.id],
-    queryFn: () => fetchItemDetails({ data: { id: item!.id } }),
+    queryFn: () => fetchItemDetailsRuntime({ data: { id: item!.id } }),
     enabled: open && Boolean(item?.id) && item?.type !== 'series',
   })
 
   const { data: seriesData, isLoading: seriesLoading } = useQuery({
     queryKey: ['series-details', item?.id],
-    queryFn: () => fetchSeriesDetails({ data: { id: item!.id } }),
+    queryFn: () => fetchSeriesDetailsRuntime({ data: { id: item!.id } }),
     enabled: open && Boolean(item?.id) && item?.type === 'series',
   })
 
   if (!open || !item) return null
+  const activeItem = item
 
   const detail: DetailedMediaItem =
-    (item.type === 'series' ? seriesData?.item : data?.item) ??
-    { ...item, cast: [], studios: [], tags: [] }
-  const similar = item.type === 'series' ? (seriesData?.similar ?? []) : (data?.similar ?? [])
-  const episodes = item.type === 'series' ? (seriesData?.episodes ?? []) : []
-  const nextUp = item.type === 'series' ? (seriesData?.nextUp ?? []) : []
-  const loadingState = item.type === 'series' ? seriesLoading : isLoading
+    (activeItem.type === 'series' ? seriesData?.item : data?.item) ??
+    { ...activeItem, cast: [], studios: [], tags: [] }
+  const similar = activeItem.type === 'series' ? (seriesData?.similar ?? []) : (data?.similar ?? [])
+  const episodes = activeItem.type === 'series' ? (seriesData?.episodes ?? []) : []
+  const nextUp = activeItem.type === 'series' ? (seriesData?.nextUp ?? []) : []
+  const loadingState = activeItem.type === 'series' ? seriesLoading : isLoading
   const resumable = isResumable(detail)
 
   const seasons = [...new Set(episodes.map((e) => e.seasonNumber ?? 1))].sort((a, b) => a - b)
@@ -99,7 +104,7 @@ export function MediaSpotlightDialog({
   ].filter(Boolean)
 
   function playAction() {
-    if (item.type === 'series') {
+    if (activeItem.type === 'series') {
       const target = nextUp[0] ?? episodes[0] ?? detail
       const targetIdx = episodes.findIndex((e) => e.id === target.id)
       onPlay?.(target, targetIdx >= 0 ? episodes.slice(targetIdx) : episodes)
@@ -108,7 +113,7 @@ export function MediaSpotlightDialog({
     }
   }
 
-  const playLabel = item.type === 'series'
+  const playLabel = activeItem.type === 'series'
     ? (isResumable(nextUp[0] ?? episodes[0] ?? detail) ? t('hero.resumeNow') : t('hero.playNow'))
     : (resumable ? t('hero.resumeNow') : t('hero.playNow'))
 
@@ -125,6 +130,7 @@ export function MediaSpotlightDialog({
           type="button"
           className="icon-button tv-detail-close"
           onClick={onClose}
+          data-aurora-overlay-close
           aria-label={t('dialog.closeDetails')}
         >
           <X size={22} />
@@ -156,7 +162,7 @@ export function MediaSpotlightDialog({
                 type="button"
                 className="primary-action"
                 onClick={playAction}
-                disabled={!onPlay || (item.type === 'series' && loadingState)}
+                disabled={!onPlay || (activeItem.type === 'series' && loadingState)}
               >
                 <Play size={20} fill="currentColor" /> {playLabel}
               </button>
@@ -171,7 +177,7 @@ export function MediaSpotlightDialog({
                   <><Plus size={18} /> {t('dialog.addToMyList')}</>
                 )}
               </button>
-              {item.type !== 'series' ? (
+              {activeItem.type !== 'series' ? (
                 <button
                   type="button"
                   className="secondary-action"
@@ -337,14 +343,15 @@ export function MediaSpotlightDialog({
           type="button"
           className="icon-button dialog-close"
           onClick={onClose}
+          data-aurora-overlay-close
           aria-label={t('dialog.closeDetails')}
         >
           <X size={18} />
         </button>
 
         <div className="dialog-hero">
-          {item.backdropUrl ? (
-            <img src={item.backdropUrl} alt="" className="dialog-hero-image" />
+          {activeItem.backdropUrl ? (
+            <img src={activeItem.backdropUrl} alt="" className="dialog-hero-image" />
           ) : (
             <div className="dialog-hero-fallback" />
           )}
@@ -352,89 +359,93 @@ export function MediaSpotlightDialog({
         </div>
 
         <div className="dialog-body">
-          {detail.posterUrl ? (
-            <img src={detail.posterUrl} alt={detail.title} className="dialog-poster-thumb" />
-          ) : null}
-
-          <p className="eyebrow">
-            {detail.type === 'series' ? t('dialog.seriesSpotlight') : t('dialog.movieSpotlight')}
-          </p>
-          <h2 id="aurora-dialog-title" className="dialog-title">{detail.title}</h2>
-
-          <div className="dialog-meta">
-            {metadata.map((entry) => (
-              <span key={entry}>{entry}</span>
-            ))}
-            {detail.rating != null ? (
-              <span className="dialog-rating">
-                <Star size={14} fill="currentColor" /> {detail.rating.toFixed(1)}
-              </span>
+          <div className="dialog-header-block">
+            {detail.posterUrl ? (
+              <img src={detail.posterUrl} alt={detail.title} className="dialog-poster-thumb" />
             ) : null}
-          </div>
 
-          <div className="dialog-actions">
-            <button
-              type="button"
-              className="primary-action"
-              onClick={playAction}
-              disabled={!onPlay || (item.type === 'series' && loadingState)}
-            >
-              <Play size={18} fill="currentColor" /> {playLabel}
-            </button>
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={() => onToggleFavorite?.(detail)}
-            >
-              {detail.isFavorite ? (
-                <><Check size={18} /> {t('dialog.inMyList')}</>
-              ) : (
-                <><Plus size={18} /> {t('dialog.addToMyList')}</>
-              )}
-            </button>
-            {item.type !== 'series' ? (
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={handleToggleItemWatched}
-              >
-                {(playedOverrides[detail.id] ?? detail.played) ? (
-                  <><CheckCircle size={18} /> {t('dialog.markUnwatched')}</>
-                ) : (
-                  <><Circle size={18} /> {t('dialog.markWatched')}</>
-                )}
-              </button>
-            ) : null}
-          </div>
+            <div className="dialog-copy-block">
+              <p className="eyebrow">
+                {detail.type === 'series' ? t('dialog.seriesSpotlight') : t('dialog.movieSpotlight')}
+              </p>
+              <h2 id="aurora-dialog-title" className="dialog-title">{detail.title}</h2>
 
-          <p className="dialog-overview">
-            {detail.overview || t('dialog.noSynopsis')}
-          </p>
+              <div className="dialog-meta">
+                {metadata.map((entry) => (
+                  <span key={entry}>{entry}</span>
+                ))}
+                {detail.rating != null ? (
+                  <span className="dialog-rating">
+                    <Star size={14} fill="currentColor" /> {detail.rating.toFixed(1)}
+                  </span>
+                ) : null}
+              </div>
 
-          {detail.genres.length ? (
-            <div className="chip-row">
-              {detail.genres.slice(0, 5).map((genre) => (
-                <span key={genre} className="genre-chip">{genre}</span>
-              ))}
-            </div>
-          ) : null}
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={playAction}
+                  disabled={!onPlay || (activeItem.type === 'series' && loadingState)}
+                >
+                  <Play size={18} fill="currentColor" /> {playLabel}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => onToggleFavorite?.(detail)}
+                >
+                  {detail.isFavorite ? (
+                    <><Check size={18} /> {t('dialog.inMyList')}</>
+                  ) : (
+                    <><Plus size={18} /> {t('dialog.addToMyList')}</>
+                  )}
+                </button>
+                {activeItem.type !== 'series' ? (
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={handleToggleItemWatched}
+                  >
+                    {(playedOverrides[detail.id] ?? detail.played) ? (
+                      <><CheckCircle size={18} /> {t('dialog.markUnwatched')}</>
+                    ) : (
+                      <><Circle size={18} /> {t('dialog.markWatched')}</>
+                    )}
+                  </button>
+                ) : null}
+              </div>
 
-          {detail.studios.length || detail.tags.length ? (
-            <div className="detail-meta-inline">
-              {detail.studios.length ? (
-                <span className="detail-meta-item">
-                  <span className="detail-meta-label">{t('dialog.studios')}</span>
-                  {detail.studios.slice(0, 3).join(', ')}
-                </span>
+              <p className="dialog-overview">
+                {detail.overview || t('dialog.noSynopsis')}
+              </p>
+
+              {detail.genres.length ? (
+                <div className="chip-row">
+                  {detail.genres.slice(0, 5).map((genre) => (
+                    <span key={genre} className="genre-chip">{genre}</span>
+                  ))}
+                </div>
               ) : null}
-              {detail.tags.length ? (
-                <span className="detail-meta-item">
-                  <span className="detail-meta-label">{t('dialog.tags')}</span>
-                  {detail.tags.slice(0, 5).join(', ')}
-                </span>
+
+              {detail.studios.length || detail.tags.length ? (
+                <div className="detail-meta-inline">
+                  {detail.studios.length ? (
+                    <span className="detail-meta-item">
+                      <span className="detail-meta-label">{t('dialog.studios')}</span>
+                      {detail.studios.slice(0, 3).join(', ')}
+                    </span>
+                  ) : null}
+                  {detail.tags.length ? (
+                    <span className="detail-meta-item">
+                      <span className="detail-meta-label">{t('dialog.tags')}</span>
+                      {detail.tags.slice(0, 5).join(', ')}
+                    </span>
+                  ) : null}
+                </div>
               ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
 
         <div className="dialog-lower">

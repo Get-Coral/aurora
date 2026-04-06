@@ -10,6 +10,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 WORKDIR /app
+ENV AURORA_DISABLE_SPA_PRERENDER=true
 COPY . .
 RUN pnpm build
 

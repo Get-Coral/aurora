@@ -501,6 +501,81 @@ export const reportPlaybackState = createServerFn({ method: 'POST' })
     })
   })
 
+// ── Admin: users ─────────────────────────────────────────────────────────────
+
+export const fetchAdminUsers = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getUsers } = await import('../lib/jellyfin')
+  const users = await getUsers()
+  return users.map((u) => ({
+    id: u.Id,
+    name: u.Name,
+    isAdmin: u.Policy?.IsAdministrator ?? false,
+    isDisabled: u.Policy?.IsDisabled ?? false,
+    lastLoginDate: u.LastLoginDate ?? null,
+    hasPolicy: u.Policy != null,
+  }))
+})
+
+export const toggleAdminUser = createServerFn({ method: 'POST' })
+  .inputValidator((input: { userId: string; disabled: boolean }) => input)
+  .handler(async ({ data }) => {
+    const { getUserById, updateUserPolicy } = await import('../lib/jellyfin')
+    const user = await getUserById(data.userId)
+    const policy = { ...(user.Policy ?? {}), IsDisabled: data.disabled }
+    await updateUserPolicy(data.userId, policy)
+    return { ok: true }
+  })
+
+export const deleteAdminUser = createServerFn({ method: 'POST' })
+  .inputValidator((input: { userId: string }) => input)
+  .handler(async ({ data }) => {
+    const { deleteJellyfinUser } = await import('../lib/jellyfin')
+    await deleteJellyfinUser(data.userId)
+    return { ok: true }
+  })
+
+export const createAdminUser = createServerFn({ method: 'POST' })
+  .inputValidator((input: { name: string; password: string }) => input)
+  .handler(async ({ data }) => {
+    const { createJellyfinUser } = await import('../lib/jellyfin')
+    const user = await createJellyfinUser(data.name, data.password)
+    return {
+      id: user.Id,
+      name: user.Name,
+      isAdmin: user.Policy?.IsAdministrator ?? false,
+      isDisabled: user.Policy?.IsDisabled ?? false,
+      lastLoginDate: user.LastLoginDate ?? null,
+      hasPolicy: user.Policy != null,
+    }
+  })
+
+// ── Admin: libraries ──────────────────────────────────────────────────────────
+
+export const fetchAdminLibraries = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getVirtualFolders } = await import('../lib/jellyfin')
+  const folders = await getVirtualFolders()
+  return folders.map((f) => ({
+    itemId: f.ItemId,
+    name: f.Name,
+    collectionType: f.CollectionType ?? 'unknown',
+    locations: f.Locations ?? [],
+  }))
+})
+
+export const scanAllAdminLibraries = createServerFn({ method: 'POST' }).handler(async () => {
+  const { scanAllLibraries } = await import('../lib/jellyfin')
+  await scanAllLibraries()
+  return { ok: true }
+})
+
+export const scanAdminLibrary = createServerFn({ method: 'POST' })
+  .inputValidator((input: { itemId: string }) => input)
+  .handler(async ({ data }) => {
+    const { scanLibrary } = await import('../lib/jellyfin')
+    await scanLibrary(data.itemId)
+    return { ok: true }
+  })
+
 export const fetchAdminOverview = createServerFn({ method: 'GET' }).handler(async () => {
   const { getSystemInfo, getItemCounts } = await import('../lib/jellyfin')
   const { getEffectiveJellyfinSettings } = await import('../lib/config-store')

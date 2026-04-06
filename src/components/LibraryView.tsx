@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { CURATED_MOVIE_GENRES } from '../lib/genres'
-import { fetchLibrary } from '../server/functions'
+import { fetchLibraryRuntime } from '../lib/runtime-functions'
 import { MediaCard } from './MediaCard'
 import { MediaPlayerDialog } from './MediaPlayerDialog'
 import { MediaSpotlightDialog } from './MediaSpotlightDialog'
@@ -89,7 +89,7 @@ export function LibraryView({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['library-infinite', type, sort, order, genre, ratings, decade, minScore, watchStatus],
     queryFn: ({ pageParam }) =>
-      fetchLibrary({
+      fetchLibraryRuntime({
         data: {
           type,
           page: pageParam as number,

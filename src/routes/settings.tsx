@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Tv } from 'lucide-react'
+import { Bug, ExternalLink, Github, Heart, Tv } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n, supportedLocales } from '../lib/i18n'
 import type { Locale } from '../lib/i18n'
+import {
+  fetchOpenSubtitlesKeyRuntime,
+  fetchSetupStatusRuntime,
+  saveOpenSubtitlesKeyRuntime,
+  saveSettingsRuntime,
+} from '../lib/runtime-functions'
 import { useTvMode } from '../lib/tv-mode'
-import { fetchOpenSubtitlesKey, fetchSetupStatus, saveOpenSubtitlesKey, saveSettings } from '../server/functions'
 
 export const Route = createFileRoute('/settings')({
   loader: async () => {
-    const setupStatus = await fetchSetupStatus()
-    if (!setupStatus.configured) {
+    const setupStatus = await fetchSetupStatusRuntime()
+    if (!setupStatus?.configured) {
       throw redirect({ to: '/setup' })
     }
     return setupStatus
@@ -38,17 +43,17 @@ function SettingsPage() {
 
   const { data: existingOsKey } = useQuery({
     queryKey: ['opensubtitles-key'],
-    queryFn: () => fetchOpenSubtitlesKey(),
+    queryFn: () => fetchOpenSubtitlesKeyRuntime(),
   })
   const [osApiKey, setOsApiKey] = useState('')
 
   const saveOsMutation = useMutation({
-    mutationFn: () => saveOpenSubtitlesKey({ data: { apiKey: osApiKey } }),
+    mutationFn: () => saveOpenSubtitlesKeyRuntime(osApiKey),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['opensubtitles-key'] }),
   })
 
   const saveMutation = useMutation({
-    mutationFn: () => saveSettings({ data: { url, apiKey, userId, username, password } }),
+    mutationFn: () => saveSettingsRuntime({ url, apiKey, userId, username, password }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['current-user'] }),
   })
 
@@ -192,6 +197,36 @@ function SettingsPage() {
           </form>
         </section>
 
+        <section className="settings-about-card">
+          <div className="settings-about-head">
+            <Heart size={15} className="settings-about-heart" />
+            <span>Aurora for Jellyfin</span>
+          </div>
+          <p className="settings-about-copy">{t('settings.aboutCopy')}</p>
+          <div className="settings-about-links">
+            <a
+              href="https://github.com/ElianCodes/aurora-ui/issues/new?template=bug_report.md"
+              target="_blank"
+              rel="noreferrer"
+              className="settings-about-link settings-about-link-bug"
+            >
+              <Bug size={15} />
+              {t('footer.reportBug')}
+              <ExternalLink size={12} className="settings-about-link-ext" />
+            </a>
+            <a
+              href="https://github.com/ElianCodes/aurora-ui"
+              target="_blank"
+              rel="noreferrer"
+              className="settings-about-link"
+            >
+              <Github size={15} />
+              {t('footer.contribute')}
+              <ExternalLink size={12} className="settings-about-link-ext" />
+            </a>
+          </div>
+        </section>
+
         <section className="overview-card" style={{ padding: '2rem', gap: '1.25rem' }}>
           <p className="eyebrow">{t('settings.appearanceSection')}</p>
 
@@ -209,7 +244,7 @@ function SettingsPage() {
             </select>
           </label>
 
-          <div className="settings-toggle-row">
+          <div className="settings-toggle-row settings-toggle-row-tv">
             <div className="settings-toggle-copy">
               <div className="settings-toggle-label">
                 <Tv size={16} />

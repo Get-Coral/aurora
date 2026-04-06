@@ -16,8 +16,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 const CONNECTIVITY_CHECK_PATH = '/healthz'
 const CONNECTIVITY_RETRY_MS = 30_000
+const IS_DEV = import.meta.env.DEV
 
 export function PwaStatusBanner() {
+  if (IS_DEV) return null
+
   const [isOffline, setIsOffline] = useState(false)
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null)
   const [isApplyingUpdate, setIsApplyingUpdate] = useState(false)

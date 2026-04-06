@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { LibraryView } from '../../../components/LibraryView'
 import { useI18n } from '../../../lib/i18n'
-import { fetchSetupStatus } from '../../../server/functions'
+import { fetchSetupStatusRuntime } from '../../../lib/runtime-functions'
 
 type MovieSort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
 type MovieSortOrder = 'Ascending' | 'Descending'
@@ -29,7 +29,7 @@ export const Route = createFileRoute('/library/movies/')({
   }),
   loaderDeps: ({ search }) => search,
   loader: async () => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
     if (!setupStatus.configured) {
       throw redirect({ to: '/setup' })
     }

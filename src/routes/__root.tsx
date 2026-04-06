@@ -3,6 +3,7 @@ import {
   Scripts,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
 } from '@tanstack/react-router'
 import { AppBootstrap } from '../components/AppBootstrap'
 import Footer from '../components/Footer'
@@ -40,6 +41,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: 'theme-color',
         content: '#050816',
+      },
+      {
+        name: 'mobile-web-app-capable',
+        content: 'yes',
       },
       {
         name: 'apple-mobile-web-app-capable',
@@ -82,6 +87,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const hideHeader = pathname === '/setup'
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -93,7 +101,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <I18nProvider>
           <AppBootstrap />
           <PwaStatusBanner />
-          <Header />
+          {hideHeader ? null : <Header />}
           {children}
           <Footer />
           <Scripts />

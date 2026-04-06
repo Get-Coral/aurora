@@ -8,11 +8,11 @@ import { MediaSpotlightDialog } from '../components/MediaSpotlightDialog'
 import { useFavoriteAction } from '../components/useFavoriteAction'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
-import { fetchSetupStatus, fetchWatchHistory } from '../server/functions'
+import { fetchSetupStatusRuntime, fetchWatchHistoryRuntime } from '../lib/runtime-functions'
 
 export const Route = createFileRoute('/history')({
   loader: async () => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
     if (!setupStatus.configured) throw redirect({ to: '/setup' })
   },
   component: HistoryPage,
@@ -63,7 +63,7 @@ function HistoryPage() {
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['watch-history'],
-    queryFn: ({ pageParam }) => fetchWatchHistory({ data: { page: pageParam as number } }),
+    queryFn: ({ pageParam }) => fetchWatchHistoryRuntime({ data: { page: pageParam as number } }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
       const totalPages = Math.ceil(lastPage.total / 24)

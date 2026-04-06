@@ -1,45 +1,61 @@
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Settings, Sparkles, X } from 'lucide-react'
+import { Menu, Search, Settings, Sparkles, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { MediaItem } from '../lib/media'
 import { useI18n } from '../lib/i18n'
+import { fetchSearchRuntime, fetchUsernameRuntime } from '../lib/runtime-functions'
 import { useTvMode } from '../lib/tv-mode'
-import { fetchSearch, fetchUsername } from '../server/functions'
+import { useRouterState } from '@tanstack/react-router'
 
 export default function Header() {
   const { t } = useI18n()
   const { tvMode } = useTvMode()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   const { data: username = '' } = useQuery({
     queryKey: ['current-user'],
-    queryFn: () => fetchUsername(),
+    queryFn: () => fetchUsernameRuntime(),
   })
   const [searchOpen, setSearchOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const headerRef = useRef<HTMLElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const deferredQuery = useDeferredValue(query.trim())
-  const navigate = useNavigate()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   const { data: results = [], isFetching } = useQuery({
     queryKey: ['search', deferredQuery],
-    queryFn: () => fetchSearch({ data: { query: deferredQuery } }),
+    queryFn: () => fetchSearchRuntime({ data: { query: deferredQuery } }),
     enabled: deferredQuery.length > 1,
   })
-
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus()
   }, [searchOpen])
 
-  function jumpToSection(id: string) {
-    if (pathname !== '/') {
-      void navigate({ to: '/' })
-      return
+  useEffect(() => {
+    setSearchOpen(false)
+    setNavOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent | TouchEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (headerRef.current?.contains(target)) return
+      setSearchOpen(false)
+      setNavOpen(false)
     }
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('touchstart', handlePointerDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('touchstart', handlePointerDown)
+    }
+  }, [])
 
   function selectItem(item: MediaItem) {
     window.dispatchEvent(new CustomEvent('aurora:select-media', { detail: item }))
@@ -47,25 +63,95 @@ export default function Header() {
     setQuery('')
   }
 
-  return (
-    <header className="app-header">
-      <nav className="page-wrap header-bar">
-        <Link to="/" className="brand-mark" data-tv-focusable="true">
-          <span className="brand-glyph">
-            <Sparkles size={15} />
-          </span>
-          <span>
-            {t('brand.wordmark')} <em>{t('brand.forJellyfin')}</em>
-          </span>
-        </Link>
+  function toggleSearch() {
+    setSearchOpen((current) => {
+      const next = !current
+      if (next) setNavOpen(false)
+      if (!next) setQuery('')
+      return next
+    })
+  }
 
-        <div className="header-nav">
-          <Link to="/" className="nav-pill" activeProps={{ className: 'nav-pill nav-pill-active' }} data-tv-focusable="true">
+  function closeSearch() {
+    setSearchOpen(false)
+    setQuery('')
+  }
+
+  function toggleNav() {
+    setNavOpen((current) => {
+      const next = !current
+      if (next) setSearchOpen(false)
+      return next
+    })
+  }
+
+  return (
+    <header ref={headerRef} className="app-header">
+      <nav className="page-wrap header-bar">
+        <div className="header-top-row">
+          <Link to="/" className="brand-mark" data-tv-focusable="true">
+            <span className="brand-glyph">
+              <Sparkles size={15} />
+            </span>
+            <span>
+              {t('brand.wordmark')} <em>{t('brand.forJellyfin')}</em>
+            </span>
+          </Link>
+
+          <div className="header-actions">
+            <button
+              type="button"
+              onClick={toggleNav}
+              className={navOpen ? 'icon-button mobile-nav-toggle mobile-nav-toggle-active' : 'icon-button mobile-nav-toggle'}
+              aria-label={t('nav.openBrowse')}
+              aria-expanded={navOpen}
+            >
+              {navOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleSearch}
+              className={searchOpen ? 'icon-button icon-button-active' : 'icon-button'}
+              aria-label={searchOpen ? t('search.close') : t('search.open')}
+              data-tv-focusable="true"
+            >
+              {searchOpen ? <X size={18} /> : <Search size={20} />}
+            </button>
+
+            <Link
+              to="/settings"
+              className="icon-button"
+              aria-label={t('nav.settings')}
+              data-tv-focusable="true"
+            >
+              <Settings size={20} />
+            </Link>
+
+            <Link
+              to="/admin"
+              className="avatar-chip"
+              aria-label="Admin dashboard"
+              title={username || 'Admin'}
+              data-tv-focusable="true"
+            >
+              {username.slice(0, 2).toUpperCase() || '??'}
+            </Link>
+          </div>
+        </div>
+
+        <div className={navOpen ? 'header-nav header-nav-open' : 'header-nav'}>
+          <Link
+            to="/"
+            className="nav-pill"
+            activeProps={{ className: 'nav-pill nav-pill-active' }}
+            data-tv-focusable="true"
+          >
             {t('nav.home')}
           </Link>
           <Link
             to="/library/movies"
-            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0, watchStatus: undefined }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
@@ -74,7 +160,7 @@ export default function Header() {
           </Link>
           <Link
             to="/library/series"
-            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
+            search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0, watchStatus: undefined }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
@@ -101,24 +187,21 @@ export default function Header() {
           </Link>
         </div>
 
-        <div className="header-actions">
+        <div className={searchOpen ? 'header-search-row header-search-row-open' : 'header-search-row'}>
           {searchOpen ? (
             <div className="search-shell">
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
+                onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
                 placeholder={t('search.placeholder')}
                 className="search-input"
               />
               <button
                 type="button"
                 className="icon-button"
-                onClick={() => {
-                  setSearchOpen(false)
-                  setQuery('')
-                }}
+                onClick={closeSearch}
                 aria-label={t('search.close')}
               >
                 <X size={16} />
@@ -150,36 +233,7 @@ export default function Header() {
                 </div>
               ) : null}
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="icon-button"
-              aria-label={t('search.open')}
-              data-tv-focusable="true"
-            >
-              <Search size={20} />
-            </button>
-          )}
-
-          <Link
-            to="/settings"
-            className="icon-button"
-            aria-label={t('nav.settings')}
-            data-tv-focusable="true"
-          >
-            <Settings size={20} />
-          </Link>
-
-          <Link
-            to="/admin"
-            className="avatar-chip"
-            aria-label="Admin dashboard"
-            title={username || 'Admin'}
-            data-tv-focusable="true"
-          >
-            {username.slice(0, 2).toUpperCase() || '??'}
-          </Link>
+          ) : null}
         </div>
       </nav>
     </header>

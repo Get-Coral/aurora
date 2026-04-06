@@ -3,14 +3,27 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { Globe, Key, ArrowLeft, ArrowRight, User } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
-import {
-  fetchSetupStatus,
-  saveSetupConfiguration,
-} from '../server/functions'
+import { fetchSetupStatusRuntime, saveSetupConfigurationRuntime } from '../lib/runtime-functions'
+
+const IS_PRERENDER_BUILD = process.env['TSS_PRERENDERING'] === 'true'
 
 export const Route = createFileRoute('/setup')({
   loader: async () => {
-    const setupStatus = await fetchSetupStatus()
+    if (IS_PRERENDER_BUILD) {
+      return {
+        configured: false,
+        source: 'missing',
+        current: {
+          url: '',
+          userId: '',
+          username: '',
+          hasApiKey: false,
+          hasPassword: false,
+        },
+      }
+    }
+
+    const setupStatus = await fetchSetupStatusRuntime()
 
     if (setupStatus.configured) {
       throw redirect({ to: '/' })
@@ -59,9 +72,7 @@ function SetupPage() {
 
   const setupMutation = useMutation({
     mutationFn: async () =>
-      saveSetupConfiguration({
-        data: { url, apiKey, userId, username, password },
-      }),
+      saveSetupConfigurationRuntime({ url, apiKey, userId, username, password }),
     onSuccess: async () => {
       await navigate({ to: '/' })
     },

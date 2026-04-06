@@ -5,7 +5,13 @@ import { useLockBodyScroll } from './useLockBodyScroll'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { getClientPlaybackContext } from '../lib/platform'
-import { beginPlaybackSession, fetchOnlineSubtitle, fetchOpenSubtitlesKey, reportPlaybackState, searchOnlineSubtitles } from '../server/functions'
+import {
+  beginPlaybackSessionRuntime,
+  fetchOnlineSubtitleRuntime,
+  fetchOpenSubtitlesKeyRuntime,
+  reportPlaybackStateRuntime,
+  searchOnlineSubtitlesRuntime,
+} from '../lib/runtime-functions'
 
 interface MediaPlayerDialogProps {
   item: MediaItem | null
@@ -88,13 +94,13 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
 
   const { data: osApiKey } = useQuery({
     queryKey: ['opensubtitles-key'],
-    queryFn: () => fetchOpenSubtitlesKey(),
+    queryFn: () => fetchOpenSubtitlesKeyRuntime(),
     staleTime: Infinity,
   })
 
   const { data: onlineSubtitles = [], isFetching: searchingSubtitles } = useQuery({
     queryKey: ['online-subtitles', item?.id],
-    queryFn: () => searchOnlineSubtitles({
+    queryFn: () => searchOnlineSubtitlesRuntime({
       data: {
         title: item!.type === 'episode' ? (item!.seriesTitle ?? item!.title) : item!.title,
         year: item!.year,
@@ -132,7 +138,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     let cancelled = false
     const client = getClientPlaybackContext()
 
-    void beginPlaybackSession({ data: { id: item.id, client } })
+    void beginPlaybackSessionRuntime({ data: { id: item.id, client } })
       .then((session) => { if (!cancelled) setPlaybackSession(session) })
       .catch(() => {
         if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false, playMethod: 'DirectPlay', subtitleTracks: [] })
@@ -171,7 +177,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       const currentSecond = Math.floor(video!.currentTime)
       if (!overrides?.force && currentSecond - lastReportedSecondRef.current < 8) return
       lastReportedSecondRef.current = currentSecond
-      void reportPlaybackState({ data: buildPayload(overrides) }).catch(() => undefined)
+      void reportPlaybackStateRuntime({ data: buildPayload(overrides) }).catch(() => undefined)
     }
 
     function handleLoadedMetadata() {
@@ -199,7 +205,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       if (stopReportedRef.current || video.ended) return
       const played = video.duration && video.currentTime / video.duration >= 0.94 ? true : undefined
       stopReportedRef.current = true
-      void reportPlaybackState({ data: buildPayload({ isStopped: true, played }) }).catch(() => undefined)
+      void reportPlaybackStateRuntime({ data: buildPayload({ isStopped: true, played }) }).catch(() => undefined)
     }
   }, [open, item, playbackSession, streamUrl])
 
@@ -355,7 +361,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     setLoadingOnlineSubtitle(true)
     setOnlineSubtitleError(false)
     try {
-      const { content } = await fetchOnlineSubtitle({ data: { fileId } })
+      const { content } = await fetchOnlineSubtitleRuntime({ data: { fileId } })
       setOnlineCues(parseVtt(content))
       setActiveSubtitle(null)
       setSubtitlePickerOpen(false)
@@ -518,6 +524,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
                 type="button"
                 className="icon-button"
                 onClick={onClose}
+                data-aurora-overlay-close
                 aria-label={t('player.close')}
               >
                 <X size={20} />
