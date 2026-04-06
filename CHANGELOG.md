@@ -25,6 +25,37 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.3.0](https://github.com/ElianCodes/aurora-ui/compare/v1.2.0...v1.3.0) (2026-04-06)
+
+
+### Features
+
+* add "open bug report" button ([f0f2179](https://github.com/ElianCodes/aurora-ui/commit/f0f21791cb8ef39db4986fa988b4611a0f0ebbb0))
+* add Admin screen ([d18f841](https://github.com/ElianCodes/aurora-ui/commit/d18f841b30d548ad088dbe45cb457a3c507c2563))
+* add Service Worker ([3c99f3a](https://github.com/ElianCodes/aurora-ui/commit/3c99f3ab3774a1dadc6fe7bfd7b6cdcfd05c5ccd))
+* add user & library manager ([0d10ab1](https://github.com/ElianCodes/aurora-ui/commit/0d10ab16833952a2dc765d865430f1728c148e63))
+* allow back-button use in Android devices ([8b1d9af](https://github.com/ElianCodes/aurora-ui/commit/8b1d9af6b707444134e28780ba7d75a30f87360d))
+* allow clicks in menu for mobile ([327792d](https://github.com/ElianCodes/aurora-ui/commit/327792d97a245cd4a36034d53d12ad1669e70ec3))
+* enable prerendering ([6c14b79](https://github.com/ElianCodes/aurora-ui/commit/6c14b79b550c1c93c47f633d13f25c6fc8c2b69c))
+* improve setup system ([cd602b0](https://github.com/ElianCodes/aurora-ui/commit/cd602b06476a12185073ff86d111d0d6e1e8a047))
+* improve styling for TV navigation ([e0be1a7](https://github.com/ElianCodes/aurora-ui/commit/e0be1a7b3b887bf0dc8592053aec1c5ebb51bfb8))
+* **native:** add local capacitor app runtime ([641157b](https://github.com/ElianCodes/aurora-ui/commit/641157b3f1111e7e3f620caea600ba780cb0556a))
+* serve app over http ([adbea48](https://github.com/ElianCodes/aurora-ui/commit/adbea48ae51c7e051ab0713816fa1a11a8b362c3))
+* update runtime for admin panel ([7734444](https://github.com/ElianCodes/aurora-ui/commit/7734444abcb6bb8ce29ca169066dfaa6f2c3786b))
+* update small cards on homepage ([b17338d](https://github.com/ElianCodes/aurora-ui/commit/b17338d999427950f220937f272c2484e4bcae32))
+
+
+### Bug Fixes
+
+* disable PWA status header in dev ([c6a8458](https://github.com/ElianCodes/aurora-ui/commit/c6a8458b866ea13ac74070356c11d7d47a8f485b))
+* empty spaces in library ([61e1844](https://github.com/ElianCodes/aurora-ui/commit/61e18444b7ed01005ef68b8bf9f28ffd0a2dd021))
+* hide header on setup ([c5d367f](https://github.com/ElianCodes/aurora-ui/commit/c5d367f44585f1c48630b3873d53185239f1a87c))
+* hide resume now in mobile & tablet devices ([861da41](https://github.com/ElianCodes/aurora-ui/commit/861da41e20229ac7f57a2571cf4b6884712e7078))
+* improve behaviour on mobile for movie detail cards ([9990b21](https://github.com/ElianCodes/aurora-ui/commit/9990b2109866c0709f61db2fe7fd405780417722))
+* improve header on Mobile ([919263e](https://github.com/ElianCodes/aurora-ui/commit/919263ead2b74004d4fda92dc47f9fe3a5adfe55))
+* route not bahaving correctly ([016d5f1](https://github.com/ElianCodes/aurora-ui/commit/016d5f1335f5deb7119d4141c870bb5283ce85d5))
+* update styling for mobile ([a765278](https://github.com/ElianCodes/aurora-ui/commit/a765278c8a344a258de3ec0d0a55e40276977023))
+
 ## [1.2.0](https://github.com/ElianCodes/aurora-ui/compare/v1.1.0...v1.2.0) (2026-04-05)
 
 
