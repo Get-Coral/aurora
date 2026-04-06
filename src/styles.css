@@ -1918,14 +1918,24 @@ html.tv-mode .hero-copy-in {
   position: relative;
 }
 
+.dialog-header-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.75rem;
+}
+
+.dialog-copy-block {
+  min-width: 0;
+  flex: 1;
+}
+
 .dialog-poster-thumb {
-  float: right;
+  flex: 0 0 130px;
   width: 130px;
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 0.875rem;
   border: 1px solid var(--line);
-  margin: 0 0 1rem 1.75rem;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
@@ -1934,6 +1944,7 @@ html.tv-mode .hero-copy-in {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 3.5vw, 2.75rem);
   line-height: 1.05;
+  max-width: 18ch;
 }
 
 .dialog-actions {
@@ -3120,6 +3131,14 @@ html.tv-mode .hero-copy-in {
     border-radius: 1.4rem;
   }
 
+  .dialog-header-block {
+    gap: 1.1rem;
+  }
+
+  .dialog-title {
+    max-width: none;
+  }
+
   .detail-meta-grid,
   .cast-grid,
   .similar-grid {
@@ -3188,6 +3207,68 @@ html.tv-mode .hero-copy-in {
 
   .hero-content {
     padding-top: calc(var(--header-h) + 5.6rem);
+  }
+
+  .dialog-backdrop {
+    display: block;
+    padding: 0;
+    background: rgba(4, 8, 18, 0.92);
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+  }
+
+  .dialog-panel {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border: none;
+    border-radius: 0;
+  }
+
+  .dialog-close {
+    top: max(0.8rem, env(safe-area-inset-top));
+    right: max(0.8rem, env(safe-area-inset-right));
+  }
+
+  .dialog-hero {
+    height: min(30vh, 14rem);
+  }
+
+  .dialog-body {
+    padding: 1rem 1rem 1.1rem;
+  }
+
+  .dialog-header-block {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .dialog-poster-thumb {
+    width: clamp(8.5rem, 42vw, 11rem);
+    flex-basis: auto;
+  }
+
+  .dialog-title {
+    font-size: clamp(2rem, 8vw, 2.7rem);
+    line-height: 1;
+    text-wrap: balance;
+  }
+
+  .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-overview {
+    max-width: none;
+  }
+
+  .dialog-lower {
+    padding: 0 1rem calc(1.25rem + env(safe-area-inset-bottom));
   }
 }
 
