@@ -22,7 +22,7 @@
   --accent-warm: #ff9d66;
   --accent-glow: rgba(112, 168, 255, 0.24);
   --gold: #ffd37f;
-  --header-h: 88px;
+  --header-h: 72px;
   --shadow-xl: 0 24px 80px rgba(1, 6, 20, 0.5);
 }
 
@@ -68,25 +68,29 @@ button { font: inherit; }
 }
 
 .header-bar {
-  min-height: var(--header-h);
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap;           /* allows search row to drop to a second line */
   align-items: center;
   gap: 1rem;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.9rem 1.15rem;
+  padding: 0.65rem 0.75rem 0.65rem 1rem;
   background: linear-gradient(180deg, rgba(11, 16, 32, 0.78), rgba(11, 16, 32, 0.58));
   backdrop-filter: blur(24px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
 }
 
+/* On desktop the top-row wrapper dissolves: brand-mark and header-actions
+   become direct flex siblings of header-nav and header-search-row */
 .header-top-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
+  display: contents;
 }
+
+/* Desktop flex order: brand (1) → nav (2) → actions (3) → search row (4, full-width) */
+.brand-mark       { order: 1; }
+.header-nav       { order: 2; }
+.header-actions   { order: 3; }
+.header-search-row { order: 4; }
 
 .brand-mark {
   display: inline-flex;
@@ -131,9 +135,30 @@ button { font: inherit; }
   gap: 0.65rem;
 }
 
+/* Desktop: nav expands to fill the space between brand and actions */
+.header-nav {
+  flex: 1;
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .header-actions {
-  margin-left: auto;
+  margin-left: 0;
   position: relative;
+  flex-shrink: 0;
+}
+
+/* Desktop: search row is hidden until active, then spans full pill width */
+.header-search-row {
+  display: none;
+  flex-basis: 100%;
+  padding-top: 0.1rem;
+  padding-bottom: 0.25rem;
+}
+
+.header-search-row-open {
+  display: block;
 }
 
 .mobile-nav-toggle {
@@ -217,15 +242,11 @@ button { font: inherit; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: min(26rem, calc(100vw - 8rem));
+  width: 100%;
   padding: 0.4rem 0.45rem 0.4rem 0.85rem;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: rgba(7, 12, 24, 0.92);
-}
-
-.header-search-row {
-  display: contents;
 }
 
 .search-input {
@@ -2858,9 +2879,20 @@ html.tv-mode .hero-copy-in {
     padding: 0.9rem;
   }
 
+  /* Restore the top-row wrapper as a real flex row on mobile */
   .header-top-row {
+    display: flex;
+    align-items: center;
     gap: 0.75rem;
+    width: 100%;
+    order: 0; /* first in the stacked layout */
   }
+
+  /* Reset order overrides from desktop */
+  .brand-mark       { order: 0; }
+  .header-nav       { order: 0; }
+  .header-actions   { order: 0; }
+  .header-search-row { order: 0; }
 
   .brand-mark {
     min-width: 0;
@@ -2924,10 +2956,15 @@ html.tv-mode .hero-copy-in {
   .header-search-row {
     display: none;
     width: 100%;
+    padding: 0;
   }
 
   .header-search-row-open {
     display: block;
+  }
+
+  .site-footer-link {
+    display: none;
   }
 
   .search-shell {
