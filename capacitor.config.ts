@@ -13,12 +13,16 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'always',
   },
-  server: serverUrl
-    ? {
-        url: serverUrl,
-        cleartext: serverUrl.startsWith('http://'),
-      }
-    : undefined,
+  server: {
+    hostname: 'localhost',
+    androidScheme: 'http',
+    ...(serverUrl
+      ? {
+          url: serverUrl,
+          cleartext: serverUrl.startsWith('http://'),
+        }
+      : {}),
+  },
 }
 
 export default config
