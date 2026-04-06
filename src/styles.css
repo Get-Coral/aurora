@@ -161,8 +161,10 @@ button { font: inherit; }
   display: block;
 }
 
+/* Needs !important because .icon-button { display: inline-flex } appears later
+   in the same stylesheet and would otherwise win on equal specificity */
 .mobile-nav-toggle {
-  display: none;
+  display: none !important;
 }
 
 .nav-pill,
@@ -938,6 +940,13 @@ html.tv-mode .hero-copy-in {
   color: var(--accent-strong);
 }
 
+.site-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .site-footer-link {
   display: inline-flex;
   align-items: center;
@@ -946,6 +955,102 @@ html.tv-mode .hero-copy-in {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.site-footer-bug-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(251, 146, 60, 0.25);
+  border-radius: 999px;
+  background: rgba(251, 146, 60, 0.06);
+  color: rgba(251, 146, 60, 0.85);
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 140ms, color 140ms;
+}
+
+.site-footer-bug-link:hover {
+  background: rgba(251, 146, 60, 0.14);
+  color: rgb(251, 146, 60);
+}
+
+/* About card in settings */
+.settings-about-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-about-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.settings-about-heart {
+  color: #f87171;
+}
+
+.settings-about-copy {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  line-height: 1.65;
+}
+
+.settings-about-links {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.settings-about-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.2rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-muted);
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 140ms, color 140ms, border-color 140ms;
+}
+
+.settings-about-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.settings-about-link-bug {
+  border-color: rgba(251, 146, 60, 0.25);
+  background: rgba(251, 146, 60, 0.06);
+  color: rgba(251, 146, 60, 0.85);
+}
+
+.settings-about-link-bug:hover {
+  background: rgba(251, 146, 60, 0.14);
+  color: rgb(251, 146, 60);
+}
+
+.settings-about-link-ext {
+  opacity: 0.5;
+  margin-left: 0.1rem;
 }
 
 .overview-band {
@@ -2921,7 +3026,7 @@ html.tv-mode .hero-copy-in {
   }
 
   .mobile-nav-toggle {
-    display: inline-flex;
+    display: inline-flex !important;
   }
 
   .mobile-nav-toggle-active {
@@ -3494,6 +3599,7 @@ html.tv-mode .hero-copy-in {
 html.tv-mode {
   font-size: 120%;
   scroll-padding-top: 6rem;
+  --header-h: 72px; /* always single-row pill on TV */
 }
 
 /* Always-visible focus ring for D-pad / remote navigation */
@@ -3652,6 +3758,56 @@ html.tv-mode .episode-play-button {
 /* Footer */
 html.tv-mode .site-footer {
   display: none;
+}
+
+/* ── TV mode: header ─────────────────────────────────────────────────────── */
+
+/* Force the single-row pill layout regardless of screen size */
+html.tv-mode .header-bar {
+  border-radius: 999px;
+  padding: 0.6rem 0.8rem 0.6rem 1.1rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+/* Dissolve top-row wrapper just like desktop does */
+html.tv-mode .header-top-row {
+  display: contents;
+}
+
+/* Keep desktop flex ordering */
+html.tv-mode .brand-mark   { order: 1; flex-shrink: 0; }
+html.tv-mode .header-nav   { order: 2; flex: 1; justify-content: center; overflow: hidden; }
+html.tv-mode .header-actions { order: 3; flex-shrink: 0; margin-left: 0; }
+html.tv-mode .header-search-row { order: 4; flex-basis: 100%; }
+
+/* Hide hamburger toggle — nav is always visible on TV */
+html.tv-mode .mobile-nav-toggle {
+  display: none;
+}
+
+/* Nav is always shown on TV regardless of navOpen state */
+html.tv-mode .header-nav {
+  display: flex !important;
+  flex-wrap: nowrap;
+}
+
+/* ── TV mode: hero ───────────────────────────────────────────────────────── */
+
+/* Shrink min-height so buttons don't fall off screen on 16:9 TVs */
+html.tv-mode .hero-shell,
+html.tv-mode .hero-content {
+  min-height: min(100vh, 56.25vw); /* 16:9 safe area */
+}
+
+html.tv-mode .hero-content {
+  padding-top: calc(var(--header-h) + 2rem);
+  padding-bottom: 5rem;
+  align-items: end;
+}
+
+html.tv-mode .hero-copy {
+  padding-bottom: 0;
 }
 
 /* Skip buttons — show label in TV mode */

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Tv } from 'lucide-react'
+import { Bug, ExternalLink, Github, Heart, Tv } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n, supportedLocales } from '../lib/i18n'
 import type { Locale } from '../lib/i18n'
@@ -195,6 +195,36 @@ function SettingsPage() {
               {saveOsMutation.isPending ? t('settings.saving') : t('settings.save')}
             </button>
           </form>
+        </section>
+
+        <section className="settings-about-card">
+          <div className="settings-about-head">
+            <Heart size={15} className="settings-about-heart" />
+            <span>Aurora for Jellyfin</span>
+          </div>
+          <p className="settings-about-copy">{t('settings.aboutCopy')}</p>
+          <div className="settings-about-links">
+            <a
+              href="https://github.com/ElianCodes/aurora-ui/issues/new?template=bug_report.md"
+              target="_blank"
+              rel="noreferrer"
+              className="settings-about-link settings-about-link-bug"
+            >
+              <Bug size={15} />
+              {t('footer.reportBug')}
+              <ExternalLink size={12} className="settings-about-link-ext" />
+            </a>
+            <a
+              href="https://github.com/ElianCodes/aurora-ui"
+              target="_blank"
+              rel="noreferrer"
+              className="settings-about-link"
+            >
+              <Github size={15} />
+              {t('footer.contribute')}
+              <ExternalLink size={12} className="settings-about-link-ext" />
+            </a>
+          </div>
         </section>
 
         <section className="overview-card" style={{ padding: '2rem', gap: '1.25rem' }}>
