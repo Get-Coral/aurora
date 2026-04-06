@@ -10,6 +10,7 @@ export const nlMessages: MessageDictionary = {
   'nav.collections': 'Collecties',
   'nav.myList': 'Mijn lijst',
   'nav.history': 'Geschiedenis',
+  'nav.openBrowse': 'Browsemenu openen',
   'locale.label': 'Taal',
   'search.placeholder': 'Zoek in je bibliotheek',
   'search.close': 'Zoeken sluiten',

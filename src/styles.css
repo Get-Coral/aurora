@@ -70,6 +70,7 @@ button { font: inherit; }
 .header-bar {
   min-height: var(--header-h);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   border: 1px solid var(--line);
@@ -78,6 +79,13 @@ button { font: inherit; }
   background: linear-gradient(180deg, rgba(11, 16, 32, 0.78), rgba(11, 16, 32, 0.58));
   backdrop-filter: blur(24px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.header-top-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
 }
 
 .brand-mark {
@@ -128,6 +136,10 @@ button { font: inherit; }
   position: relative;
 }
 
+.mobile-nav-toggle {
+  display: none;
+}
+
 .nav-pill,
 .icon-button {
   border: 1px solid transparent;
@@ -171,6 +183,12 @@ button { font: inherit; }
   border-radius: 999px;
 }
 
+.icon-button-active {
+  color: var(--ink);
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.07);
+}
+
 .avatar-chip {
   width: 2.7rem;
   height: 2.7rem;
@@ -204,6 +222,10 @@ button { font: inherit; }
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: rgba(7, 12, 24, 0.92);
+}
+
+.header-search-row {
+  display: contents;
 }
 
 .search-input {
@@ -2822,7 +2844,7 @@ html.tv-mode .hero-copy-in {
 
 @media (max-width: 800px) {
   :root {
-    --header-h: 76px;
+    --header-h: 114px;
   }
 
   .app-header {
@@ -2830,24 +2852,98 @@ html.tv-mode .hero-copy-in {
   }
 
   .header-bar {
-    border-radius: 1.5rem;
+    border-radius: 1.6rem;
     min-height: auto;
-    flex-wrap: wrap;
+    gap: 0.85rem;
+    padding: 0.9rem;
+  }
+
+  .header-top-row {
+    gap: 0.75rem;
+  }
+
+  .brand-mark {
+    min-width: 0;
+    flex: 1;
+    gap: 0.75rem;
+  }
+
+  .brand-mark span:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+    min-width: 0;
+    font-size: 0.98rem;
+    line-height: 1.05;
+  }
+
+  .brand-mark em {
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+  }
+
+  .header-actions {
+    gap: 0.45rem;
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-flex;
+  }
+
+  .mobile-nav-toggle-active {
+    color: var(--ink);
+    border-color: var(--line);
+    background: rgba(255, 255, 255, 0.07);
   }
 
   .header-nav {
-    order: 3;
+    display: none;
     width: 100%;
+    gap: 0.55rem;
     overflow-x: auto;
-    padding-bottom: 0.2rem;
+    padding: 0.2rem 0 0.1rem;
+    scrollbar-width: none;
+  }
+
+  .header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-nav-open {
+    display: flex;
+  }
+
+  .nav-pill {
+    padding: 0.7rem 0.95rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .header-search-row {
+    display: none;
+    width: 100%;
+  }
+
+  .header-search-row-open {
+    display: block;
   }
 
   .search-shell {
-    width: min(100vw - 3rem, 24rem);
+    width: 100%;
+    padding-inline: 0.75rem 0.4rem;
+    border-radius: 1.1rem;
+  }
+
+  .search-results {
+    top: calc(100% + 0.55rem);
+    max-height: min(22rem, 58vh);
+    overflow-y: auto;
   }
 
   .hero-content {
-    padding-top: calc(var(--header-h) + 4.5rem);
+    padding-top: calc(var(--header-h) + 5.25rem);
   }
 
   .hero-title {
@@ -2888,6 +2984,10 @@ html.tv-mode .hero-copy-in {
     grid-template-columns: 1fr 1fr;
   }
 
+  .settings-toggle-row-tv {
+    display: none;
+  }
+
   .episode-highlight,
   .episode-row-body {
     flex-direction: column;
@@ -2905,6 +3005,47 @@ html.tv-mode .hero-copy-in {
 
   .error-shell {
     padding-inline: 1.5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --header-h: 120px;
+  }
+
+  .page-wrap {
+    width: min(100%, calc(100% - 1rem));
+  }
+
+  .header-bar {
+    padding: 0.8rem;
+  }
+
+  .brand-glyph,
+  .icon-button,
+  .avatar-chip {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .brand-mark span:last-child {
+    font-size: 0.94rem;
+  }
+
+  .brand-mark em {
+    font-size: 0.72rem;
+  }
+
+  .header-actions {
+    gap: 0.35rem;
+  }
+
+  .nav-pill {
+    font-size: 0.9rem;
+  }
+
+  .hero-content {
+    padding-top: calc(var(--header-h) + 5.6rem);
   }
 }
 

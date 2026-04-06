@@ -10,6 +10,7 @@ export const enMessages: MessageDictionary = {
   'nav.collections': 'Collections',
   'nav.myList': 'My List',
   'nav.history': 'History',
+  'nav.openBrowse': 'Open browse menu',
   'locale.label': 'Language',
   'search.placeholder': 'Search your library',
   'search.close': 'Close search',
