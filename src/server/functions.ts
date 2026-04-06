@@ -491,3 +491,48 @@ export const reportPlaybackState = createServerFn({ method: 'POST' })
       played: data.played,
     })
   })
+
+export const fetchAdminOverview = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getSystemInfo, getItemCounts, getRequiredSettings } = await import('../lib/jellyfin')
+  const { getEffectiveJellyfinSettings } = await import('../lib/config-store')
+  const settings = getEffectiveJellyfinSettings()
+  const [systemInfo, counts] = await Promise.all([getSystemInfo(), getItemCounts()])
+  return {
+    systemInfo,
+    counts,
+    serverUrl: settings?.url ?? '',
+    apiKey: settings?.apiKey ?? '',
+  }
+})
+
+export const fetchAdminSessions = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getActiveSessions } = await import('../lib/jellyfin')
+  const { getEffectiveJellyfinSettings } = await import('../lib/config-store')
+  const settings = getEffectiveJellyfinSettings()
+  const baseUrl = settings?.url?.replace(/\/+$/, '') ?? ''
+  const apiKey = settings?.apiKey ?? ''
+
+  const sessions = await getActiveSessions()
+  return sessions.map((s) => ({
+    id: s.Id,
+    userName: s.UserName ?? null,
+    client: s.Client ?? null,
+    deviceName: s.DeviceName ?? null,
+    lastActivityDate: s.LastActivityDate ?? null,
+    nowPlaying: s.NowPlayingItem
+      ? {
+          id: s.NowPlayingItem.Id,
+          name: s.NowPlayingItem.Name,
+          type: s.NowPlayingItem.Type,
+          seriesName: s.NowPlayingItem.SeriesName ?? null,
+          runTimeTicks: s.NowPlayingItem.RunTimeTicks ?? null,
+          imageUrl: s.NowPlayingItem.PrimaryImageTag
+            ? `${baseUrl}/Items/${s.NowPlayingItem.Id}/Images/Primary?api_key=${apiKey}&maxWidth=300&fillWidth=300&quality=80`
+            : null,
+        }
+      : null,
+    isPaused: s.PlayState?.IsPaused ?? false,
+    positionTicks: s.PlayState?.PositionTicks ?? 0,
+    playMethod: s.PlayState?.PlayMethod ?? null,
+  }))
+})

@@ -735,3 +735,136 @@ export async function getFeaturedItem(): Promise<JellyfinItem | null> {
   )
   return data.Items[0] ?? null
 }
+
+// ── Admin / System ───────────────────────────────────────────────────────────
+
+export interface JellyfinSystemInfo {
+  ServerName: string
+  Version: string
+  OperatingSystem?: string
+  HasUpdateAvailable?: boolean
+  LocalAddress?: string
+  WanAddress?: string
+}
+
+export interface JellyfinItemCounts {
+  MovieCount?: number
+  SeriesCount?: number
+  EpisodeCount?: number
+  MusicAlbumCount?: number
+  SongCount?: number
+  BookCount?: number
+  MusicVideoCount?: number
+}
+
+export interface JellyfinActiveSession {
+  Id: string
+  UserId?: string
+  UserName?: string
+  Client?: string
+  DeviceName?: string
+  LastActivityDate?: string
+  NowPlayingItem?: {
+    Id: string
+    Name: string
+    Type: string
+    RunTimeTicks?: number
+    PrimaryImageTag?: string
+    SeriesName?: string
+    IndexNumber?: number
+    ParentIndexNumber?: number
+  }
+  PlayState?: {
+    PositionTicks?: number
+    IsPaused?: boolean
+    PlayMethod?: string
+  }
+}
+
+export async function getSystemInfo(): Promise<JellyfinSystemInfo> {
+  return jellyfinFetch<JellyfinSystemInfo>('/System/Info')
+}
+
+export async function getItemCounts(): Promise<JellyfinItemCounts> {
+  const settings = getRequiredSettings()
+  return jellyfinFetch<JellyfinItemCounts>('/Items/Counts', { UserId: settings.userId })
+}
+
+export async function getActiveSessions(): Promise<JellyfinActiveSession[]> {
+  return jellyfinFetch<JellyfinActiveSession[]>('/Sessions')
+}
+
+// ── User management ──────────────────────────────────────────────────────────
+
+export interface JellyfinUser {
+  Id: string
+  Name: string
+  HasPassword: boolean
+  LastLoginDate?: string
+  LastActivityDate?: string
+  PrimaryImageTag?: string
+  Policy?: {
+    IsAdministrator?: boolean
+    IsDisabled?: boolean
+    IsHidden?: boolean
+    EnableRemoteControlOfOtherUsers?: boolean
+    EnableSharedDeviceControl?: boolean
+    EnableRemoteAccess?: boolean
+    EnableMediaPlayback?: boolean
+    EnableAudioPlaybackTranscoding?: boolean
+    EnableVideoPlaybackTranscoding?: boolean
+    EnablePlaybackRemuxing?: boolean
+    EnableContentDeletion?: boolean
+    EnableContentDownloading?: boolean
+    EnableAllDevices?: boolean
+    EnableAllChannels?: boolean
+    EnableAllFolders?: boolean
+    EnablePublicSharing?: boolean
+    InvalidLoginAttemptCount?: number
+    LoginAttemptsBeforeLockout?: number
+    MaxActiveSessions?: number
+    SimultaneousStreamLimit?: number
+    [key: string]: unknown
+  }
+}
+
+export async function getUsers(): Promise<JellyfinUser[]> {
+  return jellyfinFetch<JellyfinUser[]>('/Users')
+}
+
+export async function getUserById(userId: string): Promise<JellyfinUser> {
+  return jellyfinFetch<JellyfinUser>(`/Users/${userId}`)
+}
+
+export async function updateUserPolicy(userId: string, policy: JellyfinUser['Policy']): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Users/${userId}/Policy`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(policy),
+  })
+  if (!res.ok) throw new Error(`Update user policy: ${res.status}`)
+}
+
+export async function deleteJellyfinUser(userId: string): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Users/${userId}`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Delete user: ${res.status}`)
+}
+
+export async function createJellyfinUser(name: string, password: string): Promise<JellyfinUser> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Users/New`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Name: name, Password: password }),
+  })
+  if (!res.ok) throw new Error(`Create user: ${res.status}`)
+  return res.json() as Promise<JellyfinUser>
+}

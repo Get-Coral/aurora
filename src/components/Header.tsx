@@ -165,9 +165,14 @@ export default function Header() {
             <Settings size={20} />
           </Link>
 
-          <div className="avatar-chip" aria-hidden="true">
+          <Link
+            to="/admin"
+            className="avatar-chip"
+            aria-label="Admin dashboard"
+            title={username || 'Admin'}
+          >
             {username.slice(0, 2).toUpperCase() || '??'}
-          </div>
+          </Link>
         </div>
       </nav>
     </header>
