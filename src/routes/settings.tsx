@@ -15,7 +15,7 @@ import { useTvMode } from '../lib/tv-mode'
 export const Route = createFileRoute('/settings')({
   loader: async () => {
     const setupStatus = await fetchSetupStatusRuntime()
-    if (!setupStatus.configured) {
+    if (!setupStatus?.configured) {
       throw redirect({ to: '/setup' })
     }
     return setupStatus
@@ -214,7 +214,7 @@ function SettingsPage() {
             </select>
           </label>
 
-          <div className="settings-toggle-row">
+          <div className="settings-toggle-row settings-toggle-row-tv">
             <div className="settings-toggle-copy">
               <div className="settings-toggle-label">
                 <Tv size={16} />

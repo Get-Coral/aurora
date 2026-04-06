@@ -1,9 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Activity, ArrowLeft, BookOpen, Film, Music, Pause, Play, Server, Settings, Tv, Users } from 'lucide-react'
 import { fetchAdminOverview, fetchAdminSessions } from '../server/functions'
+import { fetchSetupStatusRuntime } from '../lib/runtime-functions'
 
 export const Route = createFileRoute('/admin')({
+  loader: async () => {
+    const setupStatus = await fetchSetupStatusRuntime()
+    if (!setupStatus?.configured) {
+      throw redirect({ to: '/setup' })
+    }
+    return setupStatus
+  },
   component: AdminPage,
 })
 

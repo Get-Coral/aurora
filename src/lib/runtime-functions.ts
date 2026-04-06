@@ -58,6 +58,18 @@ import { shouldUseClientRuntime } from './runtime-mode'
 
 interface SetupPayload extends ClientJellyfinSettings {}
 
+const EMPTY_SETUP_STATUS = {
+  configured: false,
+  source: 'missing' as const,
+  current: {
+    url: '',
+    userId: '',
+    username: '',
+    hasApiKey: false,
+    hasPassword: false,
+  },
+}
+
 function mergeClientSettings(input: Partial<ClientJellyfinSettings>) {
   const current = getStoredClientJellyfinSettings()
   return {
@@ -74,7 +86,7 @@ export async function fetchSetupStatusRuntime() {
     return getClientConfigurationSummary()
   }
 
-  return fetchSetupStatus()
+  return (await fetchSetupStatus()) ?? EMPTY_SETUP_STATUS
 }
 
 export async function saveSetupConfigurationRuntime(data: SetupPayload) {
