@@ -2949,6 +2949,10 @@ html.tv-mode .hero-copy-in {
     max-width: 28rem;
   }
 
+  .continue-panel {
+    display: none;
+  }
+
   .library-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
