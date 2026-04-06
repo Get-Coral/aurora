@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { Globe, Key, ArrowLeft, ArrowRight, User } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import {
@@ -20,10 +21,36 @@ export const Route = createFileRoute('/setup')({
   component: SetupPage,
 })
 
+const STEPS = [
+  {
+    id: 'server',
+    icon: Globe,
+    title: 'Jellyfin Server',
+    subtitle: 'Where is your Jellyfin server running?',
+    hint: 'Enter the full URL of your server, including the port if needed. For example: http://localhost:8096 or https://jellyfin.myhome.net',
+  },
+  {
+    id: 'apikey',
+    icon: Key,
+    title: 'API Key',
+    subtitle: 'Authorize Aurora to talk to Jellyfin',
+    hint: 'Open your Jellyfin Dashboard → Administration → API Keys and create a new key. Paste it above.',
+  },
+  {
+    id: 'account',
+    icon: User,
+    title: 'Your Account',
+    subtitle: 'Link your Jellyfin account',
+    hint: 'Aurora uses your credentials to create a real playback session so watch progress stays in sync with Jellyfin.',
+  },
+] as const
+
 function SetupPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const setupStatus = Route.useLoaderData()
+
+  const [step, setStep] = useState(0)
   const [url, setUrl] = useState(setupStatus.current.url)
   const [apiKey, setApiKey] = useState('')
   const [userId, setUserId] = useState(setupStatus.current.userId)
@@ -40,111 +67,149 @@ function SetupPage() {
     },
   })
 
+  const totalSteps = STEPS.length
+  const current = STEPS[step]
+  const Icon = current.icon
+  const progress = ((step + 1) / totalSteps) * 100
+
+  function canAdvance() {
+    if (step === 0) return url.trim().length > 0
+    if (step === 1) return apiKey.trim().length > 0
+    return userId.trim().length > 0 && username.trim().length > 0
+  }
+
+  function handleNext() {
+    if (step < totalSteps - 1) {
+      setStep((s) => s + 1)
+    } else {
+      setupMutation.mutate()
+    }
+  }
+
+  const isLastStep = step === totalSteps - 1
+
   return (
-    <main className="library-shell">
-      <div className="page-wrap library-head">
-        <div className="library-copy">
-          <p className="eyebrow">{t('setup.subtitle')}</p>
-          <h1 className="library-title">{t('setup.title')}</h1>
-          <p className="library-summary">{t('setup.copy')}</p>
+    <div className="setup-shell">
+      <div className="setup-wordmark">aurora</div>
+
+      <div className="setup-flow">
+        <div className="setup-progress-meta">
+          <span className="setup-step-label">Step {step + 1} of {totalSteps}</span>
+          <span className="setup-step-label">{current.title}</span>
         </div>
-      </div>
+        <div className="setup-progress-track">
+          <div className="setup-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
 
-      <div
-        className="page-wrap"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) 18rem',
-          gap: '1.5rem',
-          alignItems: 'start',
-          paddingTop: '2rem',
-          paddingBottom: '4rem',
-        }}
-      >
-        <form
-          className="overview-card"
-          style={{ padding: '2rem', gap: '1.25rem' }}
-          onSubmit={(event) => {
-            event.preventDefault()
-            setupMutation.mutate()
-          }}
-        >
-          <label className="library-select-shell">
-            <span>{t('setup.serverUrl')}</span>
-            <input
-              className="library-select"
-              style={{ width: '100%' }}
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="http://localhost:8096"
-            />
-          </label>
+        <div className="setup-card">
+          <div className="setup-step-icon">
+            <Icon size={22} />
+          </div>
 
-          <label className="library-select-shell">
-            <span>{t('setup.apiKey')}</span>
-            <input
-              className="library-select"
-              style={{ width: '100%' }}
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-            />
-          </label>
+          <h1 className="setup-step-title">{current.title}</h1>
+          <p className="setup-step-subtitle">{current.subtitle}</p>
 
-          <label className="library-select-shell">
-            <span>{t('setup.userId')}</span>
-            <input
-              className="library-select"
-              style={{ width: '100%' }}
-              value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-            />
-          </label>
+          {step === 0 && (
+            <div className="setup-field">
+              <label htmlFor="setup-url">{t('setup.serverUrl')}</label>
+              <input
+                id="setup-url"
+                className="setup-input"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="http://localhost:8096"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
+              />
+            </div>
+          )}
 
-          <label className="library-select-shell">
-            <span>{t('setup.username')}</span>
-            <input
-              className="library-select"
-              style={{ width: '100%' }}
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </label>
+          {step === 1 && (
+            <div className="setup-field">
+              <label htmlFor="setup-apikey">{t('setup.apiKey')}</label>
+              <input
+                id="setup-apikey"
+                className="setup-input"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
+              />
+            </div>
+          )}
 
-          <label className="library-select-shell">
-            <span>{t('setup.password')}</span>
-            <input
-              type="password"
-              className="library-select"
-              style={{ width: '100%' }}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          {step === 2 && (
+            <>
+              <div className="setup-field">
+                <label htmlFor="setup-username">{t('setup.username')}</label>
+                <input
+                  id="setup-username"
+                  className="setup-input"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="setup-field">
+                <label htmlFor="setup-password">{t('setup.password')}</label>
+                <input
+                  id="setup-password"
+                  type="password"
+                  className="setup-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="setup-field">
+                <label htmlFor="setup-userid">{t('setup.userId')}</label>
+                <input
+                  id="setup-userid"
+                  className="setup-input"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
+                />
+              </div>
+            </>
+          )}
 
-          <p className="eyebrow" style={{ opacity: 0.6 }}>
-            {t('setup.passwordHint')}
-          </p>
+          <p className="setup-hint">{current.hint}</p>
 
           {setupMutation.error ? (
-            <p className="detail-empty">
+            <p className="setup-error">
               {setupMutation.error instanceof Error
                 ? setupMutation.error.message
                 : t('setup.errorFallback')}
             </p>
           ) : null}
 
-          <button type="submit" className="primary-action" disabled={setupMutation.isPending}>
-            {setupMutation.isPending ? t('setup.saving') : t('setup.submit')}
-          </button>
-        </form>
+          <div className="setup-actions">
+            {step > 0 ? (
+              <button
+                type="button"
+                className="setup-back-btn"
+                onClick={() => setStep((s) => s - 1)}
+              >
+                <ArrowLeft size={15} /> Back
+              </button>
+            ) : null}
 
-        <aside className="overview-card" style={{ padding: '1.6rem', gap: '0.55rem' }}>
-          <p className="eyebrow">{t('setup.helpTitle')}</p>
-          <strong style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--ink-muted)' }}>
-            {t('setup.helpCopy')}
-          </strong>
-        </aside>
+            <button
+              type="button"
+              className="setup-next-btn"
+              disabled={!canAdvance() || setupMutation.isPending}
+              onClick={handleNext}
+            >
+              {setupMutation.isPending
+                ? t('setup.saving')
+                : isLastStep
+                  ? t('setup.submit')
+                  : 'Continue'}
+              {!setupMutation.isPending && !isLastStep ? <ArrowRight size={15} /> : null}
+            </button>
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   )
 }
