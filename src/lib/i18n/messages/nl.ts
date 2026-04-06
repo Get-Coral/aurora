@@ -27,9 +27,24 @@ export const nlMessages: MessageDictionary = {
   'home.libraryPulseCopy': 'nieuwe toevoegingen in films en series',
   'home.watchRhythm': 'Kijkritme',
   'home.watchRhythmCopy': 'titels die wachten waar je gebleven was',
-  'home.tonightsLane': 'Vanavond',
-  'home.tonightsLaneCopy': 'gekozen uit je Jellyfin-collectie',
-  'home.curatedFallback': 'Gecureerd',
+  'home.pickReason': 'Waarom deze keuze',
+  'home.pickReasonFallbackValue': 'Nu uitgelicht',
+  'home.pickReasonFallbackCopy': 'Gebouwd rond de spotlight van vanavond.',
+  'home.pickReasonQueueCopy': (params) => {
+    const count = Number(params?.count ?? 0)
+    const genre = String(params?.genre ?? '')
+    return `${count} titel${count === 1 ? '' : 's'} in je wachtrij delen deze ${genre.toLowerCase()} sfeer.`
+  },
+  'home.pickReasonFavoritesCopy': (params) => {
+    const count = Number(params?.count ?? 0)
+    const genre = String(params?.genre ?? '')
+    return `${count} favoriet${count === 1 ? '' : 'en'} zit in dezelfde ${genre.toLowerCase()} hoek.`
+  },
+  'home.pickReasonRecentCopy': (params) => {
+    const count = Number(params?.count ?? 0)
+    const genre = String(params?.genre ?? '')
+    return `${count} recente toevoeging${count === 1 ? '' : 'en'} vallen in dezelfde ${genre.toLowerCase()} lijn.`
+  },
   'home.continue.title': 'Ga verder met je wachtrij',
   'home.continue.subtitle': 'Blijf in de flow',
   'home.continue.emptyTitle': 'Je verderkijkrij is nog leeg',
@@ -60,9 +75,9 @@ export const nlMessages: MessageDictionary = {
   'hero.release': 'Release',
   'hero.continueWatching': 'Verderkijken',
   'hero.pickUpInstantly': 'Meteen verdergaan',
-  'hero.episodeLabel': ({ seriesTitle, episodeNumber }) =>
-    `${seriesTitle} • Aflevering ${episodeNumber ?? '?'}`,
-  'hero.progressWatched': ({ progress }) => `${progress}% bekeken`,
+  'hero.episodeLabel': (params) =>
+    `${params?.seriesTitle} • Aflevering ${params?.episodeNumber ?? '?'}`,
+  'hero.progressWatched': (params) => `${params?.progress}% bekeken`,
   'hero.readyToResume': 'Klaar om te hervatten',
   'hero.open': 'Openen',
   'hero.queueAfterThat': 'Daarna in de rij',
@@ -115,7 +130,7 @@ export const nlMessages: MessageDictionary = {
   'player.nowPlaying': 'Nu afgespeeld',
   'player.close': 'Speler sluiten',
   'player.upNext': 'Hierna',
-  'player.inQueue': ({ count }) => `${count} in wachtrij`,
+  'player.inQueue': (params) => `${params?.count} in wachtrij`,
   'player.tapToUnmute': 'Tik om geluid aan te zetten',
   'player.nextEpisode': 'Volgende aflevering',
   'player.subtitles': 'Ondertitels',
@@ -130,13 +145,13 @@ export const nlMessages: MessageDictionary = {
   'player.episode': 'Aflevering',
   'player.skipBack': '−15s',
   'player.skipForward': '+30s',
-  'player.autoplayCountdown': ({ count }: { count: number }) => `Volgende afspelen over ${count}s`,
+  'player.autoplayCountdown': (params) => `Volgende afspelen over ${params?.count}s`,
   'player.autoplayCancel': 'Annuleren',
   'library.backHome': 'Terug naar home',
   'library.myListSummary':
     'Alles wat je als favoriet markeerde in Jellyfin, verzameld in één streamingstijl-lijst.',
-  'library.summary': ({ type }) =>
-    `Verken je volledige ${type === 'movie' ? 'film' : 'serie'}bibliotheek met sorteermogelijkheden en een scanbare grid.`,
+  'library.summary': (params) =>
+    `Verken je volledige ${params?.type === 'movie' ? 'film' : 'serie'}bibliotheek met sorteermogelijkheden en een scanbare grid.`,
   'library.sortBy': 'Sorteer op',
   'library.direction': 'Richting',
   'library.sort.dateCreated': 'Recent toegevoegd',
@@ -145,11 +160,11 @@ export const nlMessages: MessageDictionary = {
   'library.sort.sortName': 'Alfabetisch',
   'library.order.desc': 'Aflopend',
   'library.order.asc': 'Oplopend',
-  'library.pageOf': ({ page, total }) => `Pagina ${page} van ${total}`,
+  'library.pageOf': (params) => `Pagina ${params?.page} van ${params?.total}`,
   'library.previousPage': 'Vorige pagina',
   'library.nextPage': 'Volgende pagina',
   'library.allMovies': 'Alle films',
-  'library.totalTitles': ({ count }) => `${count} titels in totaal`,
+  'library.totalTitles': (params) => `${params?.count} titels in totaal`,
   'library.filter': 'Filter',
   'library.filters': 'Filters',
   'library.ageRating': 'Leeftijdsclassificatie',
@@ -174,7 +189,10 @@ export const nlMessages: MessageDictionary = {
   'route.collections.summary': 'Filmcollecties en box sets georganiseerd in je Jellyfin-bibliotheek.',
   'route.collections.emptyTitle': 'Geen collecties gevonden',
   'route.collections.emptyCopy': 'Maak een collectie aan in Jellyfin en die verschijnt hier.',
-  'route.collections.itemCount': ({ count }) => `${count} ${Number(count) === 1 ? 'titel' : 'titels'}`,
+  'route.collections.itemCount': (params) => {
+    const count = Number(params?.count ?? 0)
+    return `${count} ${count === 1 ? 'titel' : 'titels'}`
+  },
   'route.collections.new': 'Nieuwe collectie',
   'route.collections.newTitle': 'Collectie aanmaken',
   'route.collections.newName': 'Naam van de collectie',
@@ -186,7 +204,7 @@ export const nlMessages: MessageDictionary = {
   'route.collections.saving': 'Opslaan…',
   'route.collections.delete': 'Verwijderen',
   'route.collections.deleteTitle': 'Collectie verwijderen',
-  'route.collections.deleteConfirm': ({ name }: { name: string }) => `"${name}" verwijderen? Dit kan niet ongedaan worden gemaakt.`,
+  'route.collections.deleteConfirm': (params) => `"${params?.name}" verwijderen? Dit kan niet ongedaan worden gemaakt.`,
   'route.collections.deleting': 'Verwijderen…',
   'route.collections.addItems': 'Items toevoegen',
   'route.collections.addItemsTitle': 'Aan collectie toevoegen',
@@ -201,7 +219,7 @@ export const nlMessages: MessageDictionary = {
   'route.movies.subtitle': 'Bekijk de volledige catalogus',
   'route.series.title': 'Seriesbibliotheek',
   'route.series.subtitle': 'Bekijk de volledige catalogus',
-  'route.genre.title': ({ genre }) => `${genre}-films`,
+  'route.genre.title': (params) => `${params?.genre}-films`,
   'route.genre.subtitle': 'Bladeren per genre',
   'setup.title': 'Verbind Aurora met Jellyfin',
   'setup.subtitle': 'Lokale eerste setup',

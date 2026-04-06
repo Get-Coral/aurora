@@ -20,6 +20,71 @@ import {
 import { useTvMode } from '../lib/tv-mode'
 import type { MediaItem } from '../lib/media'
 
+function hasGenre(item: MediaItem, genre: string) {
+  return item.genres.some((candidate) => candidate.toLowerCase() === genre.toLowerCase())
+}
+
+function getSpotlightInsights(
+  t: (key: string, params?: Record<string, string | number | undefined>) => string,
+  spotlightItem: MediaItem | null,
+  continueWatching: MediaItem[],
+  favoriteMovies: MediaItem[],
+  latestMovies: MediaItem[],
+  latestSeries: MediaItem[],
+) {
+  const genre = spotlightItem?.genres[0]
+
+  if (!spotlightItem || !genre) {
+    return [{
+      label: t('home.pickReason'),
+      value: t('home.pickReasonFallbackValue'),
+      copy: t('home.pickReasonFallbackCopy'),
+    }]
+  }
+
+  const insights: Array<{ label: string; value: string; copy: string }> = []
+
+  const queueMatches = continueWatching.filter((item) => item.id !== spotlightItem.id && hasGenre(item, genre))
+  if (queueMatches.length > 0) {
+    insights.push({
+      label: t('home.pickReason'),
+      value: genre,
+      copy: t('home.pickReasonQueueCopy', { count: queueMatches.length, genre }),
+    })
+  }
+
+  const favoriteMatches = favoriteMovies.filter((item) => item.id !== spotlightItem.id && hasGenre(item, genre))
+  if (favoriteMatches.length > 0) {
+    insights.push({
+      label: t('home.pickReason'),
+      value: genre,
+      copy: t('home.pickReasonFavoritesCopy', { count: favoriteMatches.length, genre }),
+    })
+  }
+
+  const recentMatches = [...latestMovies, ...latestSeries]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+    .filter((item) => item.id !== spotlightItem.id && hasGenre(item, genre))
+
+  if (recentMatches.length > 0) {
+    insights.push({
+      label: t('home.pickReason'),
+      value: genre,
+      copy: t('home.pickReasonRecentCopy', { count: recentMatches.length, genre }),
+    })
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      label: t('home.pickReason'),
+      value: genre,
+      copy: t('home.pickReasonFallbackCopy'),
+    })
+  }
+
+  return insights
+}
+
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
     const setupStatus = await fetchSetupStatusRuntime()
@@ -50,12 +115,14 @@ function HomePage() {
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
   const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
   const [heroIndex, setHeroIndex] = useState(0)
+  const [insightIndex, setInsightIndex] = useState(0)
   const [screensaverActive, setScreensaverActive] = useState(false)
   const [screensaverTime, setScreensaverTime] = useState('')
   const { tvMode } = useTvMode()
   const favoriteMutation = useFavoriteAction()
   const queryClient = useQueryClient()
   const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const insightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastInteractionRef = useRef(Date.now())
   const screensaverCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const screensaverClockRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -140,6 +207,36 @@ function HomePage() {
   const companionItems = [...continueWatching, ...latestMovies, ...latestSeries]
     .filter((item, index, array) => item.id !== spotlightItem?.id && array.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5)
+  const spotlightInsights = getSpotlightInsights(
+    t,
+    spotlightItem,
+    continueWatching,
+    favoriteMovies,
+    latestMovies,
+    latestSeries,
+  )
+  const spotlightInsight = spotlightInsights[insightIndex % Math.max(spotlightInsights.length, 1)]
+
+  useEffect(() => {
+    setInsightIndex(0)
+  }, [spotlightItem?.id])
+
+  useEffect(() => {
+    if (insightTimerRef.current) clearInterval(insightTimerRef.current)
+    if (tvMode || spotlightInsights.length <= 1) {
+      return () => {
+        if (insightTimerRef.current) clearInterval(insightTimerRef.current)
+      }
+    }
+
+    insightTimerRef.current = setInterval(() => {
+      setInsightIndex((current) => (current + 1) % spotlightInsights.length)
+    }, 5000)
+
+    return () => {
+      if (insightTimerRef.current) clearInterval(insightTimerRef.current)
+    }
+  }, [tvMode, spotlightInsights.length, spotlightItem?.id])
 
   function playMedia(item: MediaItem, queue: MediaItem[] = []) {
     if (!item.streamUrl || item.type === 'series') return
@@ -204,9 +301,9 @@ function HomePage() {
               <span>{t('home.watchRhythmCopy')}</span>
             </div>
             <div className="overview-card">
-              <p className="eyebrow">{t('home.tonightsLane')}</p>
-              <strong>{spotlightItem?.genres[0] ?? t('home.curatedFallback')}</strong>
-              <span>{t('home.tonightsLaneCopy')}</span>
+              <p className="eyebrow">{spotlightInsight.label}</p>
+              <strong>{spotlightInsight.value}</strong>
+              <span>{spotlightInsight.copy}</span>
             </div>
           </section>
         ) : null}
