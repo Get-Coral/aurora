@@ -29,6 +29,10 @@ import {
   beginClientPlaybackSession,
   fetchClientLibrary,
   fetchClientOnlineSubtitle,
+  fetchClientAdminLibraries,
+  fetchClientAdminOverview,
+  fetchClientAdminSessions,
+  fetchClientAdminUsers,
   fetchClientContinueWatching,
   fetchClientFavoriteItems,
   fetchClientFeatured,
@@ -40,9 +44,14 @@ import {
   fetchClientSearch,
   fetchClientSeriesDetails,
   fetchClientWatchHistory,
+  createClientAdminUser,
+  deleteClientAdminUser,
+  scanAllClientAdminLibraries,
+  scanClientAdminLibrary,
   reportClientPlaybackState,
   searchClientOnlineSubtitles,
   markClientPlayed,
+  toggleClientAdminUser,
   toggleClientFavorite,
 } from './client-media'
 import {
@@ -317,6 +326,87 @@ export async function fetchSeriesDetailsRuntime(input: { data: { id: string } })
   }
 
   return fetchSeriesDetails(input)
+}
+
+export async function fetchAdminOverviewRuntime() {
+  if (shouldUseClientRuntime()) {
+    return fetchClientAdminOverview()
+  }
+
+  const { fetchAdminOverview } = await import('../server/functions')
+  return fetchAdminOverview()
+}
+
+export async function fetchAdminSessionsRuntime() {
+  if (shouldUseClientRuntime()) {
+    return fetchClientAdminSessions()
+  }
+
+  const { fetchAdminSessions } = await import('../server/functions')
+  return fetchAdminSessions()
+}
+
+export async function fetchAdminUsersRuntime() {
+  if (shouldUseClientRuntime()) {
+    return fetchClientAdminUsers()
+  }
+
+  const { fetchAdminUsers } = await import('../server/functions')
+  return fetchAdminUsers()
+}
+
+export async function toggleAdminUserRuntime(input: { data: { userId: string; disabled: boolean } }) {
+  if (shouldUseClientRuntime()) {
+    return toggleClientAdminUser(input.data)
+  }
+
+  const { toggleAdminUser } = await import('../server/functions')
+  return toggleAdminUser(input)
+}
+
+export async function deleteAdminUserRuntime(input: { data: { userId: string } }) {
+  if (shouldUseClientRuntime()) {
+    return deleteClientAdminUser(input.data.userId)
+  }
+
+  const { deleteAdminUser } = await import('../server/functions')
+  return deleteAdminUser(input)
+}
+
+export async function createAdminUserRuntime(input: { data: { name: string; password: string } }) {
+  if (shouldUseClientRuntime()) {
+    return createClientAdminUser(input.data)
+  }
+
+  const { createAdminUser } = await import('../server/functions')
+  return createAdminUser(input)
+}
+
+export async function fetchAdminLibrariesRuntime() {
+  if (shouldUseClientRuntime()) {
+    return fetchClientAdminLibraries()
+  }
+
+  const { fetchAdminLibraries } = await import('../server/functions')
+  return fetchAdminLibraries()
+}
+
+export async function scanAllAdminLibrariesRuntime() {
+  if (shouldUseClientRuntime()) {
+    return scanAllClientAdminLibraries()
+  }
+
+  const { scanAllAdminLibraries } = await import('../server/functions')
+  return scanAllAdminLibraries()
+}
+
+export async function scanAdminLibraryRuntime(input: { data: { itemId: string } }) {
+  if (shouldUseClientRuntime()) {
+    return scanClientAdminLibrary(input.data.itemId)
+  }
+
+  const { scanAdminLibrary } = await import('../server/functions')
+  return scanAdminLibrary(input)
 }
 
 export async function toggleFavoriteRuntime(input: { data: { id: string; isFavorite: boolean } }) {

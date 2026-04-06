@@ -25,18 +25,18 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTvMode } from '../lib/tv-mode'
-import { fetchSetupStatusRuntime } from '../lib/runtime-functions'
 import {
-  createAdminUser,
-  deleteAdminUser,
-  fetchAdminLibraries,
-  fetchAdminOverview,
-  fetchAdminSessions,
-  fetchAdminUsers,
-  scanAdminLibrary,
-  scanAllAdminLibraries,
-  toggleAdminUser,
-} from '../server/functions'
+  createAdminUserRuntime,
+  deleteAdminUserRuntime,
+  fetchAdminLibrariesRuntime,
+  fetchAdminOverviewRuntime,
+  fetchAdminSessionsRuntime,
+  fetchAdminUsersRuntime,
+  fetchSetupStatusRuntime,
+  scanAdminLibraryRuntime,
+  scanAllAdminLibrariesRuntime,
+  toggleAdminUserRuntime,
+} from '../lib/runtime-functions'
 
 export const Route = createFileRoute('/admin')({
   loader: async () => {
@@ -87,27 +87,27 @@ function AdminPage() {
 
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ['admin-overview'],
-    queryFn: () => fetchAdminOverview(),
+    queryFn: () => fetchAdminOverviewRuntime(),
     staleTime: 60_000,
   })
 
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['admin-sessions'],
-    queryFn: () => fetchAdminSessions(),
+    queryFn: () => fetchAdminSessionsRuntime(),
     refetchInterval: 15_000,
     staleTime: 10_000,
   })
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['admin-users'],
-    queryFn: () => fetchAdminUsers(),
+    queryFn: () => fetchAdminUsersRuntime(),
     enabled: !tvMode,
     staleTime: 30_000,
   })
 
   const { data: libraries = [], isLoading: librariesLoading } = useQuery({
     queryKey: ['admin-libraries'],
-    queryFn: () => fetchAdminLibraries(),
+    queryFn: () => fetchAdminLibrariesRuntime(),
     enabled: !tvMode,
     staleTime: 60_000,
   })
@@ -341,12 +341,12 @@ function UserManager({
 
   const toggleMutation = useMutation({
     mutationFn: (vars: { userId: string; disabled: boolean }) =>
-      toggleAdminUser({ data: vars }),
+      toggleAdminUserRuntime({ data: vars }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (userId: string) => deleteAdminUser({ data: { userId } }),
+    mutationFn: (userId: string) => deleteAdminUserRuntime({ data: { userId } }),
     onSuccess: () => {
       setConfirmDelete(null)
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
@@ -354,7 +354,7 @@ function UserManager({
   })
 
   const createMutation = useMutation({
-    mutationFn: () => createAdminUser({ data: { name: newName.trim(), password: newPassword } }),
+    mutationFn: () => createAdminUserRuntime({ data: { name: newName.trim(), password: newPassword } }),
     onSuccess: () => {
       setShowAddForm(false)
       setNewName('')
@@ -528,7 +528,7 @@ function LibraryManager({
   async function handleScanAll() {
     setScanningAll(true)
     try {
-      await scanAllAdminLibraries()
+      await scanAllAdminLibrariesRuntime()
       setScanDoneId('all')
       setTimeout(() => setScanDoneId(null), 3000)
     } finally {
@@ -539,7 +539,7 @@ function LibraryManager({
   async function handleScanOne(itemId: string) {
     setScanningId(itemId)
     try {
-      await scanAdminLibrary({ data: { itemId } })
+      await scanAdminLibraryRuntime({ data: { itemId } })
       setScanDoneId(itemId)
       setTimeout(() => setScanDoneId(null), 3000)
     } finally {

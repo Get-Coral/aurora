@@ -71,6 +71,33 @@ async function clientJellyfinFetch<T>(
   return response.json() as Promise<T>
 }
 
+async function clientJellyfinWrite(
+  path: string,
+  init: RequestInit,
+  params?: Record<string, string>,
+  settings: ClientSettings = getRequiredClientSettings(),
+): Promise<Response> {
+  const url = new URL(`${settings.url}${path}`)
+  url.searchParams.set('api_key', settings.apiKey)
+
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value)
+    }
+  }
+
+  const response = await fetch(url.toString(), {
+    cache: 'no-store',
+    ...init,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Jellyfin error: ${response.status} ${response.statusText}`)
+  }
+
+  return response
+}
+
 function clientJellyfinImageUrl(
   itemId: string,
   type: 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' = 'Primary',
@@ -318,6 +345,213 @@ export async function fetchClientMostPlayed(type: JellyfinMediaType = 'Movie', l
   )
 
   return data.Items.map((item) => fromClientJellyfin(item, settings))
+}
+
+type ClientAdminOverview = {
+  systemInfo: {
+    ServerName: string
+    Version: string
+    OperatingSystem?: string
+    HasUpdateAvailable?: boolean
+    LocalAddress?: string
+    WanAddress?: string
+  }
+  counts: {
+    MovieCount?: number
+    SeriesCount?: number
+    EpisodeCount?: number
+    MusicAlbumCount?: number
+    SongCount?: number
+    BookCount?: number
+    MusicVideoCount?: number
+  }
+  serverUrl: string
+  apiKey: string
+}
+
+type ClientAdminSession = {
+  id: string
+  userName: string | null
+  client: string | null
+  deviceName: string | null
+  lastActivityDate: string | null
+  nowPlaying: {
+    id: string
+    name: string
+    type: string
+    seriesName: string | null
+    runTimeTicks: number | null
+    imageUrl: string | null
+  } | null
+  isPaused: boolean
+  positionTicks: number
+  playMethod: string | null
+}
+
+type ClientAdminUser = {
+  id: string
+  name: string
+  isAdmin: boolean
+  isDisabled: boolean
+  lastLoginDate: string | null
+  hasPolicy: boolean
+}
+
+type ClientAdminLibrary = {
+  itemId: string
+  name: string
+  collectionType: string
+  locations: string[]
+}
+
+type ClientJellyfinSystemInfo = ClientAdminOverview['systemInfo']
+type ClientJellyfinItemCounts = ClientAdminOverview['counts']
+
+type ClientJellyfinActiveSession = {
+  Id: string
+  UserName?: string
+  Client?: string
+  DeviceName?: string
+  LastActivityDate?: string
+  NowPlayingItem?: {
+    Id: string
+    Name: string
+    Type: string
+    RunTimeTicks?: number
+    PrimaryImageTag?: string
+    SeriesName?: string
+  }
+  PlayState?: {
+    PositionTicks?: number
+    IsPaused?: boolean
+    PlayMethod?: string
+  }
+}
+
+type ClientJellyfinUser = {
+  Id: string
+  Name: string
+  LastLoginDate?: string
+  Policy?: {
+    IsAdministrator?: boolean
+    IsDisabled?: boolean
+    [key: string]: unknown
+  }
+}
+
+type ClientJellyfinVirtualFolder = {
+  Name: string
+  CollectionType?: string
+  ItemId: string
+  Locations?: string[]
+}
+
+export async function fetchClientAdminOverview(): Promise<ClientAdminOverview> {
+  const settings = getRequiredClientSettings()
+  const [systemInfo, counts] = await Promise.all([
+    clientJellyfinFetch<ClientJellyfinSystemInfo>('/System/Info', undefined, settings),
+    clientJellyfinFetch<ClientJellyfinItemCounts>('/Items/Counts', { UserId: settings.userId }, settings),
+  ])
+
+  return {
+    systemInfo,
+    counts,
+    serverUrl: settings.url,
+    apiKey: settings.apiKey,
+  }
+}
+
+export async function fetchClientAdminSessions(): Promise<ClientAdminSession[]> {
+  const settings = getRequiredClientSettings()
+  const sessions = await clientJellyfinFetch<ClientJellyfinActiveSession[]>('/Sessions', undefined, settings)
+
+  return sessions.map((session) => ({
+    id: session.Id,
+    userName: session.UserName ?? null,
+    client: session.Client ?? null,
+    deviceName: session.DeviceName ?? null,
+    lastActivityDate: session.LastActivityDate ?? null,
+    nowPlaying: session.NowPlayingItem
+      ? {
+          id: session.NowPlayingItem.Id,
+          name: session.NowPlayingItem.Name,
+          type: session.NowPlayingItem.Type,
+          seriesName: session.NowPlayingItem.SeriesName ?? null,
+          runTimeTicks: session.NowPlayingItem.RunTimeTicks ?? null,
+          imageUrl: session.NowPlayingItem.PrimaryImageTag
+            ? clientJellyfinImageUrl(session.NowPlayingItem.Id, 'Primary', 300, settings)
+            : null,
+        }
+      : null,
+    isPaused: session.PlayState?.IsPaused ?? false,
+    positionTicks: session.PlayState?.PositionTicks ?? 0,
+    playMethod: session.PlayState?.PlayMethod ?? null,
+  }))
+}
+
+export async function fetchClientAdminUsers(): Promise<ClientAdminUser[]> {
+  const users = await clientJellyfinFetch<ClientJellyfinUser[]>('/Users')
+  return users.map((user) => ({
+    id: user.Id,
+    name: user.Name,
+    isAdmin: user.Policy?.IsAdministrator ?? false,
+    isDisabled: user.Policy?.IsDisabled ?? false,
+    lastLoginDate: user.LastLoginDate ?? null,
+    hasPolicy: user.Policy != null,
+  }))
+}
+
+export async function toggleClientAdminUser(input: { userId: string; disabled: boolean }) {
+  const user = await clientJellyfinFetch<ClientJellyfinUser>(`/Users/${input.userId}`)
+  const policy = { ...(user.Policy ?? {}), IsDisabled: input.disabled }
+  await clientJellyfinWrite(`/Users/${input.userId}/Policy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(policy),
+  })
+  return { ok: true }
+}
+
+export async function deleteClientAdminUser(userId: string) {
+  await clientJellyfinWrite(`/Users/${userId}`, { method: 'DELETE' })
+  return { ok: true }
+}
+
+export async function createClientAdminUser(input: { name: string; password: string }): Promise<ClientAdminUser> {
+  const response = await clientJellyfinWrite('/Users/New', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Name: input.name, Password: input.password }),
+  })
+  const user = (await response.json()) as ClientJellyfinUser
+  return {
+    id: user.Id,
+    name: user.Name,
+    isAdmin: user.Policy?.IsAdministrator ?? false,
+    isDisabled: user.Policy?.IsDisabled ?? false,
+    lastLoginDate: user.LastLoginDate ?? null,
+    hasPolicy: user.Policy != null,
+  }
+}
+
+export async function fetchClientAdminLibraries(): Promise<ClientAdminLibrary[]> {
+  const folders = await clientJellyfinFetch<ClientJellyfinVirtualFolder[]>('/Library/VirtualFolders')
+  return folders.map((folder) => ({
+    itemId: folder.ItemId,
+    name: folder.Name,
+    collectionType: folder.CollectionType ?? 'unknown',
+    locations: folder.Locations ?? [],
+  }))
+}
+
+export async function scanAllClientAdminLibraries() {
+  await clientJellyfinWrite('/Library/Refresh', { method: 'POST' })
+  return { ok: true }
+}
+
+export async function scanClientAdminLibrary(itemId: string) {
+  await clientJellyfinWrite(`/Items/${itemId}/Refresh`, { method: 'POST' })
+  return { ok: true }
 }
 
 export async function fetchClientRecommendedFromItem(itemId: string) {
