@@ -1,8 +1,42 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { Activity, ArrowLeft, BookOpen, Film, Music, Pause, Play, Server, Settings, Tv, Users } from 'lucide-react'
-import { fetchAdminOverview, fetchAdminSessions } from '../server/functions'
+import {
+  Activity,
+  ArrowLeft,
+  BookOpen,
+  Film,
+  Folders,
+  HardDrive,
+  Library,
+  Music,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Server,
+  Settings,
+  Shield,
+  Tv,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useTvMode } from '../lib/tv-mode'
 import { fetchSetupStatusRuntime } from '../lib/runtime-functions'
+import {
+  createAdminUser,
+  deleteAdminUser,
+  fetchAdminLibraries,
+  fetchAdminOverview,
+  fetchAdminSessions,
+  fetchAdminUsers,
+  scanAdminLibrary,
+  scanAllAdminLibraries,
+  toggleAdminUser,
+} from '../server/functions'
 
 export const Route = createFileRoute('/admin')({
   loader: async () => {
@@ -33,7 +67,24 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
+const COLLECTION_ICONS: Record<string, React.FC<{ size?: number }>> = {
+  movies: Film,
+  tvshows: Tv,
+  music: Music,
+  books: BookOpen,
+  boxsets: Folders,
+  mixed: Library,
+}
+
+function LibraryTypeIcon({ type, size = 18 }: { type: string; size?: number }) {
+  const Icon = COLLECTION_ICONS[type.toLowerCase()] ?? HardDrive
+  return <Icon size={size} />
+}
+
 function AdminPage() {
+  const { tvMode } = useTvMode()
+  const queryClient = useQueryClient()
+
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ['admin-overview'],
     queryFn: () => fetchAdminOverview(),
@@ -45,6 +96,20 @@ function AdminPage() {
     queryFn: () => fetchAdminSessions(),
     refetchInterval: 15_000,
     staleTime: 10_000,
+  })
+
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: () => fetchAdminUsers(),
+    enabled: !tvMode,
+    staleTime: 30_000,
+  })
+
+  const { data: libraries = [], isLoading: librariesLoading } = useQuery({
+    queryKey: ['admin-libraries'],
+    queryFn: () => fetchAdminLibraries(),
+    enabled: !tvMode,
+    staleTime: 60_000,
   })
 
   const { systemInfo, counts } = overview ?? {}
@@ -222,6 +287,327 @@ function AdminPage() {
           </section>
         </div>
       </div>
+
+      {/* User Manager — non-TV only */}
+      {!tvMode ? (
+        <div className="page-wrap admin-wide-section">
+          <UserManager
+            users={users}
+            isLoading={usersLoading}
+            onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['admin-users'] })}
+          />
+        </div>
+      ) : null}
+
+      {/* Library Manager — non-TV only */}
+      {!tvMode ? (
+        <div className="page-wrap admin-wide-section">
+          <LibraryManager
+            libraries={libraries}
+            isLoading={librariesLoading}
+            onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['admin-libraries'] })}
+          />
+        </div>
+      ) : null}
     </main>
+  )
+}
+
+// ── User Manager ──────────────────────────────────────────────────────────────
+
+type AdminUser = {
+  id: string
+  name: string
+  isAdmin: boolean
+  isDisabled: boolean
+  lastLoginDate: string | null
+  hasPolicy: boolean
+}
+
+function UserManager({
+  users,
+  isLoading,
+  onRefresh,
+}: {
+  users: AdminUser[]
+  isLoading: boolean
+  onRefresh: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+
+  const toggleMutation = useMutation({
+    mutationFn: (vars: { userId: string; disabled: boolean }) =>
+      toggleAdminUser({ data: vars }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (userId: string) => deleteAdminUser({ data: { userId } }),
+    onSuccess: () => {
+      setConfirmDelete(null)
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+  })
+
+  const createMutation = useMutation({
+    mutationFn: () => createAdminUser({ data: { name: newName.trim(), password: newPassword } }),
+    onSuccess: () => {
+      setShowAddForm(false)
+      setNewName('')
+      setNewPassword('')
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+  })
+
+  return (
+    <section className="admin-section admin-section-full">
+      <header className="admin-section-head">
+        <Users size={15} />
+        <h2>User manager</h2>
+        <span className="admin-count-badge">{users.length}</span>
+        <div className="admin-section-actions">
+          <button type="button" className="admin-icon-action" onClick={onRefresh} title="Refresh">
+            <RefreshCw size={14} />
+          </button>
+          <button
+            type="button"
+            className="admin-add-btn"
+            onClick={() => setShowAddForm((v) => !v)}
+          >
+            <Plus size={14} />
+            Add user
+          </button>
+        </div>
+      </header>
+
+      {showAddForm ? (
+        <div className="admin-add-form">
+          <input
+            className="admin-add-input"
+            placeholder="Username"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            autoFocus
+          />
+          <input
+            className="admin-add-input"
+            type="password"
+            placeholder="Password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newName.trim()) createMutation.mutate()
+            }}
+          />
+          <button
+            type="button"
+            className="admin-add-btn"
+            disabled={!newName.trim() || createMutation.isPending}
+            onClick={() => createMutation.mutate()}
+          >
+            <UserPlus size={14} />
+            {createMutation.isPending ? 'Creating…' : 'Create'}
+          </button>
+          <button
+            type="button"
+            className="admin-icon-action"
+            onClick={() => { setShowAddForm(false); setNewName(''); setNewPassword('') }}
+          >
+            <X size={14} />
+          </button>
+          {createMutation.error ? (
+            <span className="admin-inline-error">
+              {createMutation.error instanceof Error ? createMutation.error.message : 'Failed'}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <p className="admin-empty-note">Loading…</p>
+      ) : users.length === 0 ? (
+        <div className="admin-empty-card"><p>No users found.</p></div>
+      ) : (
+        <div className="admin-user-list">
+          {users.map((u) => (
+            <div key={u.id} className={`admin-user-row${u.isDisabled ? ' disabled' : ''}`}>
+              <div className="admin-idle-avatar">
+                {u.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="admin-user-copy">
+                <span className="admin-user-name">{u.name}</span>
+                <span className="admin-user-meta">
+                  {u.lastLoginDate ? `Last login ${timeAgo(u.lastLoginDate)}` : 'Never logged in'}
+                </span>
+              </div>
+              <div className="admin-user-badges">
+                {u.isAdmin ? (
+                  <span className="admin-badge admin-badge-admin">
+                    <Shield size={10} /> Admin
+                  </span>
+                ) : null}
+                {u.isDisabled ? (
+                  <span className="admin-badge admin-badge-disabled">Disabled</span>
+                ) : null}
+              </div>
+
+              {confirmDelete === u.id ? (
+                <div className="admin-confirm-delete">
+                  <span>Delete {u.name}?</span>
+                  <button
+                    type="button"
+                    className="admin-danger-btn"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => deleteMutation.mutate(u.id)}
+                  >
+                    {deleteMutation.isPending ? '…' : 'Yes, delete'}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-icon-action"
+                    onClick={() => setConfirmDelete(null)}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div className="admin-user-actions">
+                  <button
+                    type="button"
+                    className="admin-icon-action"
+                    title={u.isDisabled ? 'Enable user' : 'Disable user'}
+                    disabled={toggleMutation.isPending}
+                    onClick={() => toggleMutation.mutate({ userId: u.id, disabled: !u.isDisabled })}
+                  >
+                    {u.isDisabled ? <UserCheck size={15} /> : <UserMinus size={15} />}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-icon-action admin-icon-action-danger"
+                    title="Delete user"
+                    onClick={() => setConfirmDelete(u.id)}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ── Library Manager ───────────────────────────────────────────────────────────
+
+type AdminLibrary = {
+  itemId: string
+  name: string
+  collectionType: string
+  locations: string[]
+}
+
+function LibraryManager({
+  libraries,
+  isLoading,
+  onRefresh,
+}: {
+  libraries: AdminLibrary[]
+  isLoading: boolean
+  onRefresh: () => void
+}) {
+  const [scanningAll, setScanningAll] = useState(false)
+  const [scanningId, setScanningId] = useState<string | null>(null)
+  const [scanDoneId, setScanDoneId] = useState<string | null>(null)
+
+  async function handleScanAll() {
+    setScanningAll(true)
+    try {
+      await scanAllAdminLibraries()
+      setScanDoneId('all')
+      setTimeout(() => setScanDoneId(null), 3000)
+    } finally {
+      setScanningAll(false)
+    }
+  }
+
+  async function handleScanOne(itemId: string) {
+    setScanningId(itemId)
+    try {
+      await scanAdminLibrary({ data: { itemId } })
+      setScanDoneId(itemId)
+      setTimeout(() => setScanDoneId(null), 3000)
+    } finally {
+      setScanningId(null)
+    }
+  }
+
+  return (
+    <section className="admin-section admin-section-full">
+      <header className="admin-section-head">
+        <Library size={15} />
+        <h2>Library manager</h2>
+        <span className="admin-count-badge">{libraries.length}</span>
+        <div className="admin-section-actions">
+          <button type="button" className="admin-icon-action" onClick={onRefresh} title="Refresh">
+            <RefreshCw size={14} />
+          </button>
+          <button
+            type="button"
+            className="admin-add-btn"
+            disabled={scanningAll}
+            onClick={() => void handleScanAll()}
+          >
+            <RefreshCw size={14} className={scanningAll ? 'spin' : ''} />
+            {scanDoneId === 'all' ? 'Scan queued!' : scanningAll ? 'Scanning…' : 'Scan all libraries'}
+          </button>
+        </div>
+      </header>
+
+      {isLoading ? (
+        <p className="admin-empty-note">Loading…</p>
+      ) : libraries.length === 0 ? (
+        <div className="admin-empty-card"><p>No libraries found.</p></div>
+      ) : (
+        <div className="admin-library-grid">
+          {libraries.map((lib) => (
+            <div key={lib.itemId} className="admin-library-card">
+              <div className="admin-library-icon">
+                <LibraryTypeIcon type={lib.collectionType} size={22} />
+              </div>
+              <div className="admin-library-info">
+                <span className="admin-library-name">{lib.name}</span>
+                <span className="admin-library-type">{lib.collectionType}</span>
+                {lib.locations.length > 0 ? (
+                  <span className="admin-library-path" title={lib.locations.join('\n')}>
+                    {lib.locations[0]}
+                    {lib.locations.length > 1 ? ` +${lib.locations.length - 1} more` : ''}
+                  </span>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="admin-scan-btn"
+                disabled={scanningId === lib.itemId}
+                onClick={() => void handleScanOne(lib.itemId)}
+                title="Scan this library"
+              >
+                <RefreshCw size={13} className={scanningId === lib.itemId ? 'spin' : ''} />
+                {scanDoneId === lib.itemId
+                  ? 'Queued!'
+                  : scanningId === lib.itemId
+                    ? 'Scanning…'
+                    : 'Scan'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

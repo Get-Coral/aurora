@@ -4369,9 +4369,293 @@ html.tv-mode .player-autoplay-cancel {
   color: var(--ink);
 }
 
+/* Wide sections (user manager, library manager) */
+.admin-wide-section {
+  margin-top: 1.5rem;
+}
+
+.admin-section-full {
+  width: 100%;
+}
+
+.admin-section-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Add / icon action buttons */
+.admin-icon-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+  flex-shrink: 0;
+}
+.admin-icon-action:hover { background: rgba(255, 255, 255, 0.11); color: var(--ink); }
+.admin-icon-action:disabled { opacity: 0.4; pointer-events: none; }
+.admin-icon-action-danger:hover { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+
+.admin-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: rgba(112, 168, 255, 0.12);
+  border: 1px solid rgba(112, 168, 255, 0.28);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.admin-add-btn:hover { background: rgba(112, 168, 255, 0.2); }
+.admin-add-btn:disabled { opacity: 0.45; pointer-events: none; }
+
+/* Add user inline form */
+.admin-add-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.admin-add-input {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  min-width: 0;
+  flex: 1 1 140px;
+  max-width: 220px;
+}
+.admin-add-input:focus { border-color: var(--accent); }
+.admin-add-input::placeholder { color: var(--ink-faint); }
+
+.admin-inline-error {
+  font-size: 0.78rem;
+  color: #f87171;
+  flex-basis: 100%;
+}
+
+/* User list */
+.admin-user-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-user-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  transition: background 100ms;
+}
+.admin-user-row:last-child { border-bottom: none; }
+.admin-user-row:hover { background: rgba(255, 255, 255, 0.03); }
+.admin-user-row.disabled { opacity: 0.55; }
+
+.admin-user-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-user-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-user-meta {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+
+.admin-user-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.admin-badge-admin {
+  background: rgba(112, 168, 255, 0.14);
+  border: 1px solid rgba(112, 168, 255, 0.3);
+  color: var(--accent);
+}
+
+.admin-badge-disabled {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.admin-user-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.admin-confirm-delete {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+.admin-danger-btn {
+  height: 1.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.45rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.admin-danger-btn:hover { background: rgba(239, 68, 68, 0.25); }
+.admin-danger-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+/* Library grid */
+.admin-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.admin-library-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  transition: background 120ms;
+}
+.admin-library-card:hover { background: rgba(255, 255, 255, 0.06); }
+
+.admin-library-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: rgba(112, 168, 255, 0.1);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.admin-library-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-library-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-library-type {
+  font-size: 0.72rem;
+  text-transform: capitalize;
+  color: var(--ink-faint);
+}
+
+.admin-library-path {
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-scan-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms, color 120ms;
+}
+.admin-scan-btn:hover { background: rgba(112, 168, 255, 0.12); color: var(--accent); border-color: rgba(112, 168, 255, 0.3); }
+.admin-scan-btn:disabled { opacity: 0.45; pointer-events: none; }
+
+/* Spin animation for scan buttons */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
+
 /* Responsive */
 @media (max-width: 900px) {
   .admin-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-library-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 540px) {
+  .admin-library-grid {
     grid-template-columns: 1fr;
   }
 }

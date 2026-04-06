@@ -879,3 +879,33 @@ export async function createJellyfinUser(name: string, password: string): Promis
   if (!res.ok) throw new Error(`Create user: ${res.status}`)
   return res.json() as Promise<JellyfinUser>
 }
+
+// ── Library management ───────────────────────────────────────────────────────
+
+export interface JellyfinVirtualFolder {
+  Name: string
+  CollectionType?: string
+  ItemId: string
+  Locations?: string[]
+  PrimaryImageItemId?: string
+}
+
+export async function getVirtualFolders(): Promise<JellyfinVirtualFolder[]> {
+  return jellyfinFetch<JellyfinVirtualFolder[]>('/Library/VirtualFolders')
+}
+
+export async function scanAllLibraries(): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Library/Refresh`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`Scan all libraries: ${res.status}`)
+}
+
+export async function scanLibrary(itemId: string): Promise<void> {
+  const settings = getRequiredSettings()
+  const url = new URL(`${settings.url}/Items/${itemId}/Refresh`)
+  url.searchParams.set('api_key', settings.apiKey)
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`Scan library: ${res.status}`)
+}
