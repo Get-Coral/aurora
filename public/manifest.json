@@ -1,6 +1,8 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
+  "id": "/",
+  "short_name": "Aurora",
+  "name": "Aurora for Jellyfin",
+  "description": "A TV-friendly Jellyfin web client for living-room screens, Android devices, and iPhone Safari.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +20,12 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "orientation": "any",
+  "categories": ["entertainment", "video", "utilities"],
+  "theme_color": "#050816",
+  "background_color": "#050816"
 }

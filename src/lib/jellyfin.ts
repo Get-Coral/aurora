@@ -2,6 +2,7 @@ import {
   getEffectiveJellyfinSettings,
   type JellyfinSettings,
 } from './config-store'
+import type { ClientPlaybackContext } from './platform'
 
 const AURORA_CLIENT_NAME = 'Aurora'
 const AURORA_DEVICE_NAME = 'Aurora Web'
@@ -83,6 +84,7 @@ interface JellyfinAuthResponse {
 export interface JellyfinPlaybackSession {
   streamUrl: string
   canSyncProgress: boolean
+  playMethod: 'DirectPlay' | 'Transcode'
   playSessionId?: string
   mediaSourceId?: string
   sessionId?: string
@@ -92,6 +94,7 @@ export interface JellyfinPlaybackSession {
 interface JellyfinPlaybackSyncInput {
   itemId: string
   positionTicks: number
+  playMethod?: 'DirectPlay' | 'Transcode'
   playSessionId?: string
   mediaSourceId?: string
   sessionId?: string
@@ -308,7 +311,10 @@ export async function setPlayed(itemId: string, played: boolean) {
   return res.json() as Promise<{ Played: boolean; PlaybackPositionTicks?: number }>
 }
 
-export async function createPlaybackSession(itemId: string): Promise<JellyfinPlaybackSession> {
+export async function createPlaybackSession(
+  itemId: string,
+  client?: ClientPlaybackContext,
+): Promise<JellyfinPlaybackSession> {
   const settings = getRequiredSettings()
   const auth = await getPlaybackAuth(settings).catch(() => null)
 
@@ -316,6 +322,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
     return {
       streamUrl: jellyfinStreamUrl(itemId),
       canSyncProgress: false,
+      playMethod: 'DirectPlay',
       subtitleTracks: [],
     }
   }
@@ -368,9 +375,11 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
   // MP4 transcode. Jellyfin's TranscodingUrl points to HLS which requires
   // hls.js in Chrome/Firefox — the stream.mp4 endpoint works natively in all browsers.
   const supportsDirectPlay = mediaSource?.SupportsDirectPlay !== false
-  const streamUrl = supportsDirectPlay
-    ? jellyfinStreamUrl(itemId, { playSessionId, mediaSourceId })
-    : jellyfinTranscodeUrl(itemId, { playSessionId, mediaSourceId })
+  const shouldPreferTranscode = !supportsDirectPlay || client?.prefersSafeVideo === true
+  const playMethod = shouldPreferTranscode ? 'Transcode' : 'DirectPlay'
+  const streamUrl = shouldPreferTranscode
+    ? jellyfinTranscodeUrl(itemId, { playSessionId, mediaSourceId })
+    : jellyfinStreamUrl(itemId, { playSessionId, mediaSourceId })
 
   const subtitleTracks: SubtitleTrack[] = (mediaSource?.MediaStreams ?? [])
     .filter((s) => s.Type === 'Subtitle' && s.IsTextSubtitleStream)
@@ -384,6 +393,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
   return {
     streamUrl,
     canSyncProgress: Boolean(playSessionId),
+    playMethod,
     playSessionId,
     mediaSourceId,
     sessionId: auth.sessionId,
@@ -394,6 +404,7 @@ export async function createPlaybackSession(itemId: string): Promise<JellyfinPla
 export async function syncPlaybackState({
   itemId,
   positionTicks,
+  playMethod = 'DirectPlay',
   playSessionId,
   mediaSourceId,
   sessionId,
@@ -411,7 +422,7 @@ export async function syncPlaybackState({
         PositionTicks: positionTicks,
         IsPaused: isPaused,
         CanSeek: true,
-        PlayMethod: 'DirectPlay',
+        PlayMethod: playMethod,
         PlaySessionId: playSessionId,
         MediaSourceId: mediaSourceId,
         SessionId: sessionId,

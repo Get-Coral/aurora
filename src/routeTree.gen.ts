@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -30,6 +31,11 @@ const SetupRoute = SetupRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfflineRoute = OfflineRouteImport.update({
+  id: '/offline',
+  path: '/offline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyListRoute = MyListRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
   '/my-list': typeof MyListRoute
+  '/offline': typeof OfflineRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
   '/my-list': typeof MyListRoute
+  '/offline': typeof OfflineRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
   '/my-list': typeof MyListRoute
+  '/offline': typeof OfflineRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/history'
     | '/my-list'
+    | '/offline'
     | '/settings'
     | '/setup'
     | '/collections/$id'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/history'
     | '/my-list'
+    | '/offline'
     | '/settings'
     | '/setup'
     | '/collections/$id'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/history'
     | '/my-list'
+    | '/offline'
     | '/settings'
     | '/setup'
     | '/collections/$id'
@@ -174,6 +186,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   HistoryRoute: typeof HistoryRoute
   MyListRoute: typeof MyListRoute
+  OfflineRoute: typeof OfflineRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   CollectionsIdRoute: typeof CollectionsIdRoute
@@ -196,6 +209,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offline': {
+      id: '/offline'
+      path: '/offline'
+      fullPath: '/offline'
+      preLoaderRoute: typeof OfflineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-list': {
@@ -290,6 +310,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   HistoryRoute: HistoryRoute,
   MyListRoute: MyListRoute,
+  OfflineRoute: OfflineRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   CollectionsIdRoute: CollectionsIdRoute,

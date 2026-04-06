@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
+import { getClientPlaybackContext } from './platform'
 
 const STORAGE_KEY = 'aurora-tv-mode'
 
 export function getTvMode(): boolean {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === '1'
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (stored === '1') return true
+    if (stored === '0') return false
+    return getClientPlaybackContext().prefersTvMode
   } catch {
     return false
   }
@@ -28,7 +32,7 @@ export function useTvMode() {
       if (enabled) {
         window.localStorage.setItem(STORAGE_KEY, '1')
       } else {
-        window.localStorage.removeItem(STORAGE_KEY)
+        window.localStorage.setItem(STORAGE_KEY, '0')
       }
     } catch {
       // ignore

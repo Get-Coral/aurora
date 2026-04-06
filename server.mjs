@@ -94,7 +94,7 @@ loadEnvFile('.env.local')
 const { default: serverEntry } = await import('./dist/server/server.js')
 
 const host = process.env.HOST ?? '0.0.0.0'
-const port = Number.parseInt(process.env.PORT ?? '3000', 10)
+const port = Number.parseInt(process.env.PORT ?? '3200', 10)
 
 function getOrigin(request) {
   const forwardedProto = request.headers['x-forwarded-proto']
@@ -113,6 +113,14 @@ function getOrigin(request) {
 const nodeServer = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', getOrigin(request))
+
+    if (url.pathname === '/healthz') {
+      response.writeHead(204, {
+        'cache-control': 'no-store, no-cache, must-revalidate',
+      })
+      response.end()
+      return
+    }
 
     if (serveStatic(url, response)) return
     const headers = new Headers()

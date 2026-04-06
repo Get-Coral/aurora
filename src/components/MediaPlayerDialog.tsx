@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLockBodyScroll } from './useLockBodyScroll'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
+import { getClientPlaybackContext } from '../lib/platform'
 import { beginPlaybackSession, fetchOnlineSubtitle, fetchOpenSubtitlesKey, reportPlaybackState, searchOnlineSubtitles } from '../server/functions'
 
 interface MediaPlayerDialogProps {
@@ -56,9 +57,16 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   const [playbackSession, setPlaybackSession] = useState<{
     streamUrl: string
     canSyncProgress: boolean
+    playMethod?: 'DirectPlay' | 'Transcode'
     playSessionId?: string
     mediaSourceId?: string
     sessionId?: string
+    subtitleTracks: {
+      index: number
+      label: string
+      language: string
+      url: string
+    }[]
   } | null>(null)
   const lastReportedSecondRef = useRef(0)
   const stopReportedRef = useRef(false)
@@ -122,11 +130,12 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     if (!open || !item?.streamUrl) return
 
     let cancelled = false
+    const client = getClientPlaybackContext()
 
-    void beginPlaybackSession({ data: { id: item.id } })
+    void beginPlaybackSession({ data: { id: item.id, client } })
       .then((session) => { if (!cancelled) setPlaybackSession(session) })
       .catch(() => {
-        if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false, subtitleTracks: [] })
+        if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false, playMethod: 'DirectPlay', subtitleTracks: [] })
       })
 
     return () => { cancelled = true }
@@ -149,6 +158,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       return {
         id: item!.id,
         positionTicks: secondsToTicks(video!.currentTime),
+        playMethod: playbackSession?.playMethod,
         playSessionId: playbackSession?.playSessionId,
         mediaSourceId: playbackSession?.mediaSourceId,
         sessionId: playbackSession?.sessionId,

@@ -461,16 +461,24 @@ export const toggleFavorite = createServerFn({ method: 'POST' })
   })
 
 export const beginPlaybackSession = createServerFn({ method: 'POST' })
-  .inputValidator((input: { id: string }) => input)
+  .inputValidator((input: {
+    id: string
+    client?: {
+      platform: 'ios' | 'android' | 'android-tv' | 'other'
+      prefersSafeVideo: boolean
+      prefersTvMode: boolean
+    }
+  }) => input)
   .handler(async ({ data }) => {
     const { createPlaybackSession } = await import('../lib/jellyfin')
-    return createPlaybackSession(data.id)
+    return createPlaybackSession(data.id, data.client)
   })
 
 export const reportPlaybackState = createServerFn({ method: 'POST' })
   .inputValidator((input: {
     id: string
     positionTicks: number
+    playMethod?: 'DirectPlay' | 'Transcode'
     playSessionId?: string
     mediaSourceId?: string
     sessionId?: string
@@ -483,6 +491,7 @@ export const reportPlaybackState = createServerFn({ method: 'POST' })
     return syncPlaybackState({
       itemId: data.id,
       positionTicks: data.positionTicks,
+      playMethod: data.playMethod,
       playSessionId: data.playSessionId,
       mediaSourceId: data.mediaSourceId,
       sessionId: data.sessionId,
@@ -493,7 +502,7 @@ export const reportPlaybackState = createServerFn({ method: 'POST' })
   })
 
 export const fetchAdminOverview = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getSystemInfo, getItemCounts, getRequiredSettings } = await import('../lib/jellyfin')
+  const { getSystemInfo, getItemCounts } = await import('../lib/jellyfin')
   const { getEffectiveJellyfinSettings } = await import('../lib/config-store')
   const settings = getEffectiveJellyfinSettings()
   const [systemInfo, counts] = await Promise.all([getSystemInfo(), getItemCounts()])
