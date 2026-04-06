@@ -7,10 +7,23 @@
 * add real local Capacitor build flow for Android and iOS
 * emit a Capacitor-compatible SPA shell at `dist/client/index.html`
 * move native runtime browsing flows off server functions for local app usage
+* add Android hardware back handling for fullscreen, overlays, and route navigation
+* rotate the home spotlight insight card through queue, favorites, and recent-arrival reasons
+
+### Bug Fixes
+
+* make mobile media details use a full-page scrollable sheet instead of a cramped modal
+* hide the hero continue-watching side panel on tablet and mobile widths
+* add the missing `mobile-web-app-capable` meta tag
+* make `pnpm cap:run:android` prefer a valid JDK 21 path on macOS
+
+### CI
+
+* validate Capacitor sync and Android debug assembly in GitHub Actions using Java 21
 
 ### Documentation
 
-* document local Capacitor setup, sync, run, and first-launch flow
+* document Android back handling, Java 21 requirements, and native Android debug assembly
 
 ## [1.2.0](https://github.com/ElianCodes/aurora-ui/compare/v1.1.0...v1.2.0) (2026-04-05)
 

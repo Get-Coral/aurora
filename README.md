@@ -70,7 +70,7 @@ pnpm test
 
 GitHub Actions workflows are included for:
 
-- CI on pushes and pull requests: install, test, build, and Docker build validation
+- CI on pushes and pull requests: install, test, web build, Android Capacitor sync, Android debug assemble, and Docker build validation
 - Docker publish to GitHub Container Registry on `main`, version tags, or manual dispatch
 
 Workflow files:
@@ -159,6 +159,7 @@ How it works:
 - TanStack Start SPA mode now emits a real `dist/client/index.html`, which Capacitor requires.
 - `pnpm cap:sync`, `pnpm cap:copy`, and `pnpm cap:run:*` build Aurora first and then sync the native projects.
 - In native-shell mode, Aurora stores Jellyfin and OpenSubtitles settings in device-local storage instead of relying on the Node server.
+- Android hardware back now exits fullscreen first, then closes Aurora overlays, then navigates back before exiting the app at the true root.
 
 The Capacitor config lives in [`capacitor.config.ts`](./capacitor.config.ts).
 
@@ -182,6 +183,12 @@ Run directly to a connected device or emulator:
 ```bash
 pnpm cap:run:android
 pnpm cap:run:ios
+```
+
+Build the Android debug app without launching a device target:
+
+```bash
+pnpm android:assemble:debug
 ```
 
 ### First Launch
@@ -223,6 +230,9 @@ AURORA_APP_URL=https://your-aurora-domain.example pnpm cap:sync
 - Android packaging happens from Android Studio after opening the generated project.
 - iOS packaging happens from Xcode after opening the generated project.
 - Google TV should be treated as an Android TV target using the same Capacitor Android project once the TV UX is finalized.
+- Capacitor Android 8 requires JDK 21 for local and CI builds.
+- `pnpm cap:run:android` resolves `JAVA_HOME` automatically on macOS and prefers the Homebrew JDK 21 path when present, then falls back to system JDK 21 or 17.
+- CI validates the native Android path with `pnpm cap:sync` and `pnpm android:assemble:debug`.
 
 Published images go to:
 
