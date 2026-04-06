@@ -33,6 +33,8 @@ import {
   fetchClientAdminOverview,
   fetchClientAdminSessions,
   fetchClientAdminUsers,
+  fetchClientCollectionItems,
+  fetchClientCollections,
   fetchClientContinueWatching,
   fetchClientFavoriteItems,
   fetchClientFeatured,
@@ -44,8 +46,13 @@ import {
   fetchClientSearch,
   fetchClientSeriesDetails,
   fetchClientWatchHistory,
+  addClientItemsToCollection,
+  createClientCollection,
+  deleteClientCollection,
   createClientAdminUser,
   deleteClientAdminUser,
+  removeClientItemFromCollection,
+  renameClientCollection,
   scanAllClientAdminLibraries,
   scanClientAdminLibrary,
   reportClientPlaybackState,
@@ -226,6 +233,69 @@ export async function fetchMyListRuntime() {
   }
 
   return fetchMyList()
+}
+
+export async function fetchCollectionsRuntime() {
+  if (shouldUseClientRuntime()) {
+    return fetchClientCollections()
+  }
+
+  const { fetchCollections } = await import('../server/functions')
+  return fetchCollections()
+}
+
+export async function fetchCollectionItemsRuntime(input: { data: { id: string } }) {
+  if (shouldUseClientRuntime()) {
+    return fetchClientCollectionItems(input.data.id)
+  }
+
+  const { fetchCollectionItems } = await import('../server/functions')
+  return fetchCollectionItems(input)
+}
+
+export async function createCollectionRuntime(input: { data: { name: string } }) {
+  if (shouldUseClientRuntime()) {
+    return createClientCollection(input.data.name)
+  }
+
+  const { createCollection } = await import('../server/functions')
+  return createCollection(input)
+}
+
+export async function deleteCollectionRuntime(input: { data: { id: string } }) {
+  if (shouldUseClientRuntime()) {
+    return deleteClientCollection(input.data.id)
+  }
+
+  const { deleteCollection } = await import('../server/functions')
+  return deleteCollection(input)
+}
+
+export async function renameCollectionRuntime(input: { data: { id: string; name: string } }) {
+  if (shouldUseClientRuntime()) {
+    return renameClientCollection(input.data.id, input.data.name)
+  }
+
+  const { renameCollection } = await import('../server/functions')
+  return renameCollection(input)
+}
+
+export async function addToCollectionRuntime(input: { data: { collectionId: string; itemIds: string[] } }) {
+  if (shouldUseClientRuntime()) {
+    return addClientItemsToCollection(input.data.collectionId, input.data.itemIds)
+  }
+
+  const { addToCollection } = await import('../server/functions')
+  return addToCollection(input)
+}
+
+export async function removeFromCollectionRuntime(input: { data: { collectionId: string; itemId: string } }) {
+  if (shouldUseClientRuntime()) {
+    return removeClientItemFromCollection(input.data.collectionId, input.data.itemId)
+  }
+
+  const { removeFromCollection } = await import('../server/functions')
+  return removeFromCollection(input)
 }
 
 export async function beginPlaybackSessionRuntime(input: {

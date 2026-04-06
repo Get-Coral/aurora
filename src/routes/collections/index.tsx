@@ -6,23 +6,23 @@ import { MediaPlayerDialog } from '../../components/MediaPlayerDialog'
 import { MediaSpotlightDialog } from '../../components/MediaSpotlightDialog'
 import { useFavoriteAction } from '../../components/useFavoriteAction'
 import { useI18n } from '../../lib/i18n'
+import {
+  createCollectionRuntime,
+  deleteCollectionRuntime,
+  fetchCollectionsRuntime,
+  fetchSetupStatusRuntime,
+  renameCollectionRuntime,
+} from '../../lib/runtime-functions'
 import { useTvMode } from '../../lib/tv-mode'
 import type { MediaItem } from '../../lib/media'
-import {
-  createCollection,
-  deleteCollection,
-  fetchCollections,
-  fetchSetupStatus,
-  renameCollection,
-} from '../../server/functions'
 
 export const Route = createFileRoute('/collections/')({
   loader: async ({ context: { queryClient } }) => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
     if (!setupStatus.configured) throw redirect({ to: '/setup' })
     await queryClient.ensureQueryData({
       queryKey: ['collections'],
-      queryFn: () => fetchCollections(),
+      queryFn: () => fetchCollectionsRuntime(),
     })
   },
   component: CollectionsPage,
@@ -40,7 +40,7 @@ function CollectionsPage() {
   const queryClient = useQueryClient()
   const { data: collections = [] } = useSuspenseQuery({
     queryKey: ['collections'],
-    queryFn: () => fetchCollections(),
+    queryFn: () => fetchCollectionsRuntime(),
   })
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
@@ -57,7 +57,7 @@ function CollectionsPage() {
   }
 
   const createMutation = useMutation({
-    mutationFn: () => createCollection({ data: { name: nameInput.trim() } }),
+    mutationFn: () => createCollectionRuntime({ data: { name: nameInput.trim() } }),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
       setDialog(null)
@@ -68,7 +68,7 @@ function CollectionsPage() {
 
   const renameMutation = useMutation({
     mutationFn: ({ id }: { id: string }) =>
-      renameCollection({ data: { id, name: nameInput.trim() } }),
+      renameCollectionRuntime({ data: { id, name: nameInput.trim() } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
       setDialog(null)
@@ -77,7 +77,7 @@ function CollectionsPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: ({ id }: { id: string }) => deleteCollection({ data: { id } }),
+    mutationFn: ({ id }: { id: string }) => deleteCollectionRuntime({ data: { id } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
       setDialog(null)

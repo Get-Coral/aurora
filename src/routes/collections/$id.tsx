@@ -7,23 +7,23 @@ import { MediaPlayerDialog } from '../../components/MediaPlayerDialog'
 import { MediaSpotlightDialog } from '../../components/MediaSpotlightDialog'
 import { useFavoriteAction } from '../../components/useFavoriteAction'
 import { useI18n } from '../../lib/i18n'
+import {
+  addToCollectionRuntime,
+  fetchCollectionItemsRuntime,
+  fetchSearchRuntime,
+  fetchSetupStatusRuntime,
+  removeFromCollectionRuntime,
+} from '../../lib/runtime-functions'
 import { useTvMode } from '../../lib/tv-mode'
 import type { MediaItem } from '../../lib/media'
-import {
-  addToCollection,
-  fetchCollectionItems,
-  fetchSearch,
-  fetchSetupStatus,
-  removeFromCollection,
-} from '../../server/functions'
 
 export const Route = createFileRoute('/collections/$id')({
   loader: async ({ params, context: { queryClient } }) => {
-    const setupStatus = await fetchSetupStatus()
+    const setupStatus = await fetchSetupStatusRuntime()
     if (!setupStatus.configured) throw redirect({ to: '/setup' })
     await queryClient.ensureQueryData({
       queryKey: ['collection-items', params.id],
-      queryFn: () => fetchCollectionItems({ data: { id: params.id } }),
+      queryFn: () => fetchCollectionItemsRuntime({ data: { id: params.id } }),
     })
   },
   component: CollectionDetailPage,
@@ -36,7 +36,7 @@ function CollectionDetailPage() {
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery({
     queryKey: ['collection-items', id],
-    queryFn: () => fetchCollectionItems({ data: { id } }),
+    queryFn: () => fetchCollectionItemsRuntime({ data: { id } }),
   })
 
   const { collection, items } = data
@@ -53,13 +53,13 @@ function CollectionDetailPage() {
 
   const { data: searchResults = [], isFetching: searching } = useQuery({
     queryKey: ['search', deferredQuery],
-    queryFn: () => fetchSearch({ data: { query: deferredQuery } }),
+    queryFn: () => fetchSearchRuntime({ data: { query: deferredQuery } }),
     enabled: deferredQuery.length > 1,
   })
 
   const addMutation = useMutation({
     mutationFn: () =>
-      addToCollection({ data: { collectionId: id, itemIds: Array.from(selectedIds) } }),
+      addToCollectionRuntime({ data: { collectionId: id, itemIds: Array.from(selectedIds) } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['collection-items', id] })
       setAddDialogOpen(false)
@@ -70,7 +70,7 @@ function CollectionDetailPage() {
 
   const removeMutation = useMutation({
     mutationFn: ({ itemId }: { itemId: string }) =>
-      removeFromCollection({ data: { collectionId: id, itemId } }),
+      removeFromCollectionRuntime({ data: { collectionId: id, itemId } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['collection-items', id] })
     },

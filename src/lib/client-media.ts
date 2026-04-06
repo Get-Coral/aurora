@@ -347,6 +347,81 @@ export async function fetchClientMostPlayed(type: JellyfinMediaType = 'Movie', l
   return data.Items.map((item) => fromClientJellyfin(item, settings))
 }
 
+export async function fetchClientCollections() {
+  const settings = getRequiredClientSettings()
+  const data = await clientJellyfinFetch<JellyfinResponse<JellyfinItem>>(
+    `/Users/${settings.userId}/Items`,
+    {
+      IncludeItemTypes: 'BoxSet',
+      Recursive: 'true',
+      SortBy: 'SortName',
+      SortOrder: 'Ascending',
+      Fields: 'Overview,GenreItems,UserData,ChildCount',
+    },
+    settings,
+  )
+
+  return data.Items.map((item) => fromClientJellyfin(item, settings))
+}
+
+export async function fetchClientCollectionItems(collectionId: string) {
+  const settings = getRequiredClientSettings()
+  const [itemsResult, collection] = await Promise.all([
+    clientJellyfinFetch<JellyfinResponse<JellyfinItem>>(
+      `/Users/${settings.userId}/Items`,
+      {
+        ParentId: collectionId,
+        SortBy: 'PremiereDate,SortName',
+        SortOrder: 'Ascending',
+        Fields: 'Overview,GenreItems,UserData',
+      },
+      settings,
+    ),
+    clientJellyfinFetch<JellyfinItem>(
+      `/Users/${settings.userId}/Items/${collectionId}`,
+      { Fields: 'Overview,GenreItems,UserData,People,Studios' },
+      settings,
+    ),
+  ])
+
+  return {
+    collection: fromClientJellyfin(collection, settings),
+    items: itemsResult.Items.map((item) => fromClientJellyfin(item, settings)),
+  }
+}
+
+export async function createClientCollection(name: string) {
+  const response = await clientJellyfinWrite('/Collections', { method: 'POST' }, { Name: name })
+  return response.json() as Promise<{ Id: string }>
+}
+
+export async function deleteClientCollection(id: string) {
+  await clientJellyfinWrite(`/Items/${id}`, { method: 'DELETE' })
+}
+
+export async function renameClientCollection(id: string, name: string) {
+  const settings = getRequiredClientSettings()
+  const item = await clientJellyfinFetch<JellyfinItem>(
+    `/Users/${settings.userId}/Items/${id}`,
+    { Fields: 'Overview,GenreItems,UserData,People,Studios' },
+    settings,
+  )
+
+  await clientJellyfinWrite(`/Items/${id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...item, Name: name }),
+  })
+}
+
+export async function addClientItemsToCollection(collectionId: string, itemIds: string[]) {
+  await clientJellyfinWrite(`/Collections/${collectionId}/Items`, { method: 'POST' }, { Ids: itemIds.join(',') })
+}
+
+export async function removeClientItemFromCollection(collectionId: string, itemId: string) {
+  await clientJellyfinWrite(`/Collections/${collectionId}/Items`, { method: 'DELETE' }, { Ids: itemId })
+}
+
 type ClientAdminOverview = {
   systemInfo: {
     ServerName: string

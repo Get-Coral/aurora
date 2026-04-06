@@ -85,10 +85,6 @@ export default function Header() {
     })
   }
 
-  function handleNavSelect() {
-    setNavOpen(false)
-  }
-
   return (
     <header ref={headerRef} className="app-header">
       <nav className="page-wrap header-bar">
@@ -150,7 +146,6 @@ export default function Header() {
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
-            onClick={handleNavSelect}
           >
             {t('nav.home')}
           </Link>
@@ -160,7 +155,6 @@ export default function Header() {
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
-            onClick={handleNavSelect}
           >
             {t('nav.movies')}
           </Link>
@@ -170,7 +164,6 @@ export default function Header() {
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
-            onClick={handleNavSelect}
           >
             {t('nav.series')}
           </Link>
@@ -180,7 +173,6 @@ export default function Header() {
               className="nav-pill"
               activeProps={{ className: 'nav-pill nav-pill-active' }}
               data-tv-focusable="true"
-              onClick={handleNavSelect}
             >
               {t('nav.collections')}
             </Link>
@@ -190,7 +182,6 @@ export default function Header() {
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
             data-tv-focusable="true"
-            onClick={handleNavSelect}
           >
             {t('nav.myList')}
           </Link>
