@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
@@ -32,6 +32,17 @@ interface LibraryViewProps {
   genre?: string
   mode?: 'library' | 'my-list'
   customItems?: MediaItem[]
+}
+
+// 10-item cycle → 3 complete 12-column rows per cycle (no gaps)
+// row A: feature(6)+poster(3)+std(3)=12
+// row B: std(3)+poster(3)+std(3)+std(3)=12
+// row C: feature(6)+std(3)+std(3)=12
+function cardVariant(index: number): 'feature' | 'poster' | 'standard' {
+  const i = index % 10
+  if (i === 0 || i === 7) return 'feature'
+  if (i === 1 || i === 4) return 'poster'
+  return 'standard'
 }
 
 const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
@@ -209,60 +220,78 @@ export function LibraryView({
               : t('library.summary', { type: type === 'Movie' ? 'movie' : 'series' })}
           </p>
         </div>
-
-        {mode === 'library' ? (
-          <div className="library-controls">
-            <label className="library-select-shell">
-              <span>{t('library.sortBy')}</span>
-              <select
-                value={sort}
-                className="library-select"
-                onChange={(event) => updateSearch({ sort: event.target.value as LibrarySort })}
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.value === 'DateCreated'
-                      ? t('library.sort.dateCreated')
-                      : option.value === 'PremiereDate'
-                        ? t('library.sort.premiereDate')
-                        : option.value === 'CommunityRating'
-                          ? t('library.sort.communityRating')
-                          : t('library.sort.sortName')}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="library-select-shell">
-              <span>{t('library.direction')}</span>
-              <select
-                value={order}
-                className="library-select"
-                onChange={(event) => updateSearch({ order: event.target.value as LibrarySortOrder })}
-              >
-                <option value="Descending">{t('library.order.desc')}</option>
-                <option value="Ascending">{t('library.order.asc')}</option>
-              </select>
-            </label>
-
-            <div className="library-select-shell">
-              <span>{t('library.filter')}</span>
-              <button
-                type="button"
-                className={`filter-toggle${filterOpen ? ' filter-toggle-open' : ''}${activeFilterCount > 0 ? ' filter-toggle-active' : ''}`}
-                onClick={() => setFilterOpen((v) => !v)}
-                aria-expanded={filterOpen}
-              >
-                <SlidersHorizontal size={15} />
-                {t('library.filters')}
-                {activeFilterCount > 0 ? (
-                  <span className="filter-badge">{activeFilterCount}</span>
-                ) : null}
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
+
+      {mode === 'library' ? (
+        <div className="page-wrap library-toolbar">
+          {type === 'Movie' ? (
+            <div className="genre-strip">
+              <Link
+                to="/library/movies"
+                search={{ sort, order, ratings, decade, minScore }}
+                className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
+              >
+                {t('library.allMovies')}
+              </Link>
+              {CURATED_MOVIE_GENRES.map((genreOption) => (
+                <Link
+                  key={genreOption}
+                  to="/library/movies/genre/$genre"
+                  params={{ genre: genreOption }}
+                  search={{ sort, order, ratings, decade, minScore }}
+                  className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
+                >
+                  {genreOption}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="genre-strip-spacer" />
+          )}
+
+          <div className="toolbar-controls">
+            <select
+              value={sort}
+              className="toolbar-sort-select"
+              onChange={(event) => updateSearch({ sort: event.target.value as LibrarySort })}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.value === 'DateCreated'
+                    ? t('library.sort.dateCreated')
+                    : option.value === 'PremiereDate'
+                      ? t('library.sort.premiereDate')
+                      : option.value === 'CommunityRating'
+                        ? t('library.sort.communityRating')
+                        : t('library.sort.sortName')}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              className="toolbar-dir-btn"
+              title={order === 'Descending' ? t('library.order.desc') : t('library.order.asc')}
+              onClick={() => updateSearch({ order: order === 'Descending' ? 'Ascending' : 'Descending' })}
+            >
+              {order === 'Descending' ? <ArrowDown size={15} /> : <ArrowUp size={15} />}
+            </button>
+
+            <button
+              type="button"
+              className={`filter-toggle${filterOpen ? ' filter-toggle-open' : ''}${activeFilterCount > 0 ? ' filter-toggle-active' : ''}`}
+              onClick={() => setFilterOpen((v) => !v)}
+              aria-expanded={filterOpen}
+            >
+              <SlidersHorizontal size={14} />
+              {t('library.filters')}
+              {activeFilterCount > 0 ? (
+                <span className="filter-badge">{activeFilterCount}</span>
+              ) : null}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {mode === 'library' && filterOpen ? (
         <div className="page-wrap filter-panel">
@@ -372,36 +401,13 @@ export function LibraryView({
         </div>
       ) : null}
 
-      {type === 'Movie' && mode === 'library' ? (
-        <div className="page-wrap genre-rail">
-          <Link
-            to="/library/movies"
-            search={{ sort, order, ratings, decade, minScore }}
-            className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
-          >
-            {t('library.allMovies')}
-          </Link>
-          {CURATED_MOVIE_GENRES.map((genreOption) => (
-            <Link
-              key={genreOption}
-              to="/library/movies/genre/$genre"
-              params={{ genre: genreOption }}
-              search={{ sort, order, ratings, decade, minScore }}
-              className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
-            >
-              {genreOption}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-
       <div className="page-wrap library-grid">
         {resolvedItems.map((item, index) => (
           <MediaCard
             key={item.id}
             item={item}
             priority={index < 8}
-            variant={index % 7 === 0 ? 'feature' : index % 3 === 0 ? 'poster' : 'standard'}
+            variant={cardVariant(index)}
             onClick={() => setSelectedItem(item)}
             onPlay={playMedia}
             onToggleFavorite={handleToggleFavorite}

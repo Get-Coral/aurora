@@ -272,7 +272,6 @@ button { font: inherit; }
 .library-head {
   display: flex;
   align-items: end;
-  justify-content: space-between;
   gap: 2rem;
 }
 
@@ -302,44 +301,83 @@ button { font: inherit; }
   line-height: 1.8;
 }
 
-.library-controls {
+.library-toolbar {
   display: flex;
-  align-items: end;
+  align-items: center;
   gap: 1rem;
-  flex-wrap: wrap;
+  margin-top: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
 }
 
-.library-select-shell {
+.genre-strip {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  color: var(--ink-faint);
-  font-size: 0.82rem;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
 }
 
-.library-select {
-  min-width: 12rem;
-  min-height: 3rem;
-  padding: 0 1rem;
+.genre-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.genre-strip-spacer {
+  flex: 1;
+}
+
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.toolbar-sort-select {
+  height: 2.4rem;
+  padding: 0 0.9rem;
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--ink);
   color-scheme: dark;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease;
 }
 
-.library-select:hover,
-.library-select:focus-visible {
+.toolbar-sort-select:hover,
+.toolbar-sort-select:focus-visible {
   border-color: rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.08);
   outline: none;
 }
 
-.library-select option {
+.toolbar-sort-select option {
   background: #0f1628;
+  color: var(--ink);
+}
+
+.toolbar-dir-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  flex-shrink: 0;
+}
+
+.toolbar-dir-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--ink);
 }
 
@@ -354,30 +392,28 @@ button { font: inherit; }
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 1rem;
-  margin-top: 2rem;
-}
-
-.genre-rail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.4rem;
+  margin-top: 1.5rem;
 }
 
 .genre-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 2.7rem;
-  padding: 0 1rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 2.4rem;
+  padding: 0 0.9rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--ink-muted);
+  font-size: 0.85rem;
   text-decoration: none;
+  transition: color 120ms, border-color 120ms, background 120ms;
 }
 
 .genre-pill:hover {
   color: var(--ink);
+  border-color: var(--line-strong);
 }
 
 .genre-pill-active {
@@ -1238,6 +1274,19 @@ html.tv-mode .hero-copy-in {
 
 .player-controls-overlay.visible {
   opacity: 1;
+}
+
+/* Top controls (title, close) need pointer-events only when visible */
+.player-controls-top {
+  pointer-events: none;
+}
+.player-controls-overlay.visible .player-controls-top {
+  pointer-events: auto;
+}
+
+/* Bottom controls (progress + buttons) are ALWAYS interactive so the user
+   can seek/pause even when the overlay has faded out */
+.player-controls-bottom {
   pointer-events: auto;
 }
 
@@ -1273,6 +1322,10 @@ html.tv-mode .hero-copy-in {
 .player-progress {
   cursor: pointer;
   padding: 0.6rem 0;
+  /* Always interactive — pointer-events on overlay is none when hidden,
+     but we need seek to work even before the overlay fully appears */
+  pointer-events: auto;
+  touch-action: none; /* prevent scroll interfering with drag */
 }
 
 .player-progress-track {
@@ -3374,9 +3427,14 @@ html.tv-mode .player-controls-overlay button {
 }
 
 /* Library / filter controls */
-html.tv-mode .library-select {
-  min-height: 3.2rem;
+html.tv-mode .toolbar-sort-select {
+  height: 3.2rem;
   font-size: 1rem;
+}
+
+html.tv-mode .toolbar-dir-btn {
+  width: 3.2rem;
+  height: 3.2rem;
 }
 
 html.tv-mode .filter-chip {
@@ -3439,4 +3497,204 @@ html.tv-mode .player-autoplay-countdown {
 html.tv-mode .player-autoplay-cancel {
   font-size: 1rem;
   padding: 0.75rem 1.25rem;
+}
+
+/* ── Setup flow ─────────────────────────────────────────────────────────── */
+
+.setup-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--bg);
+  gap: 2rem;
+}
+
+.setup-wordmark {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  opacity: 0.5;
+}
+
+.setup-flow {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.setup-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.setup-step-label {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.setup-progress-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1.75rem;
+}
+
+.setup-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.setup-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 2rem;
+  padding: 2.25rem 2.25rem 2rem;
+}
+
+.setup-step-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: rgba(112, 168, 255, 0.1);
+  border: 1px solid rgba(112, 168, 255, 0.18);
+  color: var(--accent-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.setup-step-title {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  line-height: 1.05;
+}
+
+.setup-step-subtitle {
+  margin: 0 0 1.75rem;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.setup-field label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.setup-input {
+  width: 100%;
+  height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font-size: 0.95rem;
+  transition: border-color 150ms ease, background 150ms ease;
+  box-sizing: border-box;
+}
+
+.setup-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.setup-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  line-height: 1.65;
+}
+
+.setup-error {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.2);
+  color: #ff8080;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.75rem;
+}
+
+.setup-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 3rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+  flex-shrink: 0;
+}
+
+.setup-back-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.setup-next-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3rem;
+  padding: 0 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+
+.setup-next-btn:hover {
+  background: var(--accent-strong);
+}
+
+.setup-next-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }

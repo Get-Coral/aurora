@@ -247,18 +247,6 @@ export function HeroSection({
               </div>
             ) : null}
           </aside>
-        ) : !tvMode ? (
-          <aside className="hero-orbit">
-            <div className="orbit-card">
-              <span>{t('hero.curatedByJellyfin')}</span>
-              <strong>{t('hero.curatedCopy')}</strong>
-              {item.isFavorite ? (
-                <small>
-                  <Heart size={14} fill="currentColor" /> {t('hero.alreadyFavorite')}
-                </small>
-              ) : null}
-            </div>
-          </aside>
         ) : null}
       </div>
     </section>

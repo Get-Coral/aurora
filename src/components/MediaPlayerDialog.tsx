@@ -51,6 +51,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const seekDraggingRef = useRef(false)
 
   const [playbackSession, setPlaybackSession] = useState<{
     streamUrl: string
@@ -299,7 +300,8 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       } else if (e.key === 'ArrowLeft') {
         video.currentTime = Math.max(0, video.currentTime - 15)
       } else if (e.key === 'ArrowRight') {
-        video.currentTime = Math.min(duration || video.duration || 0, video.currentTime + 30)
+        const d = duration > 0 ? duration : (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null)
+        video.currentTime = d != null ? Math.min(d, video.currentTime + 30) : video.currentTime + 30
       } else if (e.key === 'f') {
         void toggleFullscreen()
       } else if (e.key === 'm') {
@@ -365,11 +367,37 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     setSubtitlePickerOpen(false)
   }
 
-  function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  // Returns the best available duration: React state first, then video element, then null
+  function getBestDuration(): number | null {
+    if (duration > 0) return duration
+    const d = videoRef.current?.duration
+    return d != null && Number.isFinite(d) && d > 0 ? d : null
+  }
+
+  function seekToRatio(ratio: number) {
     const video = videoRef.current
-    if (video && duration > 0) video.currentTime = ratio * duration
+    if (!video) return
+    const d = getBestDuration()
+    if (d != null) video.currentTime = ratio * d
+  }
+
+  function handleProgressPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    seekDraggingRef.current = true
+    const rect = e.currentTarget.getBoundingClientRect()
+    seekToRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
+    revealControls()
+  }
+
+  function handleProgressPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!seekDraggingRef.current) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    seekToRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
+  }
+
+  function handleProgressPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    seekDraggingRef.current = false
+    e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
   function seekBack() {
@@ -379,7 +407,10 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
 
   function seekForward() {
     const video = videoRef.current
-    if (video) video.currentTime = Math.min(duration || video.duration || 0, video.currentTime + 30)
+    if (!video) return
+    const d = getBestDuration()
+    // If duration is unknown just add 30 s and let the server clamp; don't cap at 0
+    video.currentTime = d != null ? Math.min(d, video.currentTime + 30) : video.currentTime + 30
   }
 
   if (!open || !item) return null
@@ -389,6 +420,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       ref={containerRef}
       className={`player-fullscreen${controlsVisible ? ' controls-visible' : ''}`}
       onMouseMove={revealControls}
+      onTouchStart={revealControls}
     >
       {streamUrl ? (
         <>
@@ -485,12 +517,14 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
             <div className="player-controls-bottom">
               <div
                 className="player-progress"
-                onClick={handleSeek}
+                onPointerDown={handleProgressPointerDown}
+                onPointerMove={handleProgressPointerMove}
+                onPointerUp={handleProgressPointerUp}
                 role="slider"
                 aria-label="Seek"
                 aria-valuenow={Math.floor(currentTime)}
                 aria-valuemin={0}
-                aria-valuemax={Math.floor(duration)}
+                aria-valuemax={Math.floor(getBestDuration() ?? 0)}
               >
                 <div className="player-progress-track">
                   <div className="player-progress-fill" style={{ width: `${progress}%` }} />
