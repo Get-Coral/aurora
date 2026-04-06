@@ -255,5 +255,10 @@ export const enMessages: MessageDictionary = {
   'pwa.updateBannerCopy': 'A newer version of Aurora has finished downloading and is ready to apply.',
   'pwa.updateAction': 'Reload app',
   'pwa.updateApplying': 'Applying…',
+  'pwa.installBannerTitle': 'Install Aurora',
+  'pwa.installBannerCopy': 'Install Aurora on Android for a full-screen launch experience and faster return access.',
+  'pwa.installAction': 'Install app',
+  'pwa.iosInstallTitle': 'Add Aurora to your Home Screen',
+  'pwa.iosInstallCopy': 'In Safari, open Share and choose Add to Home Screen for a cleaner iPhone or iPad launch experience.',
   'pwa.dismiss': 'Dismiss',
 }

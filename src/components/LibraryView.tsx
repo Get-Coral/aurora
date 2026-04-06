@@ -209,7 +209,7 @@ export function LibraryView({
     <main className="library-shell">
       <div className="page-wrap library-head">
         <div className="library-copy">
-          <Link to="/" className="library-backlink">
+          <Link to="/" className="library-backlink" data-tv-focusable="true">
             <ArrowLeft size={16} /> {t('library.backHome')}
           </Link>
           <p className="eyebrow">{subtitle}</p>
@@ -228,8 +228,9 @@ export function LibraryView({
             <div className="genre-strip">
               <Link
                 to="/library/movies"
-                search={{ sort, order, ratings, decade, minScore }}
+                search={{ sort, order, ratings, decade, minScore, watchStatus }}
                 className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
+                data-tv-focusable="true"
               >
                 {t('library.allMovies')}
               </Link>
@@ -240,6 +241,7 @@ export function LibraryView({
                   params={{ genre: genreOption }}
                   search={{ sort, order, ratings, decade, minScore }}
                   className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
+                  data-tv-focusable="true"
                 >
                   {genreOption}
                 </Link>
@@ -273,6 +275,7 @@ export function LibraryView({
               className="toolbar-dir-btn"
               title={order === 'Descending' ? t('library.order.desc') : t('library.order.asc')}
               onClick={() => updateSearch({ order: order === 'Descending' ? 'Ascending' : 'Descending' })}
+              data-tv-focusable="true"
             >
               {order === 'Descending' ? <ArrowDown size={15} /> : <ArrowUp size={15} />}
             </button>
@@ -282,6 +285,7 @@ export function LibraryView({
               className={`filter-toggle${filterOpen ? ' filter-toggle-open' : ''}${activeFilterCount > 0 ? ' filter-toggle-active' : ''}`}
               onClick={() => setFilterOpen((v) => !v)}
               aria-expanded={filterOpen}
+              data-tv-focusable="true"
             >
               <SlidersHorizontal size={14} />
               {t('library.filters')}
@@ -304,6 +308,7 @@ export function LibraryView({
                   type="button"
                   className={`filter-chip${activeRatings.includes(r) ? ' filter-chip-active' : ''}`}
                   onClick={() => toggleRating(r)}
+                  data-tv-focusable="true"
                 >
                   {r}
                 </button>
@@ -320,6 +325,7 @@ export function LibraryView({
                   type="button"
                   className={`filter-chip${decade === d ? ' filter-chip-active' : ''}`}
                   onClick={() => updateSearch({ decade: decade === d ? '' : d })}
+                  data-tv-focusable="true"
                 >
                   {d}
                 </button>
@@ -334,6 +340,7 @@ export function LibraryView({
                 type="button"
                 className={`filter-chip${minScore === 0 ? ' filter-chip-active' : ''}`}
                 onClick={() => updateSearch({ minScore: 0 })}
+                data-tv-focusable="true"
               >
                 {t('library.anyScore')}
               </button>
@@ -343,6 +350,7 @@ export function LibraryView({
                   type="button"
                   className={`filter-chip${minScore === s ? ' filter-chip-active' : ''}`}
                   onClick={() => updateSearch({ minScore: minScore === s ? 0 : s })}
+                  data-tv-focusable="true"
                 >
                   {s}+
                 </button>
@@ -359,6 +367,7 @@ export function LibraryView({
                   type="button"
                   className={`filter-chip${watchStatus === s ? ' filter-chip-active' : ''}`}
                   onClick={() => updateSearch({ watchStatus: watchStatus === s ? undefined : s })}
+                  data-tv-focusable="true"
                 >
                   {t(`library.watchStatus.${s}`)}
                 </button>
@@ -368,7 +377,7 @@ export function LibraryView({
 
           {activeFilterCount > 0 ? (
             <div className="filter-panel-footer">
-              <button type="button" className="filter-clear" onClick={clearFilters}>
+              <button type="button" className="filter-clear" onClick={clearFilters} data-tv-focusable="true">
                 <X size={13} /> {t('library.clearFilters')}
               </button>
             </div>
@@ -379,22 +388,22 @@ export function LibraryView({
       {activeFilterCount > 0 && mode === 'library' ? (
         <div className="page-wrap active-filters-row">
           {activeRatings.map((r) => (
-            <button key={r} type="button" className="active-filter-chip" onClick={() => toggleRating(r)}>
+            <button key={r} type="button" className="active-filter-chip" onClick={() => toggleRating(r)} data-tv-focusable="true">
               {r} <X size={11} />
             </button>
           ))}
           {decade ? (
-            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ decade: '' })}>
+            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ decade: '' })} data-tv-focusable="true">
               {decade} <X size={11} />
             </button>
           ) : null}
           {minScore > 0 ? (
-            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ minScore: 0 })}>
+            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ minScore: 0 })} data-tv-focusable="true">
               {minScore}+ ★ <X size={11} />
             </button>
           ) : null}
           {watchStatus ? (
-            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ watchStatus: undefined })}>
+            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ watchStatus: undefined })} data-tv-focusable="true">
               {t(`library.watchStatus.${watchStatus}`)} <X size={11} />
             </button>
           ) : null}
@@ -418,7 +427,7 @@ export function LibraryView({
             <p className="eyebrow">{t('section.readyWhenYouAre')}</p>
             <h3>{t('library.noResults')}</h3>
             {activeFilterCount > 0 ? (
-              <button type="button" className="filter-clear" onClick={clearFilters}>
+              <button type="button" className="filter-clear" onClick={clearFilters} data-tv-focusable="true">
                 <X size={13} /> {t('library.clearFilters')}
               </button>
             ) : null}

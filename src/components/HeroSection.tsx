@@ -78,11 +78,11 @@ export function HeroSection({
         {i.overview ? <p className="hero-overview">{i.overview}</p> : null}
 
         <div className="hero-actions">
-          <button className="primary-action" onClick={onPlay} type="button">
+          <button className="primary-action" onClick={onPlay} type="button" data-tv-focusable="true">
             <Play size={18} fill="currentColor" />
             {isResumableItem ? t('hero.resumeNow') : t('hero.playNow')}
           </button>
-          <button className="secondary-action" onClick={onMoreInfo} type="button">
+          <button className="secondary-action" onClick={onMoreInfo} type="button" data-tv-focusable="true">
             {t('hero.moreInfo')}
           </button>
         </div>
@@ -202,6 +202,7 @@ export function HeroSection({
                   continueIsResumable ? onPlayContinue?.(continueItem) : onMoreInfo?.()
                 }
                 type="button"
+                data-tv-focusable="true"
               >
                 {continueIsResumable ? t('hero.resumeNow') : t('hero.open')}
               </button>
@@ -223,6 +224,7 @@ export function HeroSection({
                       type="button"
                       className="hero-queue-item"
                       onClick={() => onSelectCompanion?.(companion)}
+                      data-tv-focusable="true"
                     >
                       {companion.posterUrl ? (
                         <img

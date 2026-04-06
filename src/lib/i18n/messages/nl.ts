@@ -255,5 +255,10 @@ export const nlMessages: MessageDictionary = {
   'pwa.updateBannerCopy': 'Een nieuwere versie van Aurora is gedownload en kan nu worden toegepast.',
   'pwa.updateAction': 'App herladen',
   'pwa.updateApplying': 'Wordt toegepast…',
+  'pwa.installBannerTitle': 'Installeer Aurora',
+  'pwa.installBannerCopy': 'Installeer Aurora op Android voor een volledige schermervaring en snellere toegang.',
+  'pwa.installAction': 'App installeren',
+  'pwa.iosInstallTitle': 'Voeg Aurora toe aan je beginscherm',
+  'pwa.iosInstallCopy': 'Open in Safari het Deel-menu en kies Zet op beginscherm voor een schonere iPhone- of iPad-ervaring.',
   'pwa.dismiss': 'Sluiten',
 }

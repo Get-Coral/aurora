@@ -47,6 +47,7 @@ export function SectionShelf({
                 : undefined
             }
             className="section-trailing section-trailing-button"
+            data-tv-focusable="true"
           >
             {t('section.browseMore')} <ChevronRight size={16} />
           </Link>

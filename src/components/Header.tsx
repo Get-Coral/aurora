@@ -50,7 +50,7 @@ export default function Header() {
   return (
     <header className="app-header">
       <nav className="page-wrap header-bar">
-        <Link to="/" className="brand-mark">
+        <Link to="/" className="brand-mark" data-tv-focusable="true">
           <span className="brand-glyph">
             <Sparkles size={15} />
           </span>
@@ -60,7 +60,7 @@ export default function Header() {
         </Link>
 
         <div className="header-nav">
-          <Link to="/" className="nav-pill" activeProps={{ className: 'nav-pill nav-pill-active' }}>
+          <Link to="/" className="nav-pill" activeProps={{ className: 'nav-pill nav-pill-active' }} data-tv-focusable="true">
             {t('nav.home')}
           </Link>
           <Link
@@ -68,6 +68,7 @@ export default function Header() {
             search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
+            data-tv-focusable="true"
           >
             {t('nav.movies')}
           </Link>
@@ -76,6 +77,7 @@ export default function Header() {
             search={{ sort: 'DateCreated', order: 'Descending', ratings: '', decade: '', minScore: 0 }}
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
+            data-tv-focusable="true"
           >
             {t('nav.series')}
           </Link>
@@ -84,6 +86,7 @@ export default function Header() {
               to="/collections"
               className="nav-pill"
               activeProps={{ className: 'nav-pill nav-pill-active' }}
+              data-tv-focusable="true"
             >
               {t('nav.collections')}
             </Link>
@@ -92,6 +95,7 @@ export default function Header() {
             to="/my-list"
             className="nav-pill"
             activeProps={{ className: 'nav-pill nav-pill-active' }}
+            data-tv-focusable="true"
           >
             {t('nav.myList')}
           </Link>
@@ -152,6 +156,7 @@ export default function Header() {
               onClick={() => setSearchOpen(true)}
               className="icon-button"
               aria-label={t('search.open')}
+              data-tv-focusable="true"
             >
               <Search size={20} />
             </button>
@@ -161,6 +166,7 @@ export default function Header() {
             to="/settings"
             className="icon-button"
             aria-label={t('nav.settings')}
+            data-tv-focusable="true"
           >
             <Settings size={20} />
           </Link>
@@ -170,6 +176,7 @@ export default function Header() {
             className="avatar-chip"
             aria-label="Admin dashboard"
             title={username || 'Admin'}
+            data-tv-focusable="true"
           >
             {username.slice(0, 2).toUpperCase() || '??'}
           </Link>

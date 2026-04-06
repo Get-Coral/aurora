@@ -3772,6 +3772,11 @@ html.tv-mode .player-autoplay-cancel {
   background: linear-gradient(180deg, rgba(34, 23, 8, 0.96), rgba(19, 14, 8, 0.9));
 }
 
+.pwa-status-card-install {
+  border-color: rgba(112, 168, 255, 0.26);
+  background: linear-gradient(180deg, rgba(16, 23, 45, 0.96), rgba(10, 16, 32, 0.9));
+}
+
 .pwa-status-icon-shell {
   width: 2.3rem;
   height: 2.3rem;
@@ -3786,6 +3791,11 @@ html.tv-mode .player-autoplay-cancel {
 .pwa-status-icon-shell-accent {
   color: #ffcf78;
   background: rgba(255, 180, 50, 0.15);
+}
+
+.pwa-status-icon-shell-install {
+  color: var(--accent-strong);
+  background: rgba(112, 168, 255, 0.16);
 }
 
 .pwa-status-copy {

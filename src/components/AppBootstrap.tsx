@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { getClientPlaybackContext } from '../lib/platform'
+import { installTvSpatialNavigation } from '../lib/tv-spatial-navigation'
 
 export function AppBootstrap() {
   useEffect(() => {
@@ -9,6 +10,8 @@ export function AppBootstrap() {
     root.dataset.platform = platform.platform
     root.classList.toggle('touch-platform', navigator.maxTouchPoints > 0)
   }, [])
+
+  useEffect(() => installTvSpatialNavigation(), [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {

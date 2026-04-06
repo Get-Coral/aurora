@@ -48,6 +48,7 @@ export function MediaCard({
           }
         }
       }}
+      data-tv-focusable="true"
     >
       {item.backdropUrl ?? item.posterUrl ? (
         <img
