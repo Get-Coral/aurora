@@ -5,8 +5,24 @@ import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { fetchSetupStatusRuntime, saveSetupConfigurationRuntime } from '../lib/runtime-functions'
 
+const IS_PRERENDER_BUILD = process.env['TSS_PRERENDERING'] === 'true'
+
 export const Route = createFileRoute('/setup')({
   loader: async () => {
+    if (IS_PRERENDER_BUILD) {
+      return {
+        configured: false,
+        source: 'missing',
+        current: {
+          url: '',
+          userId: '',
+          username: '',
+          hasApiKey: false,
+          hasPassword: false,
+        },
+      }
+    }
+
     const setupStatus = await fetchSetupStatusRuntime()
 
     if (setupStatus.configured) {

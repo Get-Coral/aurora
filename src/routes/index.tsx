@@ -20,6 +20,8 @@ import {
 import { useTvMode } from '../lib/tv-mode'
 import type { MediaItem } from '../lib/media'
 
+const IS_PRERENDER_BUILD = process.env['TSS_PRERENDERING'] === 'true'
+
 function hasGenre(item: MediaItem, genre: string) {
   return item.genres.some((candidate) => candidate.toLowerCase() === genre.toLowerCase())
 }
@@ -87,6 +89,10 @@ function getSpotlightInsights(
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
+    if (IS_PRERENDER_BUILD) {
+      return
+    }
+
     const setupStatus = await fetchSetupStatusRuntime()
 
     if (!setupStatus.configured) {
