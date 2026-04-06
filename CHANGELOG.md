@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+* add real local Capacitor build flow for Android and iOS
+* emit a Capacitor-compatible SPA shell at `dist/client/index.html`
+* move native runtime browsing flows off server functions for local app usage
+
+### Documentation
+
+* document local Capacitor setup, sync, run, and first-launch flow
+
 ## [1.2.0](https://github.com/ElianCodes/aurora-ui/compare/v1.1.0...v1.2.0) (2026-04-05)
 
 

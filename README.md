@@ -149,6 +149,81 @@ docker run --rm -p 3000:3000 \
 
 The container listens on port `3000` and stores local config in `/data`.
 
+## Capacitor Wrappers
+
+Aurora now supports a real local Capacitor build for Android and iOS.
+
+How it works:
+
+- Capacitor uses the built local web bundle from `dist/client`.
+- TanStack Start SPA mode now emits a real `dist/client/index.html`, which Capacitor requires.
+- `pnpm cap:sync`, `pnpm cap:copy`, and `pnpm cap:run:*` build Aurora first and then sync the native projects.
+- In native-shell mode, Aurora stores Jellyfin and OpenSubtitles settings in device-local storage instead of relying on the Node server.
+
+The Capacitor config lives in [`capacitor.config.ts`](./capacitor.config.ts).
+
+### Native Setup
+
+Sync the latest web assets into Android and iOS:
+
+```bash
+pnpm cap:sync
+```
+
+Open the native projects:
+
+```bash
+pnpm cap:open:android
+pnpm cap:open:ios
+```
+
+Run directly to a connected device or emulator:
+
+```bash
+pnpm cap:run:android
+pnpm cap:run:ios
+```
+
+### First Launch
+
+On first launch in the native app:
+
+1. Open the `/setup` flow.
+2. Enter the Jellyfin server URL, API key, user ID, username, and password.
+3. Optionally add your OpenSubtitles API key in settings.
+
+Aurora stores that configuration on the device.
+
+### What Works Locally
+
+- Setup and settings
+- Home feeds
+- Movie and series library browsing
+- Search
+- My List and favorites toggles
+- History
+- Media details and episode browsing
+- Basic local playback bootstrapping
+- OpenSubtitles search and download using the stored API key
+
+### Current Limits
+
+- The admin screen is still server-oriented.
+- Native playback works locally, but full Jellyfin playback-session and progress sync is still less complete than the hosted server build.
+- If you want the native shell to target a hosted Aurora deployment instead, you can still set `AURORA_APP_URL` before syncing.
+
+Example hosted override:
+
+```bash
+AURORA_APP_URL=https://your-aurora-domain.example pnpm cap:sync
+```
+
+### Packaging Notes
+
+- Android packaging happens from Android Studio after opening the generated project.
+- iOS packaging happens from Xcode after opening the generated project.
+- Google TV should be treated as an Android TV target using the same Capacitor Android project once the TV UX is finalized.
+
 Published images go to:
 
 - `ghcr.io/<owner>/<repo>`
