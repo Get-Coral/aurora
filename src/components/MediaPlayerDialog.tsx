@@ -448,10 +448,15 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     if (playbackSession?.playMethod === 'Transcode') {
       const streamTime = clamped - startTimeOffsetRef.current
       // Check whether streamTime falls within an already-downloaded range.
+      // Both bounds must be checked: only checking the end can pass for gaps
+      // between ranges or for positions before the first buffered range.
       let buffered = false
       if (streamTime >= 0) {
         for (let i = 0; i < video.buffered.length; i++) {
-          if (streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
+          if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) {
+            buffered = true
+            break
+          }
         }
       }
       if (!buffered || streamTime < 0) {
@@ -459,6 +464,10 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         const url = new URL(playbackSession.streamUrl)
         url.searchParams.set('StartTimeTicks', String(Math.floor(clamped * 10_000_000)))
         startTimeOffsetRef.current = clamped
+        // After reload, video.currentTime resets to ~0. Reset the throttle
+        // baseline so syncProgress doesn't suppress reports until stream time
+        // catches up to the pre-seek value (which could take minutes).
+        lastReportedSecondRef.current = 0
         seekPendingRef.current = true
         setIsBuffering(true)
         setPlaybackSession({ ...playbackSession, streamUrl: url.toString() })
@@ -486,7 +495,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       if (video && streamTime >= 0) {
         let buffered = false
         for (let i = 0; i < video.buffered.length; i++) {
-          if (streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
+          if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
         }
         if (buffered) video.currentTime = streamTime
       }
@@ -507,7 +516,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       if (video && streamTime >= 0) {
         let buffered = false
         for (let i = 0; i < video.buffered.length; i++) {
-          if (streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
+          if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
         }
         if (buffered) video.currentTime = streamTime
       }
