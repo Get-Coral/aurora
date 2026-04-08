@@ -24,6 +24,9 @@
   --gold: #ffd37f;
   --header-h: 72px;
   --shadow-xl: 0 24px 80px rgba(1, 6, 20, 0.5);
+  /* iOS safe-area — non-zero only with viewport-fit=cover in PWA / notch devices */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -64,7 +67,7 @@ button { font: inherit; }
   position: fixed;
   inset: 0 0 auto;
   z-index: 30;
-  padding-top: 0.9rem;
+  padding-top: max(0.9rem, var(--safe-top));
 }
 
 .header-bar {
@@ -318,8 +321,8 @@ button { font: inherit; }
 }
 
 .library-shell {
-  padding-top: calc(var(--header-h) + 4rem);
-  padding-bottom: 4rem;
+  padding-top: calc(var(--header-h) + var(--safe-top) + 4rem);
+  padding-bottom: calc(4rem + var(--safe-bottom));
 }
 
 .library-head {
@@ -596,7 +599,7 @@ html.tv-mode .hero-copy-in {
   grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 23rem);
   gap: 2rem;
   align-items: end;
-  padding-top: calc(var(--header-h) + 3.5rem);
+  padding-top: calc(var(--header-h) + var(--safe-top) + 3.5rem);
   padding-bottom: 4rem;
 }
 
@@ -2924,7 +2927,7 @@ html.tv-mode .hero-copy-in {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--header-h) + 3rem) 2rem 4rem;
+  padding: calc(var(--header-h) + var(--safe-top) + 3rem) 2rem 4rem;
   position: relative;
   overflow: hidden;
 }
@@ -3052,7 +3055,7 @@ html.tv-mode .hero-copy-in {
   }
 
   .app-header {
-    padding-top: 0.6rem;
+    padding-top: max(0.6rem, var(--safe-top));
   }
 
   .header-bar {
@@ -3163,7 +3166,7 @@ html.tv-mode .hero-copy-in {
   }
 
   .hero-content {
-    padding-top: calc(var(--header-h) + 5.25rem);
+    padding-top: calc(var(--header-h) + var(--safe-top) + 5.25rem);
   }
 
   .hero-title {
@@ -3273,7 +3276,7 @@ html.tv-mode .hero-copy-in {
   }
 
   .hero-content {
-    padding-top: calc(var(--header-h) + 5.6rem);
+    padding-top: calc(var(--header-h) + var(--safe-top) + 5.6rem);
   }
 
   .dialog-backdrop {
@@ -3297,8 +3300,8 @@ html.tv-mode .hero-copy-in {
   }
 
   .dialog-close {
-    top: max(0.8rem, env(safe-area-inset-top));
-    right: max(0.8rem, env(safe-area-inset-right));
+    top: max(0.8rem, var(--safe-top));
+    right: max(0.8rem, env(safe-area-inset-right, 0px));
   }
 
   .dialog-hero {
@@ -3335,7 +3338,7 @@ html.tv-mode .hero-copy-in {
   }
 
   .dialog-lower {
-    padding: 0 1rem calc(1.25rem + env(safe-area-inset-bottom));
+    padding: 0 1rem calc(1.25rem + var(--safe-bottom));
   }
 }
 
@@ -4227,7 +4230,7 @@ html.tv-mode .player-autoplay-cancel {
 
 .pwa-status-stack {
   position: fixed;
-  top: calc(var(--header-h) + 1rem);
+  top: calc(var(--header-h) + var(--safe-top) + 1rem);
   right: 1rem;
   z-index: 45;
   display: flex;
@@ -4344,7 +4347,7 @@ html.tv-mode .player-autoplay-cancel {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: calc(var(--header-h) + 3rem) 1rem 4rem;
+  padding: calc(var(--header-h) + var(--safe-top) + 3rem) 1rem 4rem;
 }
 
 .offline-card {
