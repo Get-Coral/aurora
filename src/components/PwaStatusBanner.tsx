@@ -58,6 +58,7 @@ export function PwaStatusBanner() {
     function syncStandaloneMode() {
       const standalone = window.matchMedia('(display-mode: standalone)').matches
         || ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+        || !!((window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.())
       setIsStandalone(standalone)
       setShowIosInstallHint(platform === 'ios' && !standalone)
       if (standalone) {

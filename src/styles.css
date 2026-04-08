@@ -3231,7 +3231,15 @@ html.tv-mode .hero-copy-in {
 
   .site-footer-inner {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+  }
+
+  .site-footer-copy {
+    text-align: center;
+  }
+
+  .site-footer-bug-link {
+    display: none;
   }
 
   .error-shell {
@@ -3995,14 +4003,12 @@ html.tv-mode .player-autoplay-cancel {
 /* ── Setup flow ─────────────────────────────────────────────────────────── */
 
 .setup-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: var(--bg);
-  gap: 2rem;
+  padding: max(2.5rem, var(--safe-top)) 1.5rem max(1.5rem, var(--safe-bottom));
+  gap: 1.5rem;
 }
 
 .setup-wordmark {
@@ -4011,13 +4017,16 @@ html.tv-mode .player-autoplay-cancel {
   letter-spacing: -0.03em;
   color: var(--ink);
   opacity: 0.5;
+  flex-shrink: 0;
 }
 
 .setup-flow {
+  flex: 1;
   width: 100%;
   max-width: 460px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0;
 }
 
