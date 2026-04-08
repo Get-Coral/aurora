@@ -25,6 +25,25 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.4.0](https://github.com/ElianCodes/aurora-ui/compare/v1.3.0...v1.4.0) (2026-04-08)
+
+
+### Features
+
+* add IOS app ([f24dbcb](https://github.com/ElianCodes/aurora-ui/commit/f24dbcb0eb4de65510aeab0e78af937d8bcc7ff5))
+* add IOS app ([079838a](https://github.com/ElianCodes/aurora-ui/commit/079838a8d81325de7c6264852dc3fac1782783cf))
+* improve player behaviour ([d575362](https://github.com/ElianCodes/aurora-ui/commit/d57536250107ddfe24469eee40098514bee98ef3))
+* improve player behaviour ([aebf546](https://github.com/ElianCodes/aurora-ui/commit/aebf546391ec5f8feccbb8230afaecf10731d60a))
+
+
+### Bug Fixes
+
+* center align footer elements and adjust setup shell styling for better UX ([8e91e9b](https://github.com/ElianCodes/aurora-ui/commit/8e91e9b6919853f222f1bf11668ac112ec32c1d5))
+* enhance standalone mode detection for Capacitor ([96aebb4](https://github.com/ElianCodes/aurora-ui/commit/96aebb4a54cc1a318f837c0cff6b013e0354e442))
+* improve filtering & genres ([119795a](https://github.com/ElianCodes/aurora-ui/commit/119795a292252e773a035f31e39bf8b10ab5ac18))
+* update player bounds ([b428cef](https://github.com/ElianCodes/aurora-ui/commit/b428cefe926393af4c776cc063b0e56b9e69196a))
+* update safe header ([bf4b1b8](https://github.com/ElianCodes/aurora-ui/commit/bf4b1b8dbec98bc653691d40fd662ba50e89f0ec))
+
 ## [1.3.0](https://github.com/ElianCodes/aurora-ui/compare/v1.2.0...v1.3.0) (2026-04-06)
 
 
