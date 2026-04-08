@@ -104,14 +104,6 @@ function waitForStableLaunchServices(target) {
   throw new Error('The selected iOS simulator never became ready to launch apps.')
 }
 
-function launchAppDirectly(target) {
-  const launchResult = runCommand('xcrun', ['simctl', 'launch', target, APP_BUNDLE_ID], {
-    stdio: 'inherit',
-  })
-
-  return launchResult.status === 0
-}
-
 const simulator = selectSimulator()
 const target = simulator.id
 
@@ -121,13 +113,5 @@ waitForStableLaunchServices(target)
 const capacitorRun = runCommand('pnpm', ['exec', 'cap', 'run', 'ios', '--target', target], {
   stdio: 'inherit',
 })
-
-if (capacitorRun.status === 0) {
-  process.exit(0)
-}
-
-if (launchAppDirectly(target)) {
-  process.exit(0)
-}
 
 process.exit(capacitorRun.status ?? 1)
