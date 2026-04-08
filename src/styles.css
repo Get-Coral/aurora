@@ -1222,6 +1222,31 @@ html.tv-mode .hero-copy-in {
   display: block;
 }
 
+.media-card-skeleton {
+  pointer-events: none;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.media-card-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .media-card-fallback {
   width: 100%;
   height: 100%;
@@ -1412,6 +1437,25 @@ html.tv-mode .hero-copy-in {
   height: 100%;
   display: block;
   object-fit: contain;
+}
+
+.player-buffering-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.player-buffering-spinner {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  animation: spin 0.75s linear infinite;
 }
 
 .player-controls-overlay {

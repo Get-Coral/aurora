@@ -86,7 +86,7 @@ export function LibraryView({
   const activeFilterCount =
     (activeRatings.length > 0 ? 1 : 0) + (decade ? 1 : 0) + (minScore > 0 ? 1 : 0) + (watchStatus ? 1 : 0)
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
     queryKey: ['library-infinite', type, sort, order, genre, ratings, decade, minScore, watchStatus],
     queryFn: ({ pageParam }) =>
       fetchLibraryRuntime({
@@ -411,18 +411,26 @@ export function LibraryView({
       ) : null}
 
       <div className="page-wrap library-grid">
-        {resolvedItems.map((item, index) => (
-          <MediaCard
-            key={item.id}
-            item={item}
-            priority={index < 8}
-            variant={cardVariant(index)}
-            onClick={() => setSelectedItem(item)}
-            onPlay={playMedia}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        ))}
-        {mode === 'library' && resolvedItems.length === 0 && !isFetchingNextPage ? (
+        {mode === 'library' && isLoading
+          ? Array.from({ length: 24 }, (_, i) => (
+              <div
+                key={i}
+                className={`media-card media-card-skeleton media-card-${cardVariant(i)}`}
+                aria-hidden="true"
+              />
+            ))
+          : resolvedItems.map((item, index) => (
+              <MediaCard
+                key={item.id}
+                item={item}
+                priority={index < 8}
+                variant={cardVariant(index)}
+                onClick={() => setSelectedItem(item)}
+                onPlay={playMedia}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            ))}
+        {mode === 'library' && resolvedItems.length === 0 && !isLoading && !isFetchingNextPage ? (
           <div className="library-empty">
             <p className="eyebrow">{t('section.readyWhenYouAre')}</p>
             <h3>{t('library.noResults')}</h3>
@@ -438,7 +446,7 @@ export function LibraryView({
       <div ref={sentinelRef} />
 
       <div className="page-wrap library-footer library-footer-compact">
-        {isFetchingNextPage ? (
+        {isLoading || isFetchingNextPage ? (
           <span className="eyebrow" style={{ opacity: 0.5 }}>{t('search.searching')}</span>
         ) : (
           <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
