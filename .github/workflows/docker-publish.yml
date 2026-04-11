@@ -11,7 +11,6 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: main
     permissions:
       contents: read
       packages: write
@@ -33,19 +32,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ghcr.io/${{ github.repository }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/aurora
+          images: ghcr.io/get-coral/aurora
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
