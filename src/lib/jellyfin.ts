@@ -1,7 +1,58 @@
 import {
-  getEffectiveJellyfinSettings,
-  type JellyfinSettings,
-} from './config-store'
+  addItemsToCollection as addItemsToCollectionBase,
+  createClient,
+  createCollection as createCollectionBase,
+  createPlaybackSession as createPlaybackSessionBase,
+  createUser as createUserBase,
+  deleteItem as deleteItemBase,
+  deleteUser as deleteUserBase,
+  getActiveSessions as getActiveSessionsBase,
+  getCollectionItems as getCollectionItemsBase,
+  getCollections as getCollectionsBase,
+  getContinueWatching as getContinueWatchingBase,
+  getEpisodesForSeries as getEpisodesForSeriesBase,
+  getFavoriteItems as getFavoriteItemsBase,
+  getFeaturedItem as getFeaturedItemBase,
+  getItem as getItemBase,
+  getItemCounts as getItemCountsBase,
+  getLatestMedia as getLatestMediaBase,
+  getLibraryItems as getLibraryItemsBase,
+  getMostPlayed as getMostPlayedBase,
+  getNextUpForSeries as getNextUpForSeriesBase,
+  getSimilarItems as getSimilarItemsBase,
+  getSystemInfo as getSystemInfoBase,
+  getUserById as getUserByIdBase,
+  getUsers as getUsersBase,
+  getVirtualFolders as getVirtualFoldersBase,
+  getWatchHistory as getWatchHistoryBase,
+  imageUrl,
+  personImageUrl,
+  removeItemsFromCollection as removeItemsFromCollectionBase,
+  scanAllLibraries as scanAllLibrariesBase,
+  scanLibrary as scanLibraryBase,
+  searchItems as searchItemsBase,
+  setFavorite as setFavoriteBase,
+  setPlayed as setPlayedBase,
+  streamUrl,
+  syncPlaybackState as syncPlaybackStateBase,
+  transcodeUrl,
+  updateItemName as updateItemNameBase,
+  updateUserPolicy as updateUserPolicyBase,
+  type GetLibraryItemsOptions,
+  type ImageType,
+  type JellyfinActiveSession,
+  type JellyfinItem,
+  type JellyfinItemCounts,
+  type JellyfinMediaType,
+  type JellyfinPlaybackSession,
+  type JellyfinResponse,
+  type JellyfinSystemInfo,
+  type JellyfinUser,
+  type JellyfinUserPolicy,
+  type JellyfinVirtualFolder,
+  type PlaybackSyncInput,
+} from '@get-coral/jellyfin'
+import { getEffectiveJellyfinSettings } from './config-store'
 import type { ClientPlaybackContext } from './platform'
 
 const AURORA_CLIENT_NAME = 'Aurora'
@@ -9,245 +60,51 @@ const AURORA_DEVICE_NAME = 'Aurora Web'
 const AURORA_DEVICE_ID = 'aurora-ui-web'
 const AURORA_VERSION = '1.0.0'
 
-export type JellyfinMediaType = 'Movie' | 'Series' | 'Episode' | 'MusicAlbum' | 'BoxSet'
-
-export interface JellyfinItem {
-  Id: string
-  Name: string
-  Type: JellyfinMediaType
-  ProductionYear?: number
-  RunTimeTicks?: number
-  OfficialRating?: string
-  Overview?: string
-  CommunityRating?: number
-  ChildCount?: number
-  ImageTags?: { Primary?: string; Backdrop?: string; Thumb?: string; Logo?: string }
-  BackdropImageTags?: string[]
-  GenreItems?: { Id: string; Name: string }[]
-  People?: {
-    Id: string
-    Name: string
-    Role?: string
-    Type?: string
-    PrimaryImageTag?: string
-  }[]
-  Studios?: { Id?: string; Name: string }[]
-  Tags?: string[]
-  SeriesName?: string
-  SeasonName?: string
-  IndexNumber?: number
-  ParentIndexNumber?: number
-  UserData?: {
-    PlaybackPositionTicks?: number
-    PlayedPercentage?: number
-    Played?: boolean
-    IsFavorite?: boolean
-    LastPlayedDate?: string
-  }
+export type {
+  GetLibraryItemsOptions,
+  JellyfinActiveSession,
+  JellyfinItem,
+  JellyfinItemCounts,
+  JellyfinMediaType,
+  JellyfinPlaybackSession,
+  JellyfinResponse,
+  JellyfinSystemInfo,
+  JellyfinUser,
+  JellyfinVirtualFolder,
 }
 
-interface JellyfinMediaStream {
-  Type: string
-  Index: number
-  Language?: string
-  DisplayTitle?: string
-  IsTextSubtitleStream?: boolean
-}
+export type JellyfinPlaybackSyncInput = PlaybackSyncInput
 
-interface JellyfinMediaSource {
-  Id?: string | null
-  MediaStreams?: JellyfinMediaStream[]
-  SupportsDirectPlay?: boolean
-  SupportsDirectStream?: boolean
-  TranscodingUrl?: string | null
-}
-
-interface JellyfinPlaybackInfo {
-  MediaSources?: JellyfinMediaSource[]
-  PlaySessionId?: string | null
-}
-
-export interface SubtitleTrack {
-  index: number
-  label: string
-  language: string
-  url: string
-}
-
-interface JellyfinAuthResponse {
-  AccessToken?: string
-  SessionInfo?: {
-    Id?: string
-  }
-}
-
-export interface JellyfinPlaybackSession {
-  streamUrl: string
-  canSyncProgress: boolean
-  playMethod: 'DirectPlay' | 'Transcode'
-  playSessionId?: string
-  mediaSourceId?: string
-  sessionId?: string
-  subtitleTracks: SubtitleTrack[]
-}
-
-interface JellyfinPlaybackSyncInput {
-  itemId: string
-  positionTicks: number
-  playMethod?: 'DirectPlay' | 'Transcode'
-  playSessionId?: string
-  mediaSourceId?: string
-  sessionId?: string
-  isPaused?: boolean
-  isStopped?: boolean
-  played?: boolean
-}
-
-export interface JellyfinResponse<T> {
-  Items: T[]
-  TotalRecordCount: number
-}
-
-function getRequiredSettings() {
+function getJellyfinClient() {
   const settings = getEffectiveJellyfinSettings()
 
   if (!settings) {
     throw new Error('Aurora is not configured yet. Visit /setup to connect Jellyfin.')
   }
 
-  return {
-    ...settings,
-    url: settings.url.replace(/\/+$/, ''),
-  }
-}
-
-async function jellyfinFetch<T>(
-  path: string,
-  params?: Record<string, string>,
-  settings: JellyfinSettings = getRequiredSettings(),
-): Promise<T> {
-  const url = new URL(`${settings.url}${path}`)
-  url.searchParams.set('api_key', settings.apiKey)
-  if (params) {
-    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
-  }
-  const res = await fetch(url.toString())
-  if (!res.ok) throw new Error(`Jellyfin error: ${res.status} ${res.statusText}`)
-  return res.json() as Promise<T>
-}
-
-function buildAuthorizationHeader(token?: string) {
-  const parts = [
-    `Client="${AURORA_CLIENT_NAME}"`,
-    `Device="${AURORA_DEVICE_NAME}"`,
-    `DeviceId="${AURORA_DEVICE_ID}"`,
-    `Version="${AURORA_VERSION}"`,
-  ]
-
-  if (token) parts.push(`Token="${token}"`)
-
-  return `MediaBrowser ${parts.join(', ')}`
-}
-
-let cachedPlaybackAuth:
-  | {
-      cacheKey: string
-      token: string
-      sessionId?: string
-    }
-  | null = null
-
-function getPlaybackCacheKey(settings: JellyfinSettings) {
-  return `${settings.url}::${settings.userId}::${settings.username}`
-}
-
-async function getPlaybackAuth(
-  settings: JellyfinSettings = getRequiredSettings(),
-  forceRefresh = false,
-) {
-  if (!settings.username || !settings.password) return null
-
-  const cacheKey = getPlaybackCacheKey(settings)
-
-  if (cachedPlaybackAuth?.cacheKey === cacheKey && !forceRefresh) {
-    return cachedPlaybackAuth
-  }
-
-  const res = await fetch(`${settings.url}/Users/AuthenticateByName`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Emby-Authorization': buildAuthorizationHeader(),
-    },
-    body: JSON.stringify({
-      Username: settings.username,
-      Pw: settings.password,
-    }),
+  return createClient({
+    url: settings.url,
+    apiKey: settings.apiKey,
+    userId: settings.userId,
+    username: settings.username,
+    password: settings.password,
+    clientName: AURORA_CLIENT_NAME,
+    deviceName: AURORA_DEVICE_NAME,
+    deviceId: AURORA_DEVICE_ID,
+    version: AURORA_VERSION,
   })
-
-  if (!res.ok) {
-    throw new Error(`Jellyfin auth error: ${res.status} ${res.statusText}`)
-  }
-
-  const data = (await res.json()) as JellyfinAuthResponse
-
-  if (!data.AccessToken) {
-    throw new Error('Jellyfin auth error: no access token returned')
-  }
-
-  cachedPlaybackAuth = {
-    cacheKey,
-    token: data.AccessToken,
-    sessionId: data.SessionInfo?.Id,
-  }
-
-  return cachedPlaybackAuth
-}
-
-async function jellyfinPlaybackRequest(
-  path: string,
-  payload: Record<string, unknown>,
-  settings: JellyfinSettings = getRequiredSettings(),
-  forceRefresh = false,
-) {
-  const auth = await getPlaybackAuth(settings, forceRefresh)
-
-  if (!auth) return false
-
-  const res = await fetch(`${settings.url}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Emby-Authorization': buildAuthorizationHeader(auth.token),
-      'X-Emby-Token': auth.token,
-    },
-    body: JSON.stringify(payload),
-  })
-
-  if (res.status === 401 && !forceRefresh) {
-    cachedPlaybackAuth = null
-    return jellyfinPlaybackRequest(path, payload, settings, true)
-  }
-
-  if (!res.ok) {
-    throw new Error(`Jellyfin playback error: ${res.status} ${res.statusText}`)
-  }
-
-  return true
 }
 
 export function jellyfinImageUrl(
   itemId: string,
-  type: 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' = 'Primary',
+  type: ImageType = 'Primary',
   width = 400,
 ): string {
-  const settings = getRequiredSettings()
-  return `${settings.url}/Items/${itemId}/Images/${type}?maxWidth=${width}&api_key=${settings.apiKey}`
+  return imageUrl(getJellyfinClient(), itemId, type, width)
 }
 
 export function jellyfinPersonImageUrl(personId: string, width = 240): string {
-  const settings = getRequiredSettings()
-  return `${settings.url}/Items/${personId}/Images/Primary?maxWidth=${width}&api_key=${settings.apiKey}`
+  return personImageUrl(getJellyfinClient(), personId, width)
 }
 
 export function jellyfinStreamUrl(
@@ -257,15 +114,7 @@ export function jellyfinStreamUrl(
     mediaSourceId?: string
   },
 ): string {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Videos/${itemId}/stream`)
-  url.searchParams.set('static', 'true')
-  url.searchParams.set('api_key', settings.apiKey)
-
-  if (options?.playSessionId) url.searchParams.set('PlaySessionId', options.playSessionId)
-  if (options?.mediaSourceId) url.searchParams.set('MediaSourceId', options.mediaSourceId)
-
-  return url.toString()
+  return streamUrl(getJellyfinClient(), itemId, options)
 }
 
 export function jellyfinTranscodeUrl(
@@ -275,637 +124,154 @@ export function jellyfinTranscodeUrl(
     mediaSourceId?: string
   },
 ): string {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Videos/${itemId}/stream.mp4`)
-  url.searchParams.set('api_key', settings.apiKey)
-  url.searchParams.set('VideoCodec', 'h264')
-  url.searchParams.set('AudioCodec', 'aac')
-  url.searchParams.set('DeviceId', AURORA_DEVICE_ID)
-
-  if (options?.playSessionId) url.searchParams.set('PlaySessionId', options.playSessionId)
-  if (options?.mediaSourceId) url.searchParams.set('MediaSourceId', options.mediaSourceId)
-
-  return url.toString()
+  return transcodeUrl(getJellyfinClient(), itemId, options)
 }
 
 export async function setFavorite(itemId: string, isFavorite: boolean) {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Users/${settings.userId}/FavoriteItems/${itemId}`)
-  url.searchParams.set('api_key', settings.apiKey)
-
-  const res = await fetch(url.toString(), { method: isFavorite ? 'DELETE' : 'POST' })
-  if (!res.ok) throw new Error(`Jellyfin favorite error: ${res.status} ${res.statusText}`)
-  return res.json() as Promise<{ IsFavorite: boolean }>
+  return setFavoriteBase(getJellyfinClient(), itemId, isFavorite)
 }
 
 export async function setPlayed(itemId: string, played: boolean) {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Users/${settings.userId}/PlayedItems/${itemId}`)
-  url.searchParams.set('api_key', settings.apiKey)
-
-  const res = await fetch(url.toString(), {
-    method: played ? 'POST' : 'DELETE',
-  })
-
-  if (!res.ok) throw new Error(`Jellyfin played-state error: ${res.status} ${res.statusText}`)
-  return res.json() as Promise<{ Played: boolean; PlaybackPositionTicks?: number }>
+  return setPlayedBase(getJellyfinClient(), itemId, played)
 }
 
 export async function createPlaybackSession(
   itemId: string,
   client?: ClientPlaybackContext,
 ): Promise<JellyfinPlaybackSession> {
-  const settings = getRequiredSettings()
-  const auth = await getPlaybackAuth(settings).catch(() => null)
-
-  if (!auth) {
-    return {
-      streamUrl: jellyfinStreamUrl(itemId),
-      canSyncProgress: false,
-      playMethod: 'DirectPlay',
-      subtitleTracks: [],
-    }
-  }
-
-  const url = new URL(`${settings.url}/Items/${itemId}/PlaybackInfo`)
-  url.searchParams.set('UserId', settings.userId)
-
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Emby-Authorization': buildAuthorizationHeader(auth.token),
-      'X-Emby-Token': auth.token,
-    },
-    body: JSON.stringify({
-      UserId: settings.userId,
-      StartTimeTicks: 0,
-      IsPlayback: true,
-      AutoOpenLiveStream: true,
-      DeviceProfile: {
-        DirectPlayProfiles: [
-          { Type: 'Video', Container: 'mp4,mkv,webm', VideoCodec: 'h264,vp8,vp9,av1', AudioCodec: 'aac,mp3,opus,flac,vorbis' },
-          { Type: 'Audio', Container: 'mp3,aac,flac,ogg,opus' },
-        ],
-        TranscodingProfiles: [],
-        CodecProfiles: [],
-        SubtitleProfiles: [
-          { Format: 'vtt', Method: 'External' },
-          { Format: 'srt', Method: 'External' },
-        ],
-      },
-    }),
+  return createPlaybackSessionBase(getJellyfinClient(), itemId, {
+    prefersSafeVideo: client?.prefersSafeVideo,
   })
-
-  if (res.status === 401) {
-    cachedPlaybackAuth = null
-    return createPlaybackSession(itemId)
-  }
-
-  if (!res.ok) {
-    throw new Error(`Jellyfin playback session error: ${res.status} ${res.statusText}`)
-  }
-
-  const data = (await res.json()) as JellyfinPlaybackInfo
-  const playSessionId = data.PlaySessionId ?? undefined
-  const mediaSource = data.MediaSources?.[0]
-  const mediaSourceId = mediaSource?.Id ?? undefined
-
-  // When direct play isn't supported (e.g. AC3/DTS audio), use a progressive
-  // MP4 transcode. Jellyfin's TranscodingUrl points to HLS which requires
-  // hls.js in Chrome/Firefox — the stream.mp4 endpoint works natively in all browsers.
-  const supportsDirectPlay = mediaSource?.SupportsDirectPlay !== false
-  const shouldPreferTranscode = !supportsDirectPlay || client?.prefersSafeVideo === true
-  const playMethod = shouldPreferTranscode ? 'Transcode' : 'DirectPlay'
-  const streamUrl = shouldPreferTranscode
-    ? jellyfinTranscodeUrl(itemId, { playSessionId, mediaSourceId })
-    : jellyfinStreamUrl(itemId, { playSessionId, mediaSourceId })
-
-  const subtitleTracks: SubtitleTrack[] = (mediaSource?.MediaStreams ?? [])
-    .filter((s) => s.Type === 'Subtitle' && s.IsTextSubtitleStream)
-    .map((s, position) => ({
-      index: position,
-      label: s.DisplayTitle ?? s.Language ?? `Track ${s.Index}`,
-      language: s.Language ?? 'und',
-      url: `${settings.url}/Videos/${itemId}/${mediaSourceId}/Subtitles/${s.Index}/Stream.vtt?api_key=${settings.apiKey}`,
-    }))
-
-  return {
-    streamUrl,
-    canSyncProgress: Boolean(playSessionId),
-    playMethod,
-    playSessionId,
-    mediaSourceId,
-    sessionId: auth.sessionId,
-    subtitleTracks,
-  }
 }
 
-export async function syncPlaybackState({
-  itemId,
-  positionTicks,
-  playMethod = 'DirectPlay',
-  playSessionId,
-  mediaSourceId,
-  sessionId,
-  isPaused = false,
-  isStopped = false,
-  played,
-}: JellyfinPlaybackSyncInput) {
-  let progressSynced = false
-
-  if (playSessionId) {
-    progressSynced = await jellyfinPlaybackRequest(
-      isStopped ? '/Sessions/Playing/Stopped' : '/Sessions/Playing/Progress',
-      {
-        ItemId: itemId,
-        PositionTicks: positionTicks,
-        IsPaused: isPaused,
-        CanSeek: true,
-        PlayMethod: playMethod,
-        PlaySessionId: playSessionId,
-        MediaSourceId: mediaSourceId,
-        SessionId: sessionId,
-      },
-    ).catch(() => false)
-  }
-
-  let playedSynced = false
-
-  if (typeof played === 'boolean') {
-    await setPlayed(itemId, played)
-    playedSynced = true
-  }
-
-  return {
-    progressSynced,
-    playedSynced,
-  }
+export async function syncPlaybackState(input: JellyfinPlaybackSyncInput) {
+  return syncPlaybackStateBase(getJellyfinClient(), input)
 }
 
 export async function getContinueWatching(): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items/Resume`,
-    { MediaTypes: 'Video', Limit: '6', Fields: 'Overview,GenreItems,UserData' },
-    settings,
-  )
-  return data.Items
+  return getContinueWatchingBase(getJellyfinClient())
 }
 
 export async function getFavoriteItems(type: JellyfinMediaType = 'Movie'): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      IncludeItemTypes: type,
-      Recursive: 'true',
-      Filters: 'IsFavorite',
-      Limit: '12',
-      SortBy: 'DateCreated',
-      SortOrder: 'Descending',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  )
-  return data.Items
+  return getFavoriteItemsBase(getJellyfinClient(), type)
 }
 
 export async function getLatestMedia(type: JellyfinMediaType = 'Movie'): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinItem[]>(
-    `/Users/${settings.userId}/Items/Latest`,
-    { IncludeItemTypes: type, Limit: '12', Fields: 'Overview,GenreItems,UserData' },
-    settings,
-  )
-  return data
+  return getLatestMediaBase(getJellyfinClient(), type)
 }
+
 export async function getLibraryItems(
   type: JellyfinMediaType,
-  {
-    sortBy = 'SortName',
-    sortOrder = 'Ascending',
-    limit = 24,
-    startIndex = 0,
-    genre,
-    filters,
-    watchStatus,
-    officialRatings,
-    minCommunityRating,
-    minPremiereDate,
-    maxPremiereDate,
-  }: {
-    sortBy?: string
-    sortOrder?: 'Ascending' | 'Descending'
-    limit?: number
-    startIndex?: number
-    genre?: string
-    filters?: string
-    watchStatus?: 'watched' | 'unwatched' | 'inprogress'
-    officialRatings?: string
-    minCommunityRating?: number
-    minPremiereDate?: string
-    maxPremiereDate?: string
-  } = {},
+  options: GetLibraryItemsOptions = {},
 ): Promise<JellyfinResponse<JellyfinItem>> {
-  const settings = getRequiredSettings()
-  const params: Record<string, string> = {
-    IncludeItemTypes: type,
-    SortBy: sortBy,
-    SortOrder: sortOrder,
-    Recursive: 'true',
-    Limit: String(limit),
-    StartIndex: String(startIndex),
-    Fields: 'Overview,GenreItems,UserData',
-  }
-
-  const filterParts: string[] = []
-  if (filters) filterParts.push(filters)
-  if (watchStatus === 'watched') filterParts.push('IsPlayed')
-  else if (watchStatus === 'unwatched') filterParts.push('IsUnplayed')
-  else if (watchStatus === 'inprogress') filterParts.push('IsResumable')
-  if (filterParts.length) params.Filters = filterParts.join(',')
-
-  if (genre) params.Genres = genre
-  if (officialRatings) params.OfficialRatings = officialRatings
-  if (minCommunityRating != null) params.MinCommunityRating = String(minCommunityRating)
-  if (minPremiereDate) params.MinPremiereDate = minPremiereDate
-  if (maxPremiereDate) params.MaxPremiereDate = maxPremiereDate
-
-  return jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    params,
-    settings,
-  )
+  return getLibraryItemsBase(getJellyfinClient(), type, options)
 }
 
-export async function getWatchHistory({
-  limit = 24,
-  startIndex = 0,
-}: { limit?: number; startIndex?: number } = {}): Promise<JellyfinResponse<JellyfinItem>> {
-  const settings = getRequiredSettings()
-  return jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      Filters: 'IsPlayed',
-      SortBy: 'DatePlayed',
-      SortOrder: 'Descending',
-      Recursive: 'true',
-      IncludeItemTypes: 'Movie,Series',
-      Limit: String(limit),
-      StartIndex: String(startIndex),
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  )
+export async function getWatchHistory(
+  options: { limit?: number; startIndex?: number } = {},
+): Promise<JellyfinResponse<JellyfinItem>> {
+  return getWatchHistoryBase(getJellyfinClient(), options)
 }
 
 export async function getCollections(): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      IncludeItemTypes: 'BoxSet',
-      Recursive: 'true',
-      SortBy: 'SortName',
-      SortOrder: 'Ascending',
-      Fields: 'Overview,GenreItems,UserData,ChildCount',
-    },
-    settings,
-  )
-  return data.Items
+  return getCollectionsBase(getJellyfinClient())
 }
 
 export async function getCollectionItems(collectionId: string): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      ParentId: collectionId,
-      SortBy: 'PremiereDate,SortName',
-      SortOrder: 'Ascending',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  )
-  return data.Items
+  return getCollectionItemsBase(getJellyfinClient(), collectionId)
 }
 
 export async function getMostPlayed(type: JellyfinMediaType = 'Movie', limit = 12): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      IncludeItemTypes: type,
-      SortBy: 'PlayCount',
-      SortOrder: 'Descending',
-      Recursive: 'true',
-      Limit: String(limit),
-      Filters: 'IsPlayed',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  )
-  return data.Items
+  return getMostPlayedBase(getJellyfinClient(), type, limit)
 }
 
 export async function getItem(itemId: string): Promise<JellyfinItem> {
-  const settings = getRequiredSettings()
-  return jellyfinFetch<JellyfinItem>(
-    `/Users/${settings.userId}/Items/${itemId}`,
-    { Fields: 'Overview,GenreItems,UserData,People,Studios' },
-    settings,
-  )
+  return getItemBase(getJellyfinClient(), itemId)
 }
 
 export async function getSimilarItems(itemId: string): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Items/${itemId}/Similar`,
-    {
-      UserId: settings.userId,
-      Limit: '8',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  )
-  return data.Items
+  return getSimilarItemsBase(getJellyfinClient(), itemId)
 }
 
 export async function getEpisodesForSeries(seriesId: string): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Shows/${seriesId}/Episodes`,
-    {
-      UserId: settings.userId,
-      Limit: '200',
-      SortBy: 'ParentIndexNumber,IndexNumber',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
-
-  return data.Items
+  return getEpisodesForSeriesBase(getJellyfinClient(), seriesId)
 }
 
 export async function getNextUpForSeries(seriesId: string): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Shows/NextUp`,
-    {
-      UserId: settings.userId,
-      SeriesId: seriesId,
-      Limit: '6',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  ).catch(() => ({ Items: [], TotalRecordCount: 0 }))
-
-  return data.Items
+  return getNextUpForSeriesBase(getJellyfinClient(), seriesId)
 }
 
 export async function searchItems(query: string): Promise<JellyfinItem[]> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      SearchTerm: query,
-      Recursive: 'true',
-      Limit: '20',
-      Fields: 'Overview,GenreItems,UserData',
-      IncludeItemTypes: 'Movie,Series',
-    },
-    settings,
-  )
-  return data.Items
+  return searchItemsBase(getJellyfinClient(), query)
 }
 
 export async function createCollection(name: string, itemIds: string[] = []): Promise<{ Id: string }> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Collections`)
-  url.searchParams.set('api_key', settings.apiKey)
-  url.searchParams.set('Name', name)
-  if (itemIds.length) url.searchParams.set('Ids', itemIds.join(','))
-  const res = await fetch(url.toString(), { method: 'POST' })
-  if (!res.ok) throw new Error(`Jellyfin collection create error: ${res.status}`)
-  return res.json() as Promise<{ Id: string }>
+  return createCollectionBase(getJellyfinClient(), name, itemIds)
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Items/${id}`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), { method: 'DELETE' })
-  if (!res.ok) throw new Error(`Jellyfin delete error: ${res.status}`)
+  return deleteItemBase(getJellyfinClient(), id)
 }
 
 export async function updateItemName(id: string, name: string): Promise<void> {
-  const settings = getRequiredSettings()
-  const item = await getItem(id)
-  const url = new URL(`${settings.url}/Items/${id}`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...item, Name: name }),
-  })
-  if (!res.ok) throw new Error(`Jellyfin update error: ${res.status}`)
+  return updateItemNameBase(getJellyfinClient(), id, name)
 }
 
 export async function addItemsToCollection(collectionId: string, itemIds: string[]): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Collections/${collectionId}/Items`)
-  url.searchParams.set('api_key', settings.apiKey)
-  url.searchParams.set('Ids', itemIds.join(','))
-  const res = await fetch(url.toString(), { method: 'POST' })
-  if (!res.ok) throw new Error(`Jellyfin add to collection error: ${res.status}`)
+  return addItemsToCollectionBase(getJellyfinClient(), collectionId, itemIds)
 }
 
 export async function removeItemsFromCollection(collectionId: string, itemIds: string[]): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Collections/${collectionId}/Items`)
-  url.searchParams.set('api_key', settings.apiKey)
-  url.searchParams.set('Ids', itemIds.join(','))
-  const res = await fetch(url.toString(), { method: 'DELETE' })
-  if (!res.ok) throw new Error(`Jellyfin remove from collection error: ${res.status}`)
+  return removeItemsFromCollectionBase(getJellyfinClient(), collectionId, itemIds)
 }
 
 export async function getFeaturedItem(): Promise<JellyfinItem | null> {
-  const settings = getRequiredSettings()
-  const data = await jellyfinFetch<JellyfinResponse<JellyfinItem>>(
-    `/Users/${settings.userId}/Items`,
-    {
-      IncludeItemTypes: 'Movie',
-      SortBy: 'Random',
-      Recursive: 'true',
-      Limit: '1',
-      HasBackdrop: 'true',
-      Fields: 'Overview,GenreItems,UserData',
-    },
-    settings,
-  )
-  return data.Items[0] ?? null
-}
-
-// ── Admin / System ───────────────────────────────────────────────────────────
-
-export interface JellyfinSystemInfo {
-  ServerName: string
-  Version: string
-  OperatingSystem?: string
-  HasUpdateAvailable?: boolean
-  LocalAddress?: string
-  WanAddress?: string
-}
-
-export interface JellyfinItemCounts {
-  MovieCount?: number
-  SeriesCount?: number
-  EpisodeCount?: number
-  MusicAlbumCount?: number
-  SongCount?: number
-  BookCount?: number
-  MusicVideoCount?: number
-}
-
-export interface JellyfinActiveSession {
-  Id: string
-  UserId?: string
-  UserName?: string
-  Client?: string
-  DeviceName?: string
-  LastActivityDate?: string
-  NowPlayingItem?: {
-    Id: string
-    Name: string
-    Type: string
-    RunTimeTicks?: number
-    PrimaryImageTag?: string
-    SeriesName?: string
-    IndexNumber?: number
-    ParentIndexNumber?: number
-  }
-  PlayState?: {
-    PositionTicks?: number
-    IsPaused?: boolean
-    PlayMethod?: string
-  }
+  return getFeaturedItemBase(getJellyfinClient())
 }
 
 export async function getSystemInfo(): Promise<JellyfinSystemInfo> {
-  return jellyfinFetch<JellyfinSystemInfo>('/System/Info')
+  return getSystemInfoBase(getJellyfinClient())
 }
 
 export async function getItemCounts(): Promise<JellyfinItemCounts> {
-  const settings = getRequiredSettings()
-  return jellyfinFetch<JellyfinItemCounts>('/Items/Counts', { UserId: settings.userId })
+  return getItemCountsBase(getJellyfinClient())
 }
 
 export async function getActiveSessions(): Promise<JellyfinActiveSession[]> {
-  return jellyfinFetch<JellyfinActiveSession[]>('/Sessions')
-}
-
-// ── User management ──────────────────────────────────────────────────────────
-
-export interface JellyfinUser {
-  Id: string
-  Name: string
-  HasPassword: boolean
-  LastLoginDate?: string
-  LastActivityDate?: string
-  PrimaryImageTag?: string
-  Policy?: {
-    IsAdministrator?: boolean
-    IsDisabled?: boolean
-    IsHidden?: boolean
-    EnableRemoteControlOfOtherUsers?: boolean
-    EnableSharedDeviceControl?: boolean
-    EnableRemoteAccess?: boolean
-    EnableMediaPlayback?: boolean
-    EnableAudioPlaybackTranscoding?: boolean
-    EnableVideoPlaybackTranscoding?: boolean
-    EnablePlaybackRemuxing?: boolean
-    EnableContentDeletion?: boolean
-    EnableContentDownloading?: boolean
-    EnableAllDevices?: boolean
-    EnableAllChannels?: boolean
-    EnableAllFolders?: boolean
-    EnablePublicSharing?: boolean
-    InvalidLoginAttemptCount?: number
-    LoginAttemptsBeforeLockout?: number
-    MaxActiveSessions?: number
-    SimultaneousStreamLimit?: number
-    [key: string]: unknown
-  }
+  return getActiveSessionsBase(getJellyfinClient())
 }
 
 export async function getUsers(): Promise<JellyfinUser[]> {
-  return jellyfinFetch<JellyfinUser[]>('/Users')
+  return getUsersBase(getJellyfinClient())
 }
 
 export async function getUserById(userId: string): Promise<JellyfinUser> {
-  return jellyfinFetch<JellyfinUser>(`/Users/${userId}`)
+  return getUserByIdBase(getJellyfinClient(), userId)
 }
 
-export async function updateUserPolicy(userId: string, policy: JellyfinUser['Policy']): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Users/${userId}/Policy`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(policy),
-  })
-  if (!res.ok) throw new Error(`Update user policy: ${res.status}`)
+export async function updateUserPolicy(
+  userId: string,
+  policy: JellyfinUserPolicy,
+): Promise<void> {
+  return updateUserPolicyBase(getJellyfinClient(), userId, policy)
 }
 
 export async function deleteJellyfinUser(userId: string): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Users/${userId}`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), { method: 'DELETE' })
-  if (!res.ok) throw new Error(`Delete user: ${res.status}`)
+  return deleteUserBase(getJellyfinClient(), userId)
 }
 
 export async function createJellyfinUser(name: string, password: string): Promise<JellyfinUser> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Users/New`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ Name: name, Password: password }),
-  })
-  if (!res.ok) throw new Error(`Create user: ${res.status}`)
-  return res.json() as Promise<JellyfinUser>
-}
-
-// ── Library management ───────────────────────────────────────────────────────
-
-export interface JellyfinVirtualFolder {
-  Name: string
-  CollectionType?: string
-  ItemId: string
-  Locations?: string[]
-  PrimaryImageItemId?: string
+  return createUserBase(getJellyfinClient(), name, password)
 }
 
 export async function getVirtualFolders(): Promise<JellyfinVirtualFolder[]> {
-  return jellyfinFetch<JellyfinVirtualFolder[]>('/Library/VirtualFolders')
+  return getVirtualFoldersBase(getJellyfinClient())
 }
 
 export async function scanAllLibraries(): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Library/Refresh`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), { method: 'POST' })
-  if (!res.ok) throw new Error(`Scan all libraries: ${res.status}`)
+  return scanAllLibrariesBase(getJellyfinClient())
 }
 
 export async function scanLibrary(itemId: string): Promise<void> {
-  const settings = getRequiredSettings()
-  const url = new URL(`${settings.url}/Items/${itemId}/Refresh`)
-  url.searchParams.set('api_key', settings.apiKey)
-  const res = await fetch(url.toString(), { method: 'POST' })
-  if (!res.ok) throw new Error(`Scan library: ${res.status}`)
+  return scanLibraryBase(getJellyfinClient(), itemId)
 }
