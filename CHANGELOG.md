@@ -25,6 +25,15 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.4.1](https://github.com/Get-Coral/aurora/compare/v1.4.0...v1.4.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* update Docker publish workflow integration ([371fbf2](https://github.com/Get-Coral/aurora/commit/371fbf20aa89fc107d4036767692c7a80e31d49f))
+* use @get-coral/jellyfin instead of local ([de1868c](https://github.com/Get-Coral/aurora/commit/de1868c101a5637074a5c5ccfd414bf93a0836ec))
+* use @get-coral/jellyfin instead of local ([ecb6da3](https://github.com/Get-Coral/aurora/commit/ecb6da394cef434dbcb85f28cd3f9db7314e9198))
+
 ## [1.4.0](https://github.com/ElianCodes/aurora-ui/compare/v1.3.0...v1.4.0) (2026-04-08)
 
 
