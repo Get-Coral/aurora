@@ -1,3 +1,5 @@
+import { createClient, getUserById } from '@get-coral/jellyfin'
+
 export interface ClientJellyfinSettings {
   url: string
   apiKey: string
@@ -106,37 +108,23 @@ export async function validateClientJellyfinSettings(settings: ClientJellyfinSet
     throw new Error('Every Jellyfin field is required.')
   }
 
-  const baseUrl = normalized.url.replace(/\/+$/, '')
-  const authHeader =
-    'MediaBrowser Client="Aurora", Device="Aurora Local", DeviceId="aurora-ui-local", Version="1.0.0"'
-
-  const userUrl = new URL(`${baseUrl}/Users/${normalized.userId}`)
-  userUrl.searchParams.set('api_key', normalized.apiKey)
-
-  const userResponse = await fetch(userUrl.toString(), { cache: 'no-store' })
-
-  if (!userResponse.ok) {
-    throw new Error('Jellyfin rejected the server URL, API key, or user id.')
-  }
-
-  const authResponse = await fetch(`${baseUrl}/Users/AuthenticateByName`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Emby-Authorization': authHeader,
-    },
-    body: JSON.stringify({
-      Username: normalized.username,
-      Pw: normalized.password,
-    }),
+  const client = createClient({
+    url: normalized.url,
+    apiKey: normalized.apiKey,
+    userId: normalized.userId,
+    username: normalized.username,
+    password: normalized.password,
+    clientName: 'Aurora',
+    deviceName: 'Aurora Local',
+    deviceId: 'aurora-ui-local',
+    version: '1.0.0',
   })
 
-  if (!authResponse.ok) {
-    throw new Error('Jellyfin rejected the username or password.')
-  }
+  await getUserById(client, normalized.userId)
+  await client.getPlaybackAuth()
 
   return {
     ...normalized,
-    url: baseUrl,
+    url: normalized.url.replace(/\/+$/, ''),
   }
 }

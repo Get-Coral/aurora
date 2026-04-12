@@ -5,13 +5,25 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           release-type: node
+
+  docker:
+    name: Publish Docker on release
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    uses: ./.github/workflows/docker-publish.yml
+    secrets: inherit
