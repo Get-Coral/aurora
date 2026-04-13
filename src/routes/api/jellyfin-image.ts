@@ -30,7 +30,7 @@ function copyHeaderIfPresent(target: Headers, source: Headers, key: string) {
   }
 }
 
-export const Route = createFileRoute('/api/jellyfin-image' as any)({
+export const Route = createFileRoute('/api/jellyfin-image')({
   server: {
     handlers: {
       GET: async ({ request }) => {
