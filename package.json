@@ -37,6 +37,9 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
+    "@get-coral/biome-config": "^0.2.0",
+    "@get-coral/tsconfig": "^0.2.0",
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/ios": "^8.3.0",
@@ -52,12 +55,6 @@
     "vite": "^7.3.2",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lightningcss"
-    ]
   },
   "version": "1.4.1"
 }
