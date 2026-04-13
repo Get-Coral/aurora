@@ -25,6 +25,22 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.5.0](https://github.com/Get-Coral/aurora/compare/v1.4.1...v1.5.0) (2026-04-13)
+
+
+### Features
+
+* cache images ([4a86660](https://github.com/Get-Coral/aurora/commit/4a8666054e05159a417b987b795d91f2768ba7cd))
+* implement graceful shutdown and connection management for the server ([a406081](https://github.com/Get-Coral/aurora/commit/a406081e2a4fbcc4336dd2004f63ecbea8c52803))
+* proxy images through API ([4c66b85](https://github.com/Get-Coral/aurora/commit/4c66b858569d71fe517b767fd66a46f55eb09c1e))
+
+
+### Bug Fixes
+
+* remove unnecessary type assertion in jellyfin-image route ([836a8da](https://github.com/Get-Coral/aurora/commit/836a8da540b9de609e763b7e99ce3f4bb3f2defb))
+* use global defaults ([261671a](https://github.com/Get-Coral/aurora/commit/261671abe8bea588796a39e41641ce3d48567c04))
+* use global defaults ([1208152](https://github.com/Get-Coral/aurora/commit/1208152ac8e5ca59dc2cc04a3c525f287bfb0d73))
+
 ## [1.4.1](https://github.com/Get-Coral/aurora/compare/v1.4.0...v1.4.1) (2026-04-12)
 
 
