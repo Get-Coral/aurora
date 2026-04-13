@@ -1,6 +1,6 @@
 const APP_CACHE = 'aurora-app-v1'
 const PAGE_CACHE = 'aurora-pages-v1'
-const IMAGE_CACHE = 'aurora-images-v1'
+const IMAGE_CACHE = 'aurora-images-v2'
 const APP_ASSETS = [
   '/',
   '/offline',
@@ -53,6 +53,14 @@ function isHealthCheckRequest(url) {
   return url.origin === self.location.origin && url.pathname === '/healthz'
 }
 
+function normalizeImageCacheKey(request) {
+  const url = new URL(request.url)
+  // Token params should not fragment image cache entries.
+  url.searchParams.delete('api_key')
+  url.searchParams.delete('token')
+  return url.toString()
+}
+
 async function networkFirst(request, cacheName) {
   const cache = await caches.open(cacheName)
 
@@ -96,6 +104,20 @@ async function staleWhileRevalidate(request, cacheName) {
   throw new Error('Image request failed and no cache entry was found.')
 }
 
+async function cacheFirstImage(request, cacheName) {
+  const cache = await caches.open(cacheName)
+  const cacheKey = normalizeImageCacheKey(request)
+  const cached = await cache.match(cacheKey)
+
+  if (cached) return cached
+
+  const response = await fetch(request)
+  if (response.ok || response.type === 'opaque') {
+    cache.put(cacheKey, response.clone())
+  }
+  return response
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
 
@@ -114,7 +136,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isJellyfinImageRequest(url)) {
-    event.respondWith(staleWhileRevalidate(request, IMAGE_CACHE))
+    event.respondWith(cacheFirstImage(request, IMAGE_CACHE))
     return
   }
 

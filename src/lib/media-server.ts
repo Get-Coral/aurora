@@ -24,16 +24,16 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
     ageRating: item.OfficialRating,
     genres: item.GenreItems?.map((g) => g.Name) ?? [],
     posterUrl: item.ImageTags?.Primary
-      ? jellyfinImageProxyUrl(item.Id, 'Primary', 400)
+      ? jellyfinImageProxyUrl(item.Id, 'Primary', 400, { tag: item.ImageTags.Primary })
       : undefined,
     backdropUrl: item.BackdropImageTags?.[0]
-      ? jellyfinImageProxyUrl(item.Id, 'Backdrop', 1920)
+      ? jellyfinImageProxyUrl(item.Id, 'Backdrop', 1920, { tag: item.BackdropImageTags[0] })
       : undefined,
     thumbUrl: item.ImageTags?.Thumb
-      ? jellyfinImageProxyUrl(item.Id, 'Thumb', 600)
+      ? jellyfinImageProxyUrl(item.Id, 'Thumb', 600, { tag: item.ImageTags.Thumb })
       : undefined,
     logoUrl: item.ImageTags?.Logo
-      ? jellyfinImageProxyUrl(item.Id, 'Logo', 900)
+      ? jellyfinImageProxyUrl(item.Id, 'Logo', 900, { tag: item.ImageTags.Logo })
       : undefined,
     progress: item.UserData?.PlayedPercentage,
     playbackPositionTicks: item.UserData?.PlaybackPositionTicks,
@@ -62,7 +62,7 @@ export function fromJellyfinDetailed(item: JellyfinItem): DetailedMediaItem {
           role: person.Role,
           type: person.Type,
           imageUrl: person.PrimaryImageTag
-            ? jellyfinImageProxyUrl(person.Id, 'Primary', 240)
+            ? jellyfinImageProxyUrl(person.Id, 'Primary', 240, { tag: person.PrimaryImageTag })
             : undefined,
         } satisfies MediaPerson)) ?? [],
     studios: item.Studios?.map((studio) => studio.Name) ?? [],

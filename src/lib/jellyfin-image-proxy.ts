@@ -17,6 +17,7 @@ export function jellyfinImageProxyUrl(
   options?: {
     fillWidth?: number
     quality?: number
+    tag?: string
   },
 ): string {
   const params = new URLSearchParams({
@@ -33,6 +34,13 @@ export function jellyfinImageProxyUrl(
     const quality = normalizeQuality(options.quality)
     if (quality != null) {
       params.set('quality', String(quality))
+    }
+  }
+
+  if (options?.tag) {
+    const tag = options.tag.trim()
+    if (tag) {
+      params.set('tag', tag)
     }
   }
 

@@ -611,6 +611,7 @@ export const fetchAdminSessions = createServerFn({ method: 'GET' }).handler(asyn
             ? jellyfinImageProxyUrl(s.NowPlayingItem.Id, 'Primary', 300, {
               fillWidth: 300,
               quality: 80,
+              tag: s.NowPlayingItem.PrimaryImageTag,
             })
             : null,
         }
