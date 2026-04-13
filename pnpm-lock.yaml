@@ -54,6 +54,9 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.4.11
+        version: 2.4.11
       '@capacitor/android':
         specifier: ^8.3.0
         version: 8.3.0(@capacitor/core@8.3.0)
@@ -63,6 +66,12 @@ importers:
       '@capacitor/ios':
         specifier: ^8.3.0
         version: 8.3.0(@capacitor/core@8.3.0)
+      '@get-coral/biome-config':
+        specifier: ^0.2.0
+        version: 0.2.0(@biomejs/biome@2.4.11)
+      '@get-coral/tsconfig':
+        specifier: ^0.2.0
+        version: 0.2.0(typescript@5.9.3)
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.2.2)
@@ -217,6 +226,63 @@ packages:
   '@babel/types@7.29.0':
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
+
+  '@biomejs/biome@2.4.11':
+    resolution: {integrity: sha512-nWxHX8tf3Opb/qRgZpBbsTOqOodkbrkJ7S+JxJAruxOReaDPPmPuLBAGQ8vigyUgo0QBB+oQltNEAvalLcjggA==}
+    engines: {node: '>=14.21.3'}
+    hasBin: true
+
+  '@biomejs/cli-darwin-arm64@2.4.11':
+    resolution: {integrity: sha512-wOt+ed+L2dgZanWyL6i29qlXMc088N11optzpo10peayObBaAshbTcxKUchzEMp9QSY8rh5h6VfAFE3WTS1rqg==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@biomejs/cli-darwin-x64@2.4.11':
+    resolution: {integrity: sha512-gZ6zR8XmZlExfi/Pz/PffmdpWOQ8Qhy7oBztgkR8/ylSRyLwfRPSadmiVCV8WQ8PoJ2MWUy2fgID9zmtgUUJmw==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@biomejs/cli-linux-arm64-musl@2.4.11':
+    resolution: {integrity: sha512-+Sbo1OAmlegtdwqFE8iOxFIWLh1B3OEgsuZfBpyyN/kWuqZ8dx9ZEes6zVnDMo+zRHF2wLynRVhoQmV7ohxl2Q==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@biomejs/cli-linux-arm64@2.4.11':
+    resolution: {integrity: sha512-avdJaEElXrKceK0va9FkJ4P5ci3N01TGkc6ni3P8l3BElqbOz42Wg2IyX3gbh0ZLEd4HVKEIrmuVu/AMuSeFFA==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@biomejs/cli-linux-x64-musl@2.4.11':
+    resolution: {integrity: sha512-bexd2IklK7ZgPhrz6jXzpIL6dEAH9MlJU1xGTrypx+FICxrXUp4CqtwfiuoDKse+UlgAlWtzML3jrMqeEAHEhA==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@biomejs/cli-linux-x64@2.4.11':
+    resolution: {integrity: sha512-TagWV0iomp5LnEnxWFg4nQO+e52Fow349vaX0Q/PIcX6Zhk4GGBgp3qqZ8PVkpC+cuehRctMf3+6+FgQ8jCEFQ==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@biomejs/cli-win32-arm64@2.4.11':
+    resolution: {integrity: sha512-RJhaTnY8byzxDt4bDVb7AFPHkPcjOPK3xBip4ZRTrN3TEfyhjLRm3r3mqknqydgVTB74XG8l4jMLwEACEeihVg==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@biomejs/cli-win32-x64@2.4.11':
+    resolution: {integrity: sha512-A8D3JM/00C2KQgUV3oj8Ba15EHEYwebAGCy5Sf9GAjr5Y3+kJIYOiESoqRDeuRZueuMdCsbLZIUqmPhpYXJE9A==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [win32]
 
   '@bramus/specificity@2.4.2':
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
@@ -446,9 +512,19 @@ packages:
       '@noble/hashes':
         optional: true
 
+  '@get-coral/biome-config@0.2.0':
+    resolution: {integrity: sha512-L9hB02oCFXGOCf6zevofucnUgcle8hml4qKPiK77vbGKQ7nfwlIEDSsi9/w+kue5HL2a3lct29OAUyMU7dwjcA==}
+    peerDependencies:
+      '@biomejs/biome': '>=2.4.0'
+
   '@get-coral/jellyfin@1.2.0':
     resolution: {integrity: sha512-uGj4hKmnMYbvQ/6EXdkOcTPBQtmNhmsNPjZjK6a8y9KNs3N/4iDVV75ysC0swZSJot0X+FrH2UdvwFAvIZ61FQ==}
     engines: {node: '>=18'}
+
+  '@get-coral/tsconfig@0.2.0':
+    resolution: {integrity: sha512-XJrnu1R2SP+UfPwOhpJtVo1pdmWsUx5gYDGrOnj9PjRHlO2PPxOv+NGEL4dWw3V/WYPWH2dzMVpApWN3npJE2g==}
+    peerDependencies:
+      typescript: '>=5.7.0'
 
   '@ionic/cli-framework-output@2.2.8':
     resolution: {integrity: sha512-TshtaFQsovB4NWRBydbNFawql6yul7d5bMiW1WYYf17hd99V6xdDdk3vtF51bw6sLkxON3bDQpWsnUc9/hVo3g==}
@@ -2422,6 +2498,41 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
+  '@biomejs/biome@2.4.11':
+    optionalDependencies:
+      '@biomejs/cli-darwin-arm64': 2.4.11
+      '@biomejs/cli-darwin-x64': 2.4.11
+      '@biomejs/cli-linux-arm64': 2.4.11
+      '@biomejs/cli-linux-arm64-musl': 2.4.11
+      '@biomejs/cli-linux-x64': 2.4.11
+      '@biomejs/cli-linux-x64-musl': 2.4.11
+      '@biomejs/cli-win32-arm64': 2.4.11
+      '@biomejs/cli-win32-x64': 2.4.11
+
+  '@biomejs/cli-darwin-arm64@2.4.11':
+    optional: true
+
+  '@biomejs/cli-darwin-x64@2.4.11':
+    optional: true
+
+  '@biomejs/cli-linux-arm64-musl@2.4.11':
+    optional: true
+
+  '@biomejs/cli-linux-arm64@2.4.11':
+    optional: true
+
+  '@biomejs/cli-linux-x64-musl@2.4.11':
+    optional: true
+
+  '@biomejs/cli-linux-x64@2.4.11':
+    optional: true
+
+  '@biomejs/cli-win32-arm64@2.4.11':
+    optional: true
+
+  '@biomejs/cli-win32-x64@2.4.11':
+    optional: true
+
   '@bramus/specificity@2.4.2':
     dependencies:
       css-tree: 3.2.1
@@ -2568,7 +2679,15 @@ snapshots:
 
   '@exodus/bytes@1.15.0': {}
 
+  '@get-coral/biome-config@0.2.0(@biomejs/biome@2.4.11)':
+    dependencies:
+      '@biomejs/biome': 2.4.11
+
   '@get-coral/jellyfin@1.2.0': {}
+
+  '@get-coral/tsconfig@0.2.0(typescript@5.9.3)':
+    dependencies:
+      typescript: 5.9.3
 
   '@ionic/cli-framework-output@2.2.8':
     dependencies:
