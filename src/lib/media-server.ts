@@ -1,5 +1,6 @@
 import type { JellyfinItem } from './jellyfin'
-import { jellyfinImageUrl, jellyfinPersonImageUrl, jellyfinStreamUrl } from './jellyfin'
+import { jellyfinStreamUrl } from './jellyfin'
+import { jellyfinImageProxyUrl } from './jellyfin-image-proxy'
 import type { DetailedMediaItem, MediaItem, MediaPerson, MediaType } from './media'
 
 export function fromJellyfin(item: JellyfinItem): MediaItem {
@@ -23,16 +24,16 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
     ageRating: item.OfficialRating,
     genres: item.GenreItems?.map((g) => g.Name) ?? [],
     posterUrl: item.ImageTags?.Primary
-      ? jellyfinImageUrl(item.Id, 'Primary', 400)
+      ? jellyfinImageProxyUrl(item.Id, 'Primary', 400)
       : undefined,
     backdropUrl: item.BackdropImageTags?.[0]
-      ? jellyfinImageUrl(item.Id, 'Backdrop', 1920)
+      ? jellyfinImageProxyUrl(item.Id, 'Backdrop', 1920)
       : undefined,
     thumbUrl: item.ImageTags?.Thumb
-      ? jellyfinImageUrl(item.Id, 'Thumb', 600)
+      ? jellyfinImageProxyUrl(item.Id, 'Thumb', 600)
       : undefined,
     logoUrl: item.ImageTags?.Logo
-      ? jellyfinImageUrl(item.Id, 'Logo', 900)
+      ? jellyfinImageProxyUrl(item.Id, 'Logo', 900)
       : undefined,
     progress: item.UserData?.PlayedPercentage,
     playbackPositionTicks: item.UserData?.PlaybackPositionTicks,
@@ -61,7 +62,7 @@ export function fromJellyfinDetailed(item: JellyfinItem): DetailedMediaItem {
           role: person.Role,
           type: person.Type,
           imageUrl: person.PrimaryImageTag
-            ? jellyfinPersonImageUrl(person.Id, 240)
+            ? jellyfinImageProxyUrl(person.Id, 'Primary', 240)
             : undefined,
         } satisfies MediaPerson)) ?? [],
     studios: item.Studios?.map((studio) => studio.Name) ?? [],

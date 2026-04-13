@@ -591,10 +591,7 @@ export const fetchAdminOverview = createServerFn({ method: 'GET' }).handler(asyn
 
 export const fetchAdminSessions = createServerFn({ method: 'GET' }).handler(async () => {
   const { getActiveSessions } = await import('../lib/jellyfin')
-  const { getEffectiveJellyfinSettings } = await import('../lib/config-store')
-  const settings = getEffectiveJellyfinSettings()
-  const baseUrl = settings?.url?.replace(/\/+$/, '') ?? ''
-  const apiKey = settings?.apiKey ?? ''
+  const { jellyfinImageProxyUrl } = await import('../lib/jellyfin-image-proxy')
 
   const sessions = await getActiveSessions()
   return sessions.map((s) => ({
@@ -611,7 +608,10 @@ export const fetchAdminSessions = createServerFn({ method: 'GET' }).handler(asyn
           seriesName: s.NowPlayingItem.SeriesName ?? null,
           runTimeTicks: s.NowPlayingItem.RunTimeTicks ?? null,
           imageUrl: s.NowPlayingItem.PrimaryImageTag
-            ? `${baseUrl}/Items/${s.NowPlayingItem.Id}/Images/Primary?api_key=${apiKey}&maxWidth=300&fillWidth=300&quality=80`
+            ? jellyfinImageProxyUrl(s.NowPlayingItem.Id, 'Primary', 300, {
+              fillWidth: 300,
+              quality: 80,
+            })
             : null,
         }
       : null,
