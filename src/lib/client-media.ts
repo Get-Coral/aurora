@@ -82,6 +82,18 @@ export interface ClientOnlineSubtitleResult {
   fileId: number
 }
 
+function withImageTag(url: string, tag?: string): string {
+  if (!tag) return url
+  const value = tag.trim()
+  if (!value) return url
+
+  const next = new URL(url)
+  if (!next.searchParams.has('tag')) {
+    next.searchParams.set('tag', value)
+  }
+  return next.toString()
+}
+
 function getRequiredClientSettings(): ClientSettings {
   const settings = getEffectiveClientJellyfinSettings()
 
@@ -131,16 +143,16 @@ function fromClientJellyfin(item: JellyfinItem): MediaItem {
     ageRating: item.OfficialRating,
     genres: item.GenreItems?.map((genre) => genre.Name) ?? [],
     posterUrl: item.ImageTags?.Primary
-      ? imageUrl(client, item.Id, 'Primary', 400)
+      ? withImageTag(imageUrl(client, item.Id, 'Primary', 400), item.ImageTags.Primary)
       : undefined,
     backdropUrl: item.BackdropImageTags?.[0]
-      ? imageUrl(client, item.Id, 'Backdrop', 1920)
+      ? withImageTag(imageUrl(client, item.Id, 'Backdrop', 1920), item.BackdropImageTags[0])
       : undefined,
     thumbUrl: item.ImageTags?.Thumb
-      ? imageUrl(client, item.Id, 'Thumb', 600)
+      ? withImageTag(imageUrl(client, item.Id, 'Thumb', 600), item.ImageTags.Thumb)
       : undefined,
     logoUrl: item.ImageTags?.Logo
-      ? imageUrl(client, item.Id, 'Logo', 900)
+      ? withImageTag(imageUrl(client, item.Id, 'Logo', 900), item.ImageTags.Logo)
       : undefined,
     progress: item.UserData?.PlayedPercentage,
     playbackPositionTicks: item.UserData?.PlaybackPositionTicks,
@@ -170,7 +182,7 @@ function fromClientJellyfinDetailed(item: JellyfinItem): DetailedMediaItem {
           role: person.Role,
           type: person.Type,
           imageUrl: person.PrimaryImageTag
-            ? personImageUrl(client, person.Id, 240)
+            ? withImageTag(personImageUrl(client, person.Id, 240), person.PrimaryImageTag)
             : undefined,
         })) ?? [],
     studios: item.Studios?.map((studio) => studio.Name) ?? [],
@@ -376,7 +388,10 @@ export async function fetchClientAdminSessions(): Promise<ClientAdminSession[]> 
           seriesName: session.NowPlayingItem.SeriesName ?? null,
           runTimeTicks: session.NowPlayingItem.RunTimeTicks ?? null,
           imageUrl: session.NowPlayingItem.PrimaryImageTag
-            ? imageUrl(client, session.NowPlayingItem.Id, 'Primary', 300)
+            ? withImageTag(
+                imageUrl(client, session.NowPlayingItem.Id, 'Primary', 300),
+                session.NowPlayingItem.PrimaryImageTag,
+              )
             : null,
         }
       : null,

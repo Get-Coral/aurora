@@ -20,6 +20,7 @@ import { Route as CollectionsIndexRouteImport } from './routes/collections/index
 import { Route as LibrarySeriesRouteImport } from './routes/library/series'
 import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
 import { Route as CollectionsIdRouteImport } from './routes/collections/$id'
+import { Route as ApiJellyfinImageRouteImport } from './routes/api/jellyfin-image'
 import { Route as LibraryMoviesIndexRouteImport } from './routes/library/movies/index'
 import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/movies/genre/$genre'
 
@@ -78,6 +79,11 @@ const CollectionsIdRoute = CollectionsIdRouteImport.update({
   path: '/collections/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiJellyfinImageRoute = ApiJellyfinImageRouteImport.update({
+  id: '/api/jellyfin-image',
+  path: '/api/jellyfin-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryMoviesIndexRoute = LibraryMoviesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/offline': typeof OfflineRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/api/jellyfin-image': typeof ApiJellyfinImageRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/offline': typeof OfflineRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/api/jellyfin-image': typeof ApiJellyfinImageRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/library/series': typeof LibrarySeriesRoute
   '/collections': typeof CollectionsIndexRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/offline': typeof OfflineRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/api/jellyfin-image': typeof ApiJellyfinImageRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/offline'
     | '/settings'
     | '/setup'
+    | '/api/jellyfin-image'
     | '/collections/$id'
     | '/library/movies'
     | '/library/series'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/offline'
     | '/settings'
     | '/setup'
+    | '/api/jellyfin-image'
     | '/collections/$id'
     | '/library/series'
     | '/collections'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/offline'
     | '/settings'
     | '/setup'
+    | '/api/jellyfin-image'
     | '/collections/$id'
     | '/library/movies'
     | '/library/series'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   OfflineRoute: typeof OfflineRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  ApiJellyfinImageRoute: typeof ApiJellyfinImageRoute
   CollectionsIdRoute: typeof CollectionsIdRoute
   LibraryMoviesRoute: typeof LibraryMoviesRouteWithChildren
   LibrarySeriesRoute: typeof LibrarySeriesRoute
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/jellyfin-image': {
+      id: '/api/jellyfin-image'
+      path: '/api/jellyfin-image'
+      fullPath: '/api/jellyfin-image'
+      preLoaderRoute: typeof ApiJellyfinImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library/movies/': {
       id: '/library/movies/'
       path: '/'
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   OfflineRoute: OfflineRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  ApiJellyfinImageRoute: ApiJellyfinImageRoute,
   CollectionsIdRoute: CollectionsIdRoute,
   LibraryMoviesRoute: LibraryMoviesRouteWithChildren,
   LibrarySeriesRoute: LibrarySeriesRoute,
