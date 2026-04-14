@@ -136,6 +136,7 @@ export const nlMessages: MessageDictionary = {
   'player.subtitles': 'Ondertitels',
   'player.subtitlesOff': 'Uit',
   'player.subtitlesOnline': 'Online (OpenSubtitles)',
+  'player.subtitlesOffsetHint': 'Z / X om sync aan te passen',
   'player.subtitlesSearching': 'Zoeken…',
   'player.subtitlesNoneFound': 'Geen ondertitels gevonden',
   'player.subtitlesError': 'Ondertitel laden mislukt',

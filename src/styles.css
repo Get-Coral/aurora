@@ -1886,6 +1886,11 @@ html.tv-mode .hero-copy-in {
   transition: bottom 0.2s ease;
 }
 
+/* Hide when the RAF loop hasn't written any spans yet */
+.player-subtitle-cue:empty {
+  display: none;
+}
+
 .player-subtitle-cue.player-subtitle-cue-raised {
   bottom: 7rem;
 }

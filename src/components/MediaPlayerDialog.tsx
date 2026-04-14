@@ -102,6 +102,11 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   const [onlineSubtitleError, setOnlineSubtitleError] = useState(false)
   const [autoplayCountdown, setAutoplayCountdown] = useState<number | null>(null)
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const subtitleDivRef = useRef<HTMLDivElement>(null)
+  const onlineCuesRef = useRef<VttCue[]>([])
+  const subtitleOffsetRef = useRef(0)
+  // Keep a ref in sync so the RAF subtitle loop can read cues without capturing stale state
+  onlineCuesRef.current = onlineCues
 
   const { data: osApiKey } = useQuery({
     queryKey: ['opensubtitles-key'],
@@ -301,6 +306,38 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   }, [open])
 
 
+  // RAF-based subtitle sync: reads video.currentTime at 60fps and updates the DOM directly,
+  // bypassing React renders for tight timing (timeupdate only fires ~4x/sec).
+  useEffect(() => {
+    const video = videoRef.current
+    const div = subtitleDivRef.current
+    if (!video || !div) return
+    let rafId: number
+    let lastCueText: string | null = null
+    const tick = () => {
+      rafId = requestAnimationFrame(tick)
+      const t = video.currentTime + startTimeOffsetRef.current + subtitleOffsetRef.current
+      const cue = onlineCuesRef.current.find((c) => t >= c.start && t <= c.end) ?? null
+      const text = cue?.text ?? null
+      if (text !== lastCueText) {
+        lastCueText = text
+        div.textContent = ''
+        if (text) {
+          for (const line of text.split('\n')) {
+            const span = document.createElement('span')
+            span.textContent = line
+            div.appendChild(span)
+          }
+          div.style.display = ''
+        } else {
+          div.style.display = 'none'
+        }
+      }
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [open])
+
   // Fullscreen tracking
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -367,6 +404,10 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         void toggleFullscreen()
       } else if (e.key === 'm') {
         video.muted = !video.muted
+      } else if (e.key === 'z') {
+        subtitleOffsetRef.current = Math.round((subtitleOffsetRef.current - 0.1) * 10) / 10
+      } else if (e.key === 'x') {
+        subtitleOffsetRef.current = Math.round((subtitleOffsetRef.current + 0.1) * 10) / 10
       } else if (e.key === 'Escape') {
         onClose()
       }
@@ -407,6 +448,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     setOnlineSubtitleError(false)
     try {
       const { content } = await fetchOnlineSubtitleRuntime({ data: { fileId } })
+      subtitleOffsetRef.current = 0
       setOnlineCues(parseVtt(content))
       setActiveSubtitle(null)
       setSubtitlePickerOpen(false)
@@ -577,14 +619,10 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
             </div>
           ) : null}
 
-          {(() => {
-            const cue = onlineCues.find((c) => currentTime >= c.start && currentTime <= c.end)
-            return cue ? (
-              <div className={`player-subtitle-cue${controlsVisible ? ' player-subtitle-cue-raised' : ''}`}>
-                {cue.text.split('\n').map((line, i) => <span key={i}>{line}</span>)}
-              </div>
-            ) : null
-          })()}
+          <div
+            ref={subtitleDivRef}
+            className={`player-subtitle-cue${controlsVisible ? ' player-subtitle-cue-raised' : ''}`}
+          />
 
           {autoplayMuted ? (
             <button
@@ -760,6 +798,9 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
                                 </button>
                               ))}
                             </>
+                          ) : null}
+                          {onlineCues.length > 0 ? (
+                            <p className="player-subtitle-searching">{t('player.subtitlesOffsetHint')}</p>
                           ) : null}
                         </div>
                       ) : null}

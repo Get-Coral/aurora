@@ -136,6 +136,7 @@ export const enMessages: MessageDictionary = {
   'player.subtitles': 'Subtitles',
   'player.subtitlesOff': 'Off',
   'player.subtitlesOnline': 'Online (OpenSubtitles)',
+  'player.subtitlesOffsetHint': 'Z / X to adjust sync',
   'player.subtitlesSearching': 'Searching…',
   'player.subtitlesNoneFound': 'No subtitles found',
   'player.subtitlesError': 'Failed to load subtitle',
