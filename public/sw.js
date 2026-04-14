@@ -13,7 +13,15 @@ const APP_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(APP_CACHE).then((cache) => cache.addAll(APP_ASSETS)).then(() => self.skipWaiting()),
+    caches.open(APP_CACHE).then((cache) =>
+      Promise.all(
+        APP_ASSETS.map((url) =>
+          cache.add(url).catch(() => {
+            // A single asset failing shouldn't block SW installation
+          }),
+        ),
+      ),
+    ).then(() => self.skipWaiting()),
   )
 })
 
