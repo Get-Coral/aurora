@@ -25,6 +25,20 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.6.0](https://github.com/Get-Coral/aurora/compare/v1.5.0...v1.6.0) (2026-04-14)
+
+
+### Features
+
+* enhance subtitle functionality with RAF sync and offset adjustments ([c72f626](https://github.com/Get-Coral/aurora/commit/c72f626e1a41e6e6bd1a08af6291c862bfb657ad))
+* implement jellyfin stream proxy for secure URL handling and playback session management ([2a9d447](https://github.com/Get-Coral/aurora/commit/2a9d44768d87c90043cf68807e0797a7d7b460da))
+* improve streaming mode and params + scrubbing behaviour ([9b67e07](https://github.com/Get-Coral/aurora/commit/9b67e07634cf5115990b9eff6332217cb09ee913))
+
+
+### Bug Fixes
+
+* improve service worker installation by handling individual asset failures ([3ad2fea](https://github.com/Get-Coral/aurora/commit/3ad2feadb9792eb6ce8c5bf2af1557f47f56adcd))
+
 ## [1.5.0](https://github.com/Get-Coral/aurora/compare/v1.4.1...v1.5.0) (2026-04-13)
 
 
