@@ -5,7 +5,7 @@ import { useLockBodyScroll } from './useLockBodyScroll'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { getClientPlaybackContext } from '../lib/platform'
-import { setStreamStartTicks } from '../lib/jellyfin-stream-proxy'
+import { prepareSeekReloadUrl, setStreamStartTicks } from '../lib/jellyfin-stream-proxy'
 import {
   beginPlaybackSessionRuntime,
   fetchOnlineSubtitleRuntime,
@@ -85,6 +85,15 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   // Set to true while a seek-triggered reload is in progress so that
   // handleLoadedMetadata skips the normal resume-position restore.
   const seekPendingRef = useRef(false)
+  // Absolute movie time we expect the current seek-triggered reload to land on.
+  // We only promote this into startTimeOffsetRef after the new stream proves it
+  // actually starts at that offset.
+  const pendingSeekTargetRef = useRef<number | null>(null)
+  const optimisticSeekTargetRef = useRef<number | null>(null)
+  // Native/fullscreen media controls can change video.currentTime directly.
+  // Track programmatic seeks so we only intercept user-driven native seeking.
+  const internalSeekCountRef = useRef(0)
+  const seekReloadRequestIdRef = useRef(0)
   // Tracks the drag ratio so handleProgressPointerUp can commit the final seek.
   const lastDragRatioRef = useRef(0)
 
@@ -141,6 +150,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     lastReportedSecondRef.current = 0
     startTimeOffsetRef.current = 0
     seekPendingRef.current = false
+    pendingSeekTargetRef.current = null
     setIsBuffering(true)
     setPlaybackSession(null)
     setCurrentTime(0)
@@ -166,8 +176,9 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         // avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
         const resumeTicks = item!.playbackPositionTicks ?? 0
         if (resumeTicks > 0 && session.playMethod === 'Transcode') {
-          startTimeOffsetRef.current = resumeTicks / 10_000_000
+          startTimeOffsetRef.current = 0
           seekPendingRef.current = true
+          pendingSeekTargetRef.current = resumeTicks / 10_000_000
           setPlaybackSession({ ...session, streamUrl: setStreamStartTicks(session.streamUrl, resumeTicks) })
         } else {
           setPlaybackSession(session)
@@ -215,13 +226,25 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
 
     function handleLoadedMetadata() {
       if (seekPendingRef.current) {
-        // Stream was reloaded from a StartTimeTicks offset — video.currentTime=0
-        // is already the right relative position. Just resume playback.
+        const pendingTarget = pendingSeekTargetRef.current ?? startTimeOffsetRef.current
+        const knownRuntime = (item?.runtimeMinutes ?? 0) * 60
+        const remainingRuntime = knownRuntime > 0 ? Math.max(0, knownRuntime - pendingTarget) : null
+        const rawDuration = video!.duration
+
+        // Jellyfin transcode responses can report a tiny placeholder duration
+        // during metadata load even when StartTimeTicks was honored. Trust the
+        // requested offset for movie-time UI and progress reporting.
+        const streamOffsetApplied = pendingTarget > 0
+        startTimeOffsetRef.current = streamOffsetApplied ? pendingTarget : 0
+        setCurrentTime((streamOffsetApplied ? pendingTarget : 0) + video!.currentTime)
+
         seekPendingRef.current = false
+        pendingSeekTargetRef.current = null
+        optimisticSeekTargetRef.current = null
         video!.play().catch(() => undefined)
         return
       }
-      if (item!.playbackPositionTicks) video!.currentTime = item!.playbackPositionTicks / 10_000_000
+      if (item!.playbackPositionTicks) setVideoCurrentTime(item!.playbackPositionTicks / 10_000_000)
     }
     function handleTimeUpdate() { if (playbackSession?.canSyncProgress) syncProgress() }
     function handlePause() { syncProgress({ isPaused: true, force: true }) }
@@ -254,7 +277,21 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     const video = videoRef.current
     if (!video) return
 
-    const onTimeUpdate = () => setCurrentTime(video.currentTime + startTimeOffsetRef.current)
+    const onTimeUpdate = () => {
+      const nextTime = video.currentTime + startTimeOffsetRef.current
+      const optimisticTarget = optimisticSeekTargetRef.current
+      if (optimisticTarget != null && nextTime < optimisticTarget - 1) return
+      setCurrentTime(nextTime)
+    }
+    const onSeeking = () => {
+      if (internalSeekCountRef.current > 0) {
+        internalSeekCountRef.current -= 1
+        return
+      }
+      if (seekPendingRef.current) return
+      if (playbackSession?.playMethod !== 'Transcode') return
+      seekToMovieTime(video.currentTime + startTimeOffsetRef.current)
+    }
     const onDurationChange = () => {
       const d = video.duration
       // Only trust the video's reported duration when it's finite and plausible.
@@ -286,6 +323,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     const onPlaying = () => setIsBuffering(false)
 
     video.addEventListener('timeupdate', onTimeUpdate)
+    video.addEventListener('seeking', onSeeking)
     video.addEventListener('durationchange', onDurationChange)
     video.addEventListener('play', onPlay)
     video.addEventListener('pause', onPause)
@@ -295,6 +333,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
 
     return () => {
       video.removeEventListener('timeupdate', onTimeUpdate)
+      video.removeEventListener('seeking', onSeeking)
       video.removeEventListener('durationchange', onDurationChange)
       video.removeEventListener('play', onPlay)
       video.removeEventListener('pause', onPause)
@@ -302,7 +341,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       video.removeEventListener('waiting', onWaiting)
       video.removeEventListener('playing', onPlaying)
     }
-  }, [open])
+  }, [open, playbackSession?.playMethod, streamUrl])
 
 
   // RAF-based subtitle sync: reads video.currentTime at 60fps and updates the DOM directly,
@@ -335,7 +374,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [open])
+  }, [open, streamUrl])
 
   // Fullscreen tracking
   useEffect(() => {
@@ -355,7 +394,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
 
     video.addEventListener('ended', handleEnded)
     return () => video.removeEventListener('ended', handleEnded)
-  }, [open, nextItem?.id])
+  }, [open, nextItem?.id, streamUrl])
 
   // Tick the autoplay countdown down; fire when it reaches 0
   useEffect(() => {
@@ -395,10 +434,9 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         e.preventDefault()
         video.paused ? void video.play() : video.pause()
       } else if (e.key === 'ArrowLeft') {
-        video.currentTime = Math.max(0, video.currentTime - 15)
+        seekToMovieTime(currentTime - 15)
       } else if (e.key === 'ArrowRight') {
-        const d = duration > 0 ? duration : (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null)
-        video.currentTime = d != null ? Math.min(d, video.currentTime + 30) : video.currentTime + 30
+        seekToMovieTime(currentTime + 30)
       } else if (e.key === 'f') {
         void toggleFullscreen()
       } else if (e.key === 'm') {
@@ -413,7 +451,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     }
     window.addEventListener('keydown', handleKeydown)
     return () => window.removeEventListener('keydown', handleKeydown)
-  }, [open, onClose])
+  }, [currentTime, open, onClose])
 
   function revealControls() {
     setControlsVisible(true)
@@ -427,6 +465,33 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     const video = videoRef.current
     if (!video) return
     video.paused ? void video.play() : video.pause()
+  }
+
+  async function reloadStreamAtMovieTime(targetMovieTime: number) {
+    if (!item) return
+
+    const requestId = ++seekReloadRequestIdRef.current
+    const client = getClientPlaybackContext()
+
+    try {
+      const freshSession = await beginPlaybackSessionRuntime({ data: { id: item.id, client } })
+      if (seekReloadRequestIdRef.current !== requestId) return
+
+      const nextStreamUrl = prepareSeekReloadUrl(freshSession.streamUrl, Math.floor(targetMovieTime * 10_000_000))
+      setPlaybackSession({ ...freshSession, streamUrl: nextStreamUrl })
+    } catch {
+      if (seekReloadRequestIdRef.current !== requestId || !playbackSession) return
+
+      const nextStreamUrl = prepareSeekReloadUrl(playbackSession.streamUrl, Math.floor(targetMovieTime * 10_000_000))
+      setPlaybackSession({ ...playbackSession, streamUrl: nextStreamUrl })
+    }
+  }
+
+  function setVideoCurrentTime(nextTime: number) {
+    const video = videoRef.current
+    if (!video) return
+    internalSeekCountRef.current += 1
+    video.currentTime = nextTime
   }
 
   function toggleMute() {
@@ -502,19 +567,21 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       }
       if (!buffered || streamTime < 0) {
         if (seekPendingRef.current) return  // reload already in flight
-        startTimeOffsetRef.current = clamped
+        pendingSeekTargetRef.current = clamped
+        optimisticSeekTargetRef.current = clamped
+        setCurrentTime(clamped)
         // After reload, video.currentTime resets to ~0. Reset the throttle
         // baseline so syncProgress doesn't suppress reports until stream time
         // catches up to the pre-seek value (which could take minutes).
         lastReportedSecondRef.current = 0
         seekPendingRef.current = true
         setIsBuffering(true)
-        setPlaybackSession({ ...playbackSession, streamUrl: setStreamStartTicks(playbackSession.streamUrl, Math.floor(clamped * 10_000_000)) })
+        void reloadStreamAtMovieTime(clamped)
         return
       }
-      video.currentTime = streamTime
+      setVideoCurrentTime(streamTime)
     } else {
-      video.currentTime = clamped
+      setVideoCurrentTime(clamped)
     }
   }
 
@@ -536,7 +603,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         for (let i = 0; i < video.buffered.length; i++) {
           if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
         }
-        if (buffered) video.currentTime = streamTime
+        if (buffered) setVideoCurrentTime(streamTime)
       }
     }
     revealControls()
@@ -557,7 +624,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         for (let i = 0; i < video.buffered.length; i++) {
           if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) { buffered = true; break }
         }
-        if (buffered) video.currentTime = streamTime
+        if (buffered) setVideoCurrentTime(streamTime)
       }
     }
   }
@@ -589,16 +656,25 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     >
       {streamUrl ? (
         <>
+          {item.backdropUrl ?? item.posterUrl ? (
+            <div className={`player-poster-layer${isBuffering ? ' visible' : ''}`} aria-hidden={!isBuffering}>
+              <img
+                src={item.backdropUrl ?? item.posterUrl}
+                alt=""
+                className="player-poster-image"
+              />
+            </div>
+          ) : null}
           <video
+            key={streamUrl}
             ref={videoRef}
             className="player-fullscreen-video"
             autoPlay
             playsInline
-            poster={item.backdropUrl ?? item.posterUrl}
             preload="metadata"
+            src={streamUrl}
             onClick={togglePlay}
           >
-            <source src={streamUrl} />
             {(playbackSession?.subtitleTracks ?? []).map((track) => (
               <track
                 key={track.index}

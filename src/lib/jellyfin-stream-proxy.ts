@@ -34,3 +34,46 @@ export function setStreamStartTicks(streamUrl: string, ticks: number): string {
   url.searchParams.set('StartTimeTicks', String(ticks))
   return url.toString()
 }
+
+function mutateInnerStreamUrl(streamUrl: string, mutate: (url: URL) => void): string {
+  if (streamUrl.startsWith('/api/jellyfin-stream')) {
+    const outer = new URL(streamUrl, 'http://x')
+    const rawPath = outer.searchParams.get('path')
+    if (!rawPath) return streamUrl
+    const inner = new URL(rawPath, 'http://x')
+    mutate(inner)
+    outer.searchParams.set('path', inner.pathname + inner.search)
+    return outer.pathname + outer.search
+  }
+
+  const url = new URL(streamUrl)
+  mutate(url)
+  return url.toString()
+}
+
+export function setTranscodeQuality(streamUrl: string, options?: {
+  maxStreamingBitrate?: number
+  videoBitrate?: number
+  audioBitrate?: number
+}): string {
+  return mutateInnerStreamUrl(streamUrl, (url) => {
+    if (!url.pathname.endsWith('/stream.mp4')) return
+
+    const maxStreamingBitrate = options?.maxStreamingBitrate ?? 120_000_000
+    const videoBitrate = options?.videoBitrate ?? 80_000_000
+    const audioBitrate = options?.audioBitrate ?? 320_000
+
+    url.searchParams.set('MaxStreamingBitrate', String(maxStreamingBitrate))
+    url.searchParams.set('VideoBitrate', String(videoBitrate))
+    url.searchParams.set('AudioBitrate', String(audioBitrate))
+  })
+}
+
+export function prepareSeekReloadUrl(streamUrl: string, ticks: number): string {
+  return mutateInnerStreamUrl(streamUrl, (url) => {
+    url.searchParams.set('StartTimeTicks', String(ticks))
+    // Force Jellyfin/browser to treat unbuffered seeks as a fresh transcode
+    // request instead of reusing a cached segment.
+    url.searchParams.set('_ts', String(Date.now()))
+  })
+}

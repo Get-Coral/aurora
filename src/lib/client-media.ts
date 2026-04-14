@@ -50,6 +50,7 @@ import {
   getClientOpenSubtitlesApiKey,
   getEffectiveClientJellyfinSettings,
 } from './client-config-store'
+import { setTranscodeQuality } from './jellyfin-stream-proxy'
 import type { DetailedMediaItem, MediaItem, SeriesDetailPayload } from './media'
 import type { ClientPlaybackContext } from './platform'
 
@@ -511,9 +512,13 @@ export async function fetchClientSeriesDetails(seriesId: string): Promise<Series
 }
 
 export async function beginClientPlaybackSession(itemId: string, client?: ClientPlaybackContext) {
-  return createPlaybackSession(getClientJellyfin(), itemId, {
+  const session = await createPlaybackSession(getClientJellyfin(), itemId, {
     prefersSafeVideo: client?.prefersSafeVideo,
   })
+  return {
+    ...session,
+    streamUrl: session.playMethod === 'Transcode' ? setTranscodeQuality(session.streamUrl) : session.streamUrl,
+  }
 }
 
 export async function reportClientPlaybackState(input: {

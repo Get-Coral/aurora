@@ -471,11 +471,12 @@ export const beginPlaybackSession = createServerFn({ method: 'POST' })
   }) => input)
   .handler(async ({ data }) => {
     const { createPlaybackSession } = await import('../lib/jellyfin')
-    const { jellyfinStreamProxyUrl } = await import('../lib/jellyfin-stream-proxy')
+    const { jellyfinStreamProxyUrl, setTranscodeQuality } = await import('../lib/jellyfin-stream-proxy')
     const session = await createPlaybackSession(data.id, data.client)
+    const proxiedStreamUrl = jellyfinStreamProxyUrl(session.streamUrl)
     return {
       ...session,
-      streamUrl: jellyfinStreamProxyUrl(session.streamUrl),
+      streamUrl: session.playMethod === 'Transcode' ? setTranscodeQuality(proxiedStreamUrl) : proxiedStreamUrl,
       subtitleTracks: session.subtitleTracks.map((track) => ({
         ...track,
         url: jellyfinStreamProxyUrl(track.url),
