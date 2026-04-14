@@ -1,6 +1,7 @@
 import type { JellyfinItem } from './jellyfin'
 import { jellyfinStreamUrl } from './jellyfin'
 import { jellyfinImageProxyUrl } from './jellyfin-image-proxy'
+import { jellyfinStreamProxyUrl } from './jellyfin-stream-proxy'
 import type { DetailedMediaItem, MediaItem, MediaPerson, MediaType } from './media'
 
 export function fromJellyfin(item: JellyfinItem): MediaItem {
@@ -44,7 +45,7 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
     episodeNumber: item.IndexNumber,
     childCount: item.ChildCount,
     watchedAt: item.UserData?.LastPlayedDate,
-    streamUrl: type === 'collection' ? undefined : jellyfinStreamUrl(item.Id),
+    streamUrl: type === 'collection' ? undefined : jellyfinStreamProxyUrl(jellyfinStreamUrl(item.Id)),
   }
 }
 

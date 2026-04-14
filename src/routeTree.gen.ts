@@ -20,6 +20,7 @@ import { Route as CollectionsIndexRouteImport } from './routes/collections/index
 import { Route as LibrarySeriesRouteImport } from './routes/library/series'
 import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
 import { Route as CollectionsIdRouteImport } from './routes/collections/$id'
+import { Route as ApiJellyfinStreamRouteImport } from './routes/api/jellyfin-stream'
 import { Route as ApiJellyfinImageRouteImport } from './routes/api/jellyfin-image'
 import { Route as LibraryMoviesIndexRouteImport } from './routes/library/movies/index'
 import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/movies/genre/$genre'
@@ -79,6 +80,11 @@ const CollectionsIdRoute = CollectionsIdRouteImport.update({
   path: '/collections/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiJellyfinStreamRoute = ApiJellyfinStreamRouteImport.update({
+  id: '/api/jellyfin-stream',
+  path: '/api/jellyfin-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiJellyfinImageRoute = ApiJellyfinImageRouteImport.update({
   id: '/api/jellyfin-image',
   path: '/api/jellyfin-image',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/api/jellyfin-image': typeof ApiJellyfinImageRoute
+  '/api/jellyfin-stream': typeof ApiJellyfinStreamRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/api/jellyfin-image': typeof ApiJellyfinImageRoute
+  '/api/jellyfin-stream': typeof ApiJellyfinStreamRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/library/series': typeof LibrarySeriesRoute
   '/collections': typeof CollectionsIndexRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/api/jellyfin-image': typeof ApiJellyfinImageRoute
+  '/api/jellyfin-stream': typeof ApiJellyfinStreamRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/api/jellyfin-image'
+    | '/api/jellyfin-stream'
     | '/collections/$id'
     | '/library/movies'
     | '/library/series'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/api/jellyfin-image'
+    | '/api/jellyfin-stream'
     | '/collections/$id'
     | '/library/series'
     | '/collections'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/api/jellyfin-image'
+    | '/api/jellyfin-stream'
     | '/collections/$id'
     | '/library/movies'
     | '/library/series'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   ApiJellyfinImageRoute: typeof ApiJellyfinImageRoute
+  ApiJellyfinStreamRoute: typeof ApiJellyfinStreamRoute
   CollectionsIdRoute: typeof CollectionsIdRoute
   LibraryMoviesRoute: typeof LibraryMoviesRouteWithChildren
   LibrarySeriesRoute: typeof LibrarySeriesRoute
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/jellyfin-stream': {
+      id: '/api/jellyfin-stream'
+      path: '/api/jellyfin-stream'
+      fullPath: '/api/jellyfin-stream'
+      preLoaderRoute: typeof ApiJellyfinStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/jellyfin-image': {
       id: '/api/jellyfin-image'
       path: '/api/jellyfin-image'
@@ -334,6 +354,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   ApiJellyfinImageRoute: ApiJellyfinImageRoute,
+  ApiJellyfinStreamRoute: ApiJellyfinStreamRoute,
   CollectionsIdRoute: CollectionsIdRoute,
   LibraryMoviesRoute: LibraryMoviesRouteWithChildren,
   LibrarySeriesRoute: LibrarySeriesRoute,

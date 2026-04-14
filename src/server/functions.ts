@@ -471,7 +471,16 @@ export const beginPlaybackSession = createServerFn({ method: 'POST' })
   }) => input)
   .handler(async ({ data }) => {
     const { createPlaybackSession } = await import('../lib/jellyfin')
-    return createPlaybackSession(data.id, data.client)
+    const { jellyfinStreamProxyUrl } = await import('../lib/jellyfin-stream-proxy')
+    const session = await createPlaybackSession(data.id, data.client)
+    return {
+      ...session,
+      streamUrl: jellyfinStreamProxyUrl(session.streamUrl),
+      subtitleTracks: session.subtitleTracks.map((track) => ({
+        ...track,
+        url: jellyfinStreamProxyUrl(track.url),
+      })),
+    }
   })
 
 export const reportPlaybackState = createServerFn({ method: 'POST' })

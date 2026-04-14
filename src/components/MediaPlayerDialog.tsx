@@ -5,6 +5,7 @@ import { useLockBodyScroll } from './useLockBodyScroll'
 import { useI18n } from '../lib/i18n'
 import type { MediaItem } from '../lib/media'
 import { getClientPlaybackContext } from '../lib/platform'
+import { setStreamStartTicks } from '../lib/jellyfin-stream-proxy'
 import {
   beginPlaybackSessionRuntime,
   fetchOnlineSubtitleRuntime,
@@ -165,11 +166,9 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         // avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
         const resumeTicks = item!.playbackPositionTicks ?? 0
         if (resumeTicks > 0 && session.playMethod === 'Transcode') {
-          const url = new URL(session.streamUrl)
-          url.searchParams.set('StartTimeTicks', String(resumeTicks))
           startTimeOffsetRef.current = resumeTicks / 10_000_000
           seekPendingRef.current = true
-          setPlaybackSession({ ...session, streamUrl: url.toString() })
+          setPlaybackSession({ ...session, streamUrl: setStreamStartTicks(session.streamUrl, resumeTicks) })
         } else {
           setPlaybackSession(session)
         }
@@ -503,8 +502,6 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       }
       if (!buffered || streamTime < 0) {
         if (seekPendingRef.current) return  // reload already in flight
-        const url = new URL(playbackSession.streamUrl)
-        url.searchParams.set('StartTimeTicks', String(Math.floor(clamped * 10_000_000)))
         startTimeOffsetRef.current = clamped
         // After reload, video.currentTime resets to ~0. Reset the throttle
         // baseline so syncProgress doesn't suppress reports until stream time
@@ -512,7 +509,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         lastReportedSecondRef.current = 0
         seekPendingRef.current = true
         setIsBuffering(true)
-        setPlaybackSession({ ...playbackSession, streamUrl: url.toString() })
+        setPlaybackSession({ ...playbackSession, streamUrl: setStreamStartTicks(playbackSession.streamUrl, Math.floor(clamped * 10_000_000)) })
         return
       }
       video.currentTime = streamTime
