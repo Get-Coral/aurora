@@ -8,8 +8,8 @@ import {
 	Play,
 	RotateCcw,
 	RotateCw,
-	SlidersHorizontal,
 	SkipForward,
+	SlidersHorizontal,
 	Volume2,
 	VolumeX,
 	X,
@@ -283,7 +283,8 @@ export function MediaPlayerDialog({
 		staleTime: 0,
 	});
 
-	const streamUrl = playbackSession?.streamUrl ?? (playbackClient.prefersSafeVideo ? null : item?.streamUrl);
+	const streamUrl =
+		playbackSession?.streamUrl ?? (playbackClient.prefersSafeVideo ? null : item?.streamUrl);
 	const isNativeHlsPlayback =
 		playbackSession?.playMethod === "Transcode" && streamUrl?.includes(".m3u8");
 	const canSelectQuality = playbackSession?.playMethod === "Transcode";
@@ -417,9 +418,8 @@ export function MediaPlayerDialog({
 	useEffect(() => {
 		if (!open || !streamUrl) return;
 		ignoreVideoClickUntilRef.current = Date.now() + 750;
-		qualityIndexRef.current = playbackSession?.playMethod === "Transcode"
-			? getTranscodeQualityIndex(streamUrl)
-			: null;
+		qualityIndexRef.current =
+			playbackSession?.playMethod === "Transcode" ? getTranscodeQualityIndex(streamUrl) : null;
 		const video = videoRef.current;
 		logPlayback("stream:load", {
 			streamUrl,
@@ -655,7 +655,8 @@ export function MediaPlayerDialog({
 			const currentIndex = qualityIndexRef.current;
 			if (currentIndex == null || currentIndex >= TRANSCODE_QUALITY_LADDER.length - 1) return;
 
-			if (stablePlaybackUpgradeTimerRef.current) clearTimeout(stablePlaybackUpgradeTimerRef.current);
+			if (stablePlaybackUpgradeTimerRef.current)
+				clearTimeout(stablePlaybackUpgradeTimerRef.current);
 			stablePlaybackUpgradeTimerRef.current = setTimeout(() => {
 				reloadAtCurrentTimeWithQuality(currentIndex + 1);
 			}, STABLE_PLAYBACK_UPGRADE_DELAY_MS);
@@ -770,7 +771,14 @@ export function MediaPlayerDialog({
 			video.removeEventListener("waiting", onWaiting);
 			video.removeEventListener("playing", onPlaying);
 		};
-	}, [canAutoAdjustQuality, isNativeHlsPlayback, manualQualityIndex, open, playbackSession?.playMethod, streamUrl]);
+	}, [
+		canAutoAdjustQuality,
+		isNativeHlsPlayback,
+		manualQualityIndex,
+		open,
+		playbackSession?.playMethod,
+		streamUrl,
+	]);
 
 	// RAF-based subtitle sync: reads video.currentTime at 60fps and updates the DOM directly,
 	// bypassing React renders for tight timing (timeupdate only fires ~4x/sec).
@@ -923,7 +931,9 @@ export function MediaPlayerDialog({
 		const client = getClientPlaybackContext();
 		const qualityProfile =
 			options?.qualityProfile ??
-			(qualityIndexRef.current != null ? TRANSCODE_QUALITY_LADDER[qualityIndexRef.current] : undefined);
+			(qualityIndexRef.current != null
+				? TRANSCODE_QUALITY_LADDER[qualityIndexRef.current]
+				: undefined);
 		logPlayback("stream:reload-requested", {
 			targetMovieTime,
 			qualityProfile,
@@ -1385,45 +1395,51 @@ export function MediaPlayerDialog({
 											<span>{t("player.nextEpisode")}</span>
 										</button>
 									) : null}
-										{canSelectQuality ? (
-											<div className="player-quality-wrap">
-												{qualityPickerOpen ? (
-													<div className="player-quality-picker">
+									{canSelectQuality ? (
+										<div className="player-quality-wrap">
+											{qualityPickerOpen ? (
+												<div className="player-quality-picker">
+													<button
+														type="button"
+														className={`player-quality-option${manualQualityIndex === null ? " active" : ""}`}
+														onClick={() => selectQuality(null)}
+													>
+														<strong>{t("player.qualityAuto")}</strong>
+														<span>
+															{qualityIndexRef.current != null
+																? formatQualityLabel(
+																		TRANSCODE_QUALITY_LADDER[qualityIndexRef.current],
+																	)
+																: t("player.qualityAdaptive")}
+														</span>
+													</button>
+													{TRANSCODE_QUALITY_LADDER.map((profile, index) => (
 														<button
+															key={profile.maxStreamingBitrate}
 															type="button"
-															className={`player-quality-option${manualQualityIndex === null ? " active" : ""}`}
-															onClick={() => selectQuality(null)}
+															className={`player-quality-option${manualQualityIndex === index ? " active" : ""}`}
+															onClick={() => selectQuality(index)}
 														>
-															<strong>{t("player.qualityAuto")}</strong>
-															<span>{qualityIndexRef.current != null ? formatQualityLabel(TRANSCODE_QUALITY_LADDER[qualityIndexRef.current]) : t("player.qualityAdaptive")}</span>
+															<strong>{formatQualityLabel(profile)}</strong>
+															<span>{`${Math.round(profile.videoBitrate / 1_000_000)} Mbps video`}</span>
 														</button>
-														{TRANSCODE_QUALITY_LADDER.map((profile, index) => (
-															<button
-																key={profile.maxStreamingBitrate}
-																type="button"
-																className={`player-quality-option${manualQualityIndex === index ? " active" : ""}`}
-																onClick={() => selectQuality(index)}
-															>
-																<strong>{formatQualityLabel(profile)}</strong>
-																<span>{`${Math.round(profile.videoBitrate / 1_000_000)} Mbps video`}</span>
-															</button>
-														))}
-													</div>
-												) : null}
-												<button
-													type="button"
-													className={`icon-button player-quality-trigger${manualQualityIndex !== null ? " nav-pill-active" : ""}`}
-													onClick={() => {
-														setQualityPickerOpen((open) => !open);
-														setSubtitlePickerOpen(false);
-													}}
-													aria-label={t("player.quality")}
-												>
-													<SlidersHorizontal size={18} />
-													<span>{displayedQualityLabel}</span>
-												</button>
-											</div>
-										) : null}
+													))}
+												</div>
+											) : null}
+											<button
+												type="button"
+												className={`icon-button player-quality-trigger${manualQualityIndex !== null ? " nav-pill-active" : ""}`}
+												onClick={() => {
+													setQualityPickerOpen((open) => !open);
+													setSubtitlePickerOpen(false);
+												}}
+												aria-label={t("player.quality")}
+											>
+												<SlidersHorizontal size={18} />
+												<span>{displayedQualityLabel}</span>
+											</button>
+										</div>
+									) : null}
 									{(playbackSession?.subtitleTracks?.length ?? 0) > 0 || osApiKey ? (
 										<div className="player-subtitle-wrap">
 											{subtitlePickerOpen ? (
@@ -1486,10 +1502,10 @@ export function MediaPlayerDialog({
 											<button
 												type="button"
 												className={`icon-button${activeSubtitle !== null || onlineCues.length > 0 ? " nav-pill-active" : ""}`}
-													onClick={() => {
-														setSubtitlePickerOpen((o) => !o);
-														setQualityPickerOpen(false);
-													}}
+												onClick={() => {
+													setSubtitlePickerOpen((o) => !o);
+													setQualityPickerOpen(false);
+												}}
 												aria-label={t("player.subtitles")}
 											>
 												<Captions size={20} />
