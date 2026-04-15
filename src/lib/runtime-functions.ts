@@ -1,496 +1,502 @@
 import {
-  beginPlaybackSession,
-  fetchOnlineSubtitle,
-  fetchContinueWatching,
-  fetchFavoriteMovies,
-  fetchFeatured,
-  fetchItemDetails,
-  fetchLibrary,
-  fetchLatestMovies,
-  fetchLatestSeries,
-  fetchMostPlayed,
-  fetchMyList,
-  fetchRecommendedFromItem,
-  fetchSearch,
-  fetchOpenSubtitlesKey,
-  fetchSeriesDetails,
-  fetchSetupStatus,
-  fetchWatchHistory,
-  reportPlaybackState,
-  searchOnlineSubtitles,
-  fetchUsername,
-  markPlayed,
-  saveOpenSubtitlesKey,
-  saveSettings,
-  saveSetupConfiguration,
-  toggleFavorite,
-} from '../server/functions'
+	beginPlaybackSession,
+	fetchOnlineSubtitle,
+	fetchContinueWatching,
+	fetchFavoriteMovies,
+	fetchFeatured,
+	fetchItemDetails,
+	fetchLibrary,
+	fetchLatestMovies,
+	fetchLatestSeries,
+	fetchMostPlayed,
+	fetchMyList,
+	fetchRecommendedFromItem,
+	fetchSearch,
+	fetchOpenSubtitlesKey,
+	fetchSeriesDetails,
+	fetchSetupStatus,
+	fetchWatchHistory,
+	reportPlaybackState,
+	searchOnlineSubtitles,
+	fetchUsername,
+	markPlayed,
+	saveOpenSubtitlesKey,
+	saveSettings,
+	saveSetupConfiguration,
+	toggleFavorite,
+} from "../server/functions";
 import {
-  beginClientPlaybackSession,
-  fetchClientLibrary,
-  fetchClientOnlineSubtitle,
-  fetchClientAdminLibraries,
-  fetchClientAdminOverview,
-  fetchClientAdminSessions,
-  fetchClientAdminUsers,
-  fetchClientCollectionItems,
-  fetchClientCollections,
-  fetchClientContinueWatching,
-  fetchClientFavoriteItems,
-  fetchClientFeatured,
-  fetchClientItemDetails,
-  fetchClientLatestMedia,
-  fetchClientMostPlayed,
-  fetchClientMyList,
-  fetchClientRecommendedFromItem,
-  fetchClientSearch,
-  fetchClientSeriesDetails,
-  fetchClientWatchHistory,
-  addClientItemsToCollection,
-  createClientCollection,
-  deleteClientCollection,
-  createClientAdminUser,
-  deleteClientAdminUser,
-  removeClientItemFromCollection,
-  renameClientCollection,
-  scanAllClientAdminLibraries,
-  scanClientAdminLibrary,
-  reportClientPlaybackState,
-  searchClientOnlineSubtitles,
-  markClientPlayed,
-  toggleClientAdminUser,
-  toggleClientFavorite,
-} from './client-media'
+	beginClientPlaybackSession,
+	fetchClientLibrary,
+	fetchClientOnlineSubtitle,
+	fetchClientAdminLibraries,
+	fetchClientAdminOverview,
+	fetchClientAdminSessions,
+	fetchClientAdminUsers,
+	fetchClientCollectionItems,
+	fetchClientCollections,
+	fetchClientContinueWatching,
+	fetchClientFavoriteItems,
+	fetchClientFeatured,
+	fetchClientItemDetails,
+	fetchClientLatestMedia,
+	fetchClientMostPlayed,
+	fetchClientMyList,
+	fetchClientRecommendedFromItem,
+	fetchClientSearch,
+	fetchClientSeriesDetails,
+	fetchClientWatchHistory,
+	addClientItemsToCollection,
+	createClientCollection,
+	deleteClientCollection,
+	createClientAdminUser,
+	deleteClientAdminUser,
+	removeClientItemFromCollection,
+	renameClientCollection,
+	scanAllClientAdminLibraries,
+	scanClientAdminLibrary,
+	reportClientPlaybackState,
+	searchClientOnlineSubtitles,
+	markClientPlayed,
+	toggleClientAdminUser,
+	toggleClientFavorite,
+} from "./client-media";
 import {
-  getClientConfigurationSummary,
-  getClientOpenSubtitlesApiKey,
-  getStoredClientJellyfinSettings,
-  saveClientJellyfinSettings,
-  saveClientOpenSubtitlesApiKey,
-  validateClientJellyfinSettings,
-  type ClientJellyfinSettings,
-} from './client-config-store'
-import { shouldUseClientRuntime } from './runtime-mode'
+	getClientConfigurationSummary,
+	getClientOpenSubtitlesApiKey,
+	getStoredClientJellyfinSettings,
+	saveClientJellyfinSettings,
+	saveClientOpenSubtitlesApiKey,
+	validateClientJellyfinSettings,
+	type ClientJellyfinSettings,
+} from "./client-config-store";
+import { shouldUseClientRuntime } from "./runtime-mode";
 
 interface SetupPayload extends ClientJellyfinSettings {}
 
 const EMPTY_SETUP_STATUS = {
-  configured: false,
-  source: 'missing' as const,
-  current: {
-    url: '',
-    userId: '',
-    username: '',
-    hasApiKey: false,
-    hasPassword: false,
-  },
-}
+	configured: false,
+	source: "missing" as const,
+	current: {
+		url: "",
+		userId: "",
+		username: "",
+		hasApiKey: false,
+		hasPassword: false,
+	},
+};
 
 function mergeClientSettings(input: Partial<ClientJellyfinSettings>) {
-  const current = getStoredClientJellyfinSettings()
-  return {
-    url: input.url?.trim() || current.url || '',
-    apiKey: input.apiKey?.trim() || current.apiKey || '',
-    userId: input.userId?.trim() || current.userId || '',
-    username: input.username?.trim() || current.username || '',
-    password: input.password?.trim() || current.password || '',
-  }
+	const current = getStoredClientJellyfinSettings();
+	return {
+		url: input.url?.trim() || current.url || "",
+		apiKey: input.apiKey?.trim() || current.apiKey || "",
+		userId: input.userId?.trim() || current.userId || "",
+		username: input.username?.trim() || current.username || "",
+		password: input.password?.trim() || current.password || "",
+	};
 }
 
 export async function fetchSetupStatusRuntime() {
-  if (shouldUseClientRuntime()) {
-    return getClientConfigurationSummary()
-  }
+	if (shouldUseClientRuntime()) {
+		return getClientConfigurationSummary();
+	}
 
-  return (await fetchSetupStatus()) ?? EMPTY_SETUP_STATUS
+	return (await fetchSetupStatus()) ?? EMPTY_SETUP_STATUS;
 }
 
 export async function saveSetupConfigurationRuntime(data: SetupPayload) {
-  if (shouldUseClientRuntime()) {
-    const validated = await validateClientJellyfinSettings(data)
-    saveClientJellyfinSettings(validated)
-    return { configured: true }
-  }
+	if (shouldUseClientRuntime()) {
+		const validated = await validateClientJellyfinSettings(data);
+		saveClientJellyfinSettings(validated);
+		return { configured: true };
+	}
 
-  return saveSetupConfiguration({ data })
+	return saveSetupConfiguration({ data });
 }
 
 export async function saveSettingsRuntime(data: Partial<ClientJellyfinSettings>) {
-  if (shouldUseClientRuntime()) {
-    const validated = await validateClientJellyfinSettings(mergeClientSettings(data))
-    saveClientJellyfinSettings(validated)
-    return { configured: true }
-  }
+	if (shouldUseClientRuntime()) {
+		const validated = await validateClientJellyfinSettings(mergeClientSettings(data));
+		saveClientJellyfinSettings(validated);
+		return { configured: true };
+	}
 
-  return saveSettings({
-    data: {
-      url: data.url ?? '',
-      apiKey: data.apiKey ?? '',
-      userId: data.userId ?? '',
-      username: data.username ?? '',
-      password: data.password ?? '',
-    },
-  })
+	return saveSettings({
+		data: {
+			url: data.url ?? "",
+			apiKey: data.apiKey ?? "",
+			userId: data.userId ?? "",
+			username: data.username ?? "",
+			password: data.password ?? "",
+		},
+	});
 }
 
 export async function fetchOpenSubtitlesKeyRuntime() {
-  if (shouldUseClientRuntime()) {
-    return getClientOpenSubtitlesApiKey()
-  }
+	if (shouldUseClientRuntime()) {
+		return getClientOpenSubtitlesApiKey();
+	}
 
-  return fetchOpenSubtitlesKey()
+	return fetchOpenSubtitlesKey();
 }
 
 export async function saveOpenSubtitlesKeyRuntime(apiKey: string) {
-  if (shouldUseClientRuntime()) {
-    saveClientOpenSubtitlesApiKey(apiKey)
-    return { apiKey: apiKey.trim() }
-  }
+	if (shouldUseClientRuntime()) {
+		saveClientOpenSubtitlesApiKey(apiKey);
+		return { apiKey: apiKey.trim() };
+	}
 
-  return saveOpenSubtitlesKey({ data: { apiKey } })
+	return saveOpenSubtitlesKey({ data: { apiKey } });
 }
 
 export async function fetchUsernameRuntime() {
-  if (shouldUseClientRuntime()) {
-    return getStoredClientJellyfinSettings().username ?? ''
-  }
+	if (shouldUseClientRuntime()) {
+		return getStoredClientJellyfinSettings().username ?? "";
+	}
 
-  return fetchUsername()
+	return fetchUsername();
 }
 
 export async function fetchLibraryRuntime(input: {
-  data: {
-    type: 'Movie' | 'Series'
-    page?: number
-    sortBy?: 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
-    sortOrder?: 'Ascending' | 'Descending'
-    genre?: string
-    favoritesOnly?: boolean
-    ratings?: string
-    decade?: string
-    minScore?: number
-    watchStatus?: 'watched' | 'unwatched' | 'inprogress'
-  }
+	data: {
+		type: "Movie" | "Series";
+		page?: number;
+		sortBy?: "SortName" | "DateCreated" | "PremiereDate" | "CommunityRating";
+		sortOrder?: "Ascending" | "Descending";
+		genre?: string;
+		favoritesOnly?: boolean;
+		ratings?: string;
+		decade?: string;
+		minScore?: number;
+		watchStatus?: "watched" | "unwatched" | "inprogress";
+	};
 }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientLibrary(input.data)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientLibrary(input.data);
+	}
 
-  return fetchLibrary(input)
+	return fetchLibrary(input);
 }
 
 export async function fetchFeaturedRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientFeatured()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientFeatured();
+	}
 
-  return fetchFeatured()
+	return fetchFeatured();
 }
 
 export async function fetchContinueWatchingRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientContinueWatching()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientContinueWatching();
+	}
 
-  return fetchContinueWatching()
+	return fetchContinueWatching();
 }
 
 export async function fetchLatestMoviesRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientLatestMedia('Movie')
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientLatestMedia("Movie");
+	}
 
-  return fetchLatestMovies()
+	return fetchLatestMovies();
 }
 
 export async function fetchLatestSeriesRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientLatestMedia('Series')
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientLatestMedia("Series");
+	}
 
-  return fetchLatestSeries()
+	return fetchLatestSeries();
 }
 
 export async function fetchFavoriteMoviesRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientFavoriteItems('Movie')
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientFavoriteItems("Movie");
+	}
 
-  return fetchFavoriteMovies()
+	return fetchFavoriteMovies();
 }
 
 export async function fetchMostPlayedRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientMostPlayed('Movie', 12)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientMostPlayed("Movie", 12);
+	}
 
-  return fetchMostPlayed()
+	return fetchMostPlayed();
 }
 
 export async function fetchMyListRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientMyList()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientMyList();
+	}
 
-  return fetchMyList()
+	return fetchMyList();
 }
 
 export async function fetchCollectionsRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientCollections()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientCollections();
+	}
 
-  const { fetchCollections } = await import('../server/functions')
-  return fetchCollections()
+	const { fetchCollections } = await import("../server/functions");
+	return fetchCollections();
 }
 
 export async function fetchCollectionItemsRuntime(input: { data: { id: string } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientCollectionItems(input.data.id)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientCollectionItems(input.data.id);
+	}
 
-  const { fetchCollectionItems } = await import('../server/functions')
-  return fetchCollectionItems(input)
+	const { fetchCollectionItems } = await import("../server/functions");
+	return fetchCollectionItems(input);
 }
 
 export async function createCollectionRuntime(input: { data: { name: string } }) {
-  if (shouldUseClientRuntime()) {
-    return createClientCollection(input.data.name)
-  }
+	if (shouldUseClientRuntime()) {
+		return createClientCollection(input.data.name);
+	}
 
-  const { createCollection } = await import('../server/functions')
-  return createCollection(input)
+	const { createCollection } = await import("../server/functions");
+	return createCollection(input);
 }
 
 export async function deleteCollectionRuntime(input: { data: { id: string } }) {
-  if (shouldUseClientRuntime()) {
-    return deleteClientCollection(input.data.id)
-  }
+	if (shouldUseClientRuntime()) {
+		return deleteClientCollection(input.data.id);
+	}
 
-  const { deleteCollection } = await import('../server/functions')
-  return deleteCollection(input)
+	const { deleteCollection } = await import("../server/functions");
+	return deleteCollection(input);
 }
 
 export async function renameCollectionRuntime(input: { data: { id: string; name: string } }) {
-  if (shouldUseClientRuntime()) {
-    return renameClientCollection(input.data.id, input.data.name)
-  }
+	if (shouldUseClientRuntime()) {
+		return renameClientCollection(input.data.id, input.data.name);
+	}
 
-  const { renameCollection } = await import('../server/functions')
-  return renameCollection(input)
+	const { renameCollection } = await import("../server/functions");
+	return renameCollection(input);
 }
 
-export async function addToCollectionRuntime(input: { data: { collectionId: string; itemIds: string[] } }) {
-  if (shouldUseClientRuntime()) {
-    return addClientItemsToCollection(input.data.collectionId, input.data.itemIds)
-  }
+export async function addToCollectionRuntime(input: {
+	data: { collectionId: string; itemIds: string[] };
+}) {
+	if (shouldUseClientRuntime()) {
+		return addClientItemsToCollection(input.data.collectionId, input.data.itemIds);
+	}
 
-  const { addToCollection } = await import('../server/functions')
-  return addToCollection(input)
+	const { addToCollection } = await import("../server/functions");
+	return addToCollection(input);
 }
 
-export async function removeFromCollectionRuntime(input: { data: { collectionId: string; itemId: string } }) {
-  if (shouldUseClientRuntime()) {
-    return removeClientItemFromCollection(input.data.collectionId, input.data.itemId)
-  }
+export async function removeFromCollectionRuntime(input: {
+	data: { collectionId: string; itemId: string };
+}) {
+	if (shouldUseClientRuntime()) {
+		return removeClientItemFromCollection(input.data.collectionId, input.data.itemId);
+	}
 
-  const { removeFromCollection } = await import('../server/functions')
-  return removeFromCollection(input)
+	const { removeFromCollection } = await import("../server/functions");
+	return removeFromCollection(input);
 }
 
 export async function beginPlaybackSessionRuntime(input: {
-  data: {
-    id: string
-    client?: {
-      platform: 'ios' | 'android' | 'android-tv' | 'other'
-      prefersSafeVideo: boolean
-      prefersTvMode: boolean
-    }
-  }
+	data: {
+		id: string;
+		client?: {
+			platform: "ios" | "android" | "android-tv" | "other";
+			prefersSafeVideo: boolean;
+			prefersTvMode: boolean;
+		};
+	};
 }) {
-  if (shouldUseClientRuntime()) {
-    return beginClientPlaybackSession(input.data.id, input.data.client)
-  }
+	if (shouldUseClientRuntime()) {
+		return beginClientPlaybackSession(input.data.id, input.data.client);
+	}
 
-  return beginPlaybackSession(input)
+	return beginPlaybackSession(input);
 }
 
 export async function reportPlaybackStateRuntime(input: {
-  data: {
-    id: string
-    positionTicks: number
-    playMethod?: 'DirectPlay' | 'Transcode'
-    playSessionId?: string
-    mediaSourceId?: string
-    sessionId?: string
-    isPaused?: boolean
-    isStopped?: boolean
-    played?: boolean
-  }
+	data: {
+		id: string;
+		positionTicks: number;
+		playMethod?: "DirectPlay" | "Transcode";
+		playSessionId?: string;
+		mediaSourceId?: string;
+		sessionId?: string;
+		isPaused?: boolean;
+		isStopped?: boolean;
+		played?: boolean;
+	};
 }) {
-  if (shouldUseClientRuntime()) {
-    return reportClientPlaybackState({ id: input.data.id, played: input.data.played })
-  }
+	if (shouldUseClientRuntime()) {
+		return reportClientPlaybackState({ id: input.data.id, played: input.data.played });
+	}
 
-  return reportPlaybackState(input)
+	return reportPlaybackState(input);
 }
 
 export async function searchOnlineSubtitlesRuntime(input: {
-  data: {
-    title: string
-    year?: number
-    season?: number
-    episode?: number
-  }
+	data: {
+		title: string;
+		year?: number;
+		season?: number;
+		episode?: number;
+	};
 }) {
-  if (shouldUseClientRuntime()) {
-    return searchClientOnlineSubtitles(input.data)
-  }
+	if (shouldUseClientRuntime()) {
+		return searchClientOnlineSubtitles(input.data);
+	}
 
-  return searchOnlineSubtitles(input)
+	return searchOnlineSubtitles(input);
 }
 
 export async function fetchOnlineSubtitleRuntime(input: { data: { fileId: number } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientOnlineSubtitle(input.data.fileId)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientOnlineSubtitle(input.data.fileId);
+	}
 
-  return fetchOnlineSubtitle(input)
+	return fetchOnlineSubtitle(input);
 }
 
 export async function fetchSearchRuntime(input: { data: { query: string } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientSearch(input.data.query)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientSearch(input.data.query);
+	}
 
-  return fetchSearch(input)
+	return fetchSearch(input);
 }
 
 export async function fetchWatchHistoryRuntime(input: { data: { page?: number } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientWatchHistory(input.data.page ?? 0)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientWatchHistory(input.data.page ?? 0);
+	}
 
-  return fetchWatchHistory(input)
+	return fetchWatchHistory(input);
 }
 
 export async function fetchRecommendedFromItemRuntime(input: { data: { id: string } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientRecommendedFromItem(input.data.id)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientRecommendedFromItem(input.data.id);
+	}
 
-  return fetchRecommendedFromItem(input)
+	return fetchRecommendedFromItem(input);
 }
 
 export async function fetchItemDetailsRuntime(input: { data: { id: string } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientItemDetails(input.data.id)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientItemDetails(input.data.id);
+	}
 
-  return fetchItemDetails(input)
+	return fetchItemDetails(input);
 }
 
 export async function fetchSeriesDetailsRuntime(input: { data: { id: string } }) {
-  if (shouldUseClientRuntime()) {
-    return fetchClientSeriesDetails(input.data.id)
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientSeriesDetails(input.data.id);
+	}
 
-  return fetchSeriesDetails(input)
+	return fetchSeriesDetails(input);
 }
 
 export async function fetchAdminOverviewRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientAdminOverview()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientAdminOverview();
+	}
 
-  const { fetchAdminOverview } = await import('../server/functions')
-  return fetchAdminOverview()
+	const { fetchAdminOverview } = await import("../server/functions");
+	return fetchAdminOverview();
 }
 
 export async function fetchAdminSessionsRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientAdminSessions()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientAdminSessions();
+	}
 
-  const { fetchAdminSessions } = await import('../server/functions')
-  return fetchAdminSessions()
+	const { fetchAdminSessions } = await import("../server/functions");
+	return fetchAdminSessions();
 }
 
 export async function fetchAdminUsersRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientAdminUsers()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientAdminUsers();
+	}
 
-  const { fetchAdminUsers } = await import('../server/functions')
-  return fetchAdminUsers()
+	const { fetchAdminUsers } = await import("../server/functions");
+	return fetchAdminUsers();
 }
 
-export async function toggleAdminUserRuntime(input: { data: { userId: string; disabled: boolean } }) {
-  if (shouldUseClientRuntime()) {
-    return toggleClientAdminUser(input.data)
-  }
+export async function toggleAdminUserRuntime(input: {
+	data: { userId: string; disabled: boolean };
+}) {
+	if (shouldUseClientRuntime()) {
+		return toggleClientAdminUser(input.data);
+	}
 
-  const { toggleAdminUser } = await import('../server/functions')
-  return toggleAdminUser(input)
+	const { toggleAdminUser } = await import("../server/functions");
+	return toggleAdminUser(input);
 }
 
 export async function deleteAdminUserRuntime(input: { data: { userId: string } }) {
-  if (shouldUseClientRuntime()) {
-    return deleteClientAdminUser(input.data.userId)
-  }
+	if (shouldUseClientRuntime()) {
+		return deleteClientAdminUser(input.data.userId);
+	}
 
-  const { deleteAdminUser } = await import('../server/functions')
-  return deleteAdminUser(input)
+	const { deleteAdminUser } = await import("../server/functions");
+	return deleteAdminUser(input);
 }
 
 export async function createAdminUserRuntime(input: { data: { name: string; password: string } }) {
-  if (shouldUseClientRuntime()) {
-    return createClientAdminUser(input.data)
-  }
+	if (shouldUseClientRuntime()) {
+		return createClientAdminUser(input.data);
+	}
 
-  const { createAdminUser } = await import('../server/functions')
-  return createAdminUser(input)
+	const { createAdminUser } = await import("../server/functions");
+	return createAdminUser(input);
 }
 
 export async function fetchAdminLibrariesRuntime() {
-  if (shouldUseClientRuntime()) {
-    return fetchClientAdminLibraries()
-  }
+	if (shouldUseClientRuntime()) {
+		return fetchClientAdminLibraries();
+	}
 
-  const { fetchAdminLibraries } = await import('../server/functions')
-  return fetchAdminLibraries()
+	const { fetchAdminLibraries } = await import("../server/functions");
+	return fetchAdminLibraries();
 }
 
 export async function scanAllAdminLibrariesRuntime() {
-  if (shouldUseClientRuntime()) {
-    return scanAllClientAdminLibraries()
-  }
+	if (shouldUseClientRuntime()) {
+		return scanAllClientAdminLibraries();
+	}
 
-  const { scanAllAdminLibraries } = await import('../server/functions')
-  return scanAllAdminLibraries()
+	const { scanAllAdminLibraries } = await import("../server/functions");
+	return scanAllAdminLibraries();
 }
 
 export async function scanAdminLibraryRuntime(input: { data: { itemId: string } }) {
-  if (shouldUseClientRuntime()) {
-    return scanClientAdminLibrary(input.data.itemId)
-  }
+	if (shouldUseClientRuntime()) {
+		return scanClientAdminLibrary(input.data.itemId);
+	}
 
-  const { scanAdminLibrary } = await import('../server/functions')
-  return scanAdminLibrary(input)
+	const { scanAdminLibrary } = await import("../server/functions");
+	return scanAdminLibrary(input);
 }
 
 export async function toggleFavoriteRuntime(input: { data: { id: string; isFavorite: boolean } }) {
-  if (shouldUseClientRuntime()) {
-    return toggleClientFavorite(input.data)
-  }
+	if (shouldUseClientRuntime()) {
+		return toggleClientFavorite(input.data);
+	}
 
-  return toggleFavorite(input)
+	return toggleFavorite(input);
 }
 
 export async function markPlayedRuntime(input: { data: { id: string; played: boolean } }) {
-  if (shouldUseClientRuntime()) {
-    return markClientPlayed(input.data)
-  }
+	if (shouldUseClientRuntime()) {
+		return markClientPlayed(input.data);
+	}
 
-  return markPlayed(input)
+	return markPlayed(input);
 }

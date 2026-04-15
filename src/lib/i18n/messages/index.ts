@@ -1,10 +1,10 @@
-import type { Locale, MessageDictionary } from '../types'
-import { enMessages } from './en'
-import { nlMessages } from './nl'
+import type { Locale, MessageDictionary } from "../types";
+import { enMessages } from "./en";
+import { nlMessages } from "./nl";
 
 export const localeMessages: Record<Locale, MessageDictionary> = {
-  en: enMessages,
-  nl: nlMessages,
-}
+	en: enMessages,
+	nl: nlMessages,
+};
 
-export const supportedLocales: Locale[] = ['en', 'nl']
+export const supportedLocales: Locale[] = ["en", "nl"];

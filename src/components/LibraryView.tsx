@@ -1,475 +1,522 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowDown, ArrowLeft, ArrowUp, SlidersHorizontal, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { useI18n } from '../lib/i18n'
-import type { MediaItem } from '../lib/media'
-import { CURATED_MOVIE_GENRES } from '../lib/genres'
-import { fetchLibraryRuntime } from '../lib/runtime-functions'
-import { MediaCard } from './MediaCard'
-import { MediaPlayerDialog } from './MediaPlayerDialog'
-import { MediaSpotlightDialog } from './MediaSpotlightDialog'
-import { useFavoriteAction } from './useFavoriteAction'
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowDown, ArrowLeft, ArrowUp, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useI18n } from "../lib/i18n";
+import type { MediaItem } from "../lib/media";
+import { CURATED_MOVIE_GENRES } from "../lib/genres";
+import { fetchLibraryRuntime } from "../lib/runtime-functions";
+import { MediaCard } from "./MediaCard";
+import { MediaPlayerDialog } from "./MediaPlayerDialog";
+import { MediaSpotlightDialog } from "./MediaSpotlightDialog";
+import { useFavoriteAction } from "./useFavoriteAction";
 
-type LibraryType = 'Movie' | 'Series'
-type LibrarySort = 'SortName' | 'DateCreated' | 'PremiereDate' | 'CommunityRating'
-type LibrarySortOrder = 'Ascending' | 'Descending'
+type LibraryType = "Movie" | "Series";
+type LibrarySort = "SortName" | "DateCreated" | "PremiereDate" | "CommunityRating";
+type LibrarySortOrder = "Ascending" | "Descending";
 
-type WatchStatus = 'watched' | 'unwatched' | 'inprogress'
+type WatchStatus = "watched" | "unwatched" | "inprogress";
 
 interface LibraryViewProps {
-  type: LibraryType
-  title: string
-  subtitle: string
-  search: {
-    sort?: LibrarySort
-    order?: LibrarySortOrder
-    ratings?: string
-    decade?: string
-    minScore?: number
-    watchStatus?: WatchStatus
-  }
-  genre?: string
-  mode?: 'library' | 'my-list'
-  customItems?: MediaItem[]
+	type: LibraryType;
+	title: string;
+	subtitle: string;
+	search: {
+		sort?: LibrarySort;
+		order?: LibrarySortOrder;
+		ratings?: string;
+		decade?: string;
+		minScore?: number;
+		watchStatus?: WatchStatus;
+	};
+	genre?: string;
+	mode?: "library" | "my-list";
+	customItems?: MediaItem[];
 }
 
 // 10-item cycle → 3 complete 12-column rows per cycle (no gaps)
 // row A: feature(6)+poster(3)+std(3)=12
 // row B: std(3)+poster(3)+std(3)+std(3)=12
 // row C: feature(6)+std(3)+std(3)=12
-function cardVariant(index: number): 'feature' | 'poster' | 'standard' {
-  const i = index % 10
-  if (i === 0 || i === 7) return 'feature'
-  if (i === 1 || i === 4) return 'poster'
-  return 'standard'
+function cardVariant(index: number): "feature" | "poster" | "standard" {
+	const i = index % 10;
+	if (i === 0 || i === 7) return "feature";
+	if (i === 1 || i === 4) return "poster";
+	return "standard";
 }
 
 const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
-  { value: 'DateCreated', label: 'Recently added' },
-  { value: 'PremiereDate', label: 'Release date' },
-  { value: 'CommunityRating', label: 'Top rated' },
-  { value: 'SortName', label: 'Alphabetical' },
-]
+	{ value: "DateCreated", label: "Recently added" },
+	{ value: "PremiereDate", label: "Release date" },
+	{ value: "CommunityRating", label: "Top rated" },
+	{ value: "SortName", label: "Alphabetical" },
+];
 
-const MOVIE_RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'NR']
-const SERIES_RATINGS = ['TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
-const DECADES = ['2020s', '2010s', '2000s', '1990s', '1980s', 'Older']
-const SCORE_OPTIONS = [5, 6, 7, 8, 9]
+const MOVIE_RATINGS = ["G", "PG", "PG-13", "R", "NC-17", "NR"];
+const SERIES_RATINGS = ["TV-G", "TV-PG", "TV-14", "TV-MA", "NR"];
+const DECADES = ["2020s", "2010s", "2000s", "1990s", "1980s", "Older"];
+const SCORE_OPTIONS = [5, 6, 7, 8, 9];
 
 export function LibraryView({
-  type,
-  title,
-  subtitle,
-  search,
-  genre,
-  mode = 'library',
-  customItems,
+	type,
+	title,
+	subtitle,
+	search,
+	genre,
+	mode = "library",
+	customItems,
 }: LibraryViewProps) {
-  const { t } = useI18n()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const sort = search.sort ?? 'DateCreated'
-  const order = search.order ?? 'Descending'
-  const ratings = search.ratings ?? ''
-  const decade = search.decade ?? ''
-  const minScore = search.minScore ?? 0
-  const watchStatus = search.watchStatus
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
-  const [playingItem, setPlayingItem] = useState<MediaItem | null>(null)
-  const [playQueue, setPlayQueue] = useState<MediaItem[]>([])
-  const [filterOpen, setFilterOpen] = useState(false)
-  const favoriteMutation = useFavoriteAction()
-  const sentinelRef = useRef<HTMLDivElement>(null)
+	const { t } = useI18n();
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const sort = search.sort ?? "DateCreated";
+	const order = search.order ?? "Descending";
+	const ratings = search.ratings ?? "";
+	const decade = search.decade ?? "";
+	const minScore = search.minScore ?? 0;
+	const watchStatus = search.watchStatus;
+	const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+	const [playingItem, setPlayingItem] = useState<MediaItem | null>(null);
+	const [playQueue, setPlayQueue] = useState<MediaItem[]>([]);
+	const [filterOpen, setFilterOpen] = useState(false);
+	const favoriteMutation = useFavoriteAction();
+	const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const activeRatings = ratings ? ratings.split(',').filter(Boolean) : []
-  const activeFilterCount =
-    (activeRatings.length > 0 ? 1 : 0) + (decade ? 1 : 0) + (minScore > 0 ? 1 : 0) + (watchStatus ? 1 : 0)
+	const activeRatings = ratings ? ratings.split(",").filter(Boolean) : [];
+	const activeFilterCount =
+		(activeRatings.length > 0 ? 1 : 0) +
+		(decade ? 1 : 0) +
+		(minScore > 0 ? 1 : 0) +
+		(watchStatus ? 1 : 0);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
-    queryKey: ['library-infinite', type, sort, order, genre, ratings, decade, minScore, watchStatus],
-    queryFn: ({ pageParam }) =>
-      fetchLibraryRuntime({
-        data: {
-          type,
-          page: pageParam as number,
-          sortBy: sort,
-          sortOrder: order,
-          genre,
-          ratings: ratings || undefined,
-          decade: decade || undefined,
-          minScore: minScore > 0 ? minScore : undefined,
-          watchStatus,
-        },
-      }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage) => {
-      const totalPages = Math.ceil(lastPage.total / 24)
-      return lastPage.page + 1 < totalPages ? lastPage.page + 1 : undefined
-    },
-    enabled: mode === 'library',
-  })
+	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
+		queryKey: [
+			"library-infinite",
+			type,
+			sort,
+			order,
+			genre,
+			ratings,
+			decade,
+			minScore,
+			watchStatus,
+		],
+		queryFn: ({ pageParam }) =>
+			fetchLibraryRuntime({
+				data: {
+					type,
+					page: pageParam as number,
+					sortBy: sort,
+					sortOrder: order,
+					genre,
+					ratings: ratings || undefined,
+					decade: decade || undefined,
+					minScore: minScore > 0 ? minScore : undefined,
+					watchStatus,
+				},
+			}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => {
+			const totalPages = Math.ceil(lastPage.total / 24);
+			return lastPage.page + 1 < totalPages ? lastPage.page + 1 : undefined;
+		},
+		enabled: mode === "library",
+	});
 
-  const resolvedItems = mode === 'my-list'
-    ? (customItems ?? [])
-    : (data?.pages.flatMap((p) => p.items) ?? [])
-  const resolvedTotal = mode === 'my-list'
-    ? resolvedItems.length
-    : (data?.pages[0]?.total ?? 0)
+	const resolvedItems =
+		mode === "my-list" ? (customItems ?? []) : (data?.pages.flatMap((p) => p.items) ?? []);
+	const resolvedTotal = mode === "my-list" ? resolvedItems.length : (data?.pages[0]?.total ?? 0);
 
-  useEffect(() => {
-    const el = sentinelRef.current
-    if (!el || mode !== 'library') return
+	useEffect(() => {
+		const el = sentinelRef.current;
+		if (!el || mode !== "library") return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          void fetchNextPage()
-        }
-      },
-      { rootMargin: '400px' },
-    )
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+					void fetchNextPage();
+				}
+			},
+			{ rootMargin: "400px" },
+		);
 
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, mode])
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [hasNextPage, isFetchingNextPage, fetchNextPage, mode]);
 
-  function updateSearch(next: Partial<{
-    sort: LibrarySort
-    order: LibrarySortOrder
-    ratings: string
-    decade: string
-    minScore: number
-    watchStatus: WatchStatus | undefined
-  }>) {
-    if (mode === 'my-list') return
+	function updateSearch(
+		next: Partial<{
+			sort: LibrarySort;
+			order: LibrarySortOrder;
+			ratings: string;
+			decade: string;
+			minScore: number;
+			watchStatus: WatchStatus | undefined;
+		}>,
+	) {
+		if (mode === "my-list") return;
 
-    void navigate({
-      to:
-        type === 'Movie'
-          ? genre
-            ? '/library/movies/genre/$genre'
-            : '/library/movies'
-          : '/library/series',
-      params: genre ? { genre } : undefined,
-      search: {
-        sort: next.sort ?? sort,
-        order: next.order ?? order,
-        ratings: next.ratings !== undefined ? next.ratings : ratings,
-        decade: next.decade !== undefined ? next.decade : decade,
-        minScore: next.minScore !== undefined ? next.minScore : minScore,
-        watchStatus: 'watchStatus' in next ? next.watchStatus : watchStatus,
-      },
-    })
-  }
+		void navigate({
+			to:
+				type === "Movie"
+					? genre
+						? "/library/movies/genre/$genre"
+						: "/library/movies"
+					: "/library/series",
+			params: genre ? { genre } : undefined,
+			search: {
+				sort: next.sort ?? sort,
+				order: next.order ?? order,
+				ratings: next.ratings !== undefined ? next.ratings : ratings,
+				decade: next.decade !== undefined ? next.decade : decade,
+				minScore: next.minScore !== undefined ? next.minScore : minScore,
+				watchStatus: "watchStatus" in next ? next.watchStatus : watchStatus,
+			},
+		});
+	}
 
-  function toggleRating(r: string) {
-    const current = ratings ? ratings.split(',').filter(Boolean) : []
-    const next = current.includes(r) ? current.filter((x) => x !== r) : [...current, r]
-    updateSearch({ ratings: next.join(',') })
-  }
+	function toggleRating(r: string) {
+		const current = ratings ? ratings.split(",").filter(Boolean) : [];
+		const next = current.includes(r) ? current.filter((x) => x !== r) : [...current, r];
+		updateSearch({ ratings: next.join(",") });
+	}
 
-  function clearFilters() {
-    updateSearch({ ratings: '', decade: '', minScore: 0, watchStatus: undefined })
-  }
+	function clearFilters() {
+		updateSearch({ ratings: "", decade: "", minScore: 0, watchStatus: undefined });
+	}
 
-  function playMedia(item: MediaItem, queue?: MediaItem[]) {
-    if (!item.streamUrl || item.type === 'series') return
-    setSelectedItem(null)
-    setPlayQueue(queue?.length ? queue : resolvedItems)
-    setPlayingItem(item)
-  }
+	function playMedia(item: MediaItem, queue?: MediaItem[]) {
+		if (!item.streamUrl || item.type === "series") return;
+		setSelectedItem(null);
+		setPlayQueue(queue?.length ? queue : resolvedItems);
+		setPlayingItem(item);
+	}
 
-  function handleWatchedChange(id: string, played: boolean) {
-    queryClient.setQueriesData<{ pages: { items: MediaItem[] }[] }>(
-      { queryKey: ['library-infinite'] },
-      (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            items: page.items.map((i) => (i.id === id ? { ...i, played } : i)),
-          })),
-        }
-      },
-    )
-  }
+	function handleWatchedChange(id: string, played: boolean) {
+		queryClient.setQueriesData<{ pages: { items: MediaItem[] }[] }>(
+			{ queryKey: ["library-infinite"] },
+			(old) => {
+				if (!old) return old;
+				return {
+					...old,
+					pages: old.pages.map((page) => ({
+						...page,
+						items: page.items.map((i) => (i.id === id ? { ...i, played } : i)),
+					})),
+				};
+			},
+		);
+	}
 
-  function handleToggleFavorite(item: MediaItem) {
-    setSelectedItem((current) =>
-      current?.id === item.id ? { ...current, isFavorite: !current.isFavorite } : current,
-    )
-    favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-  }
+	function handleToggleFavorite(item: MediaItem) {
+		setSelectedItem((current) =>
+			current?.id === item.id ? { ...current, isFavorite: !current.isFavorite } : current,
+		);
+		favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) });
+	}
 
-  const ratingOptions = type === 'Movie' ? MOVIE_RATINGS : SERIES_RATINGS
+	const ratingOptions = type === "Movie" ? MOVIE_RATINGS : SERIES_RATINGS;
 
-  return (
-    <main className="library-shell">
-      <div className="page-wrap library-head">
-        <div className="library-copy">
-          <Link to="/" className="library-backlink" data-tv-focusable="true">
-            <ArrowLeft size={16} /> {t('library.backHome')}
-          </Link>
-          <p className="eyebrow">{subtitle}</p>
-          <h1 className="library-title">{title}</h1>
-          <p className="library-summary">
-            {mode === 'my-list'
-              ? t('library.myListSummary')
-              : t('library.summary', { type: type === 'Movie' ? 'movie' : 'series' })}
-          </p>
-        </div>
-      </div>
+	return (
+		<main className="library-shell">
+			<div className="page-wrap library-head">
+				<div className="library-copy">
+					<Link to="/" className="library-backlink" data-tv-focusable="true">
+						<ArrowLeft size={16} /> {t("library.backHome")}
+					</Link>
+					<p className="eyebrow">{subtitle}</p>
+					<h1 className="library-title">{title}</h1>
+					<p className="library-summary">
+						{mode === "my-list"
+							? t("library.myListSummary")
+							: t("library.summary", { type: type === "Movie" ? "movie" : "series" })}
+					</p>
+				</div>
+			</div>
 
-      {mode === 'library' ? (
-        <div className="page-wrap library-toolbar">
-          {type === 'Movie' ? (
-            <div className="genre-strip">
-              <Link
-                to="/library/movies"
-                search={{ sort, order, ratings, decade, minScore, watchStatus }}
-                className={`genre-pill${!genre ? ' genre-pill-active' : ''}`}
-                data-tv-focusable="true"
-              >
-                {t('library.allMovies')}
-              </Link>
-              {CURATED_MOVIE_GENRES.map((genreOption) => (
-                <Link
-                  key={genreOption}
-                  to="/library/movies/genre/$genre"
-                  params={{ genre: genreOption }}
-                  search={{ sort, order, ratings, decade, minScore }}
-                  className={`genre-pill${genreOption === genre ? ' genre-pill-active' : ''}`}
-                  data-tv-focusable="true"
-                >
-                  {genreOption}
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="genre-strip-spacer" />
-          )}
+			{mode === "library" ? (
+				<div className="page-wrap library-toolbar">
+					{type === "Movie" ? (
+						<div className="genre-strip">
+							<Link
+								to="/library/movies"
+								search={{ sort, order, ratings, decade, minScore, watchStatus }}
+								className={`genre-pill${!genre ? " genre-pill-active" : ""}`}
+								data-tv-focusable="true"
+							>
+								{t("library.allMovies")}
+							</Link>
+							{CURATED_MOVIE_GENRES.map((genreOption) => (
+								<Link
+									key={genreOption}
+									to="/library/movies/genre/$genre"
+									params={{ genre: genreOption }}
+									search={{ sort, order, ratings, decade, minScore }}
+									className={`genre-pill${genreOption === genre ? " genre-pill-active" : ""}`}
+									data-tv-focusable="true"
+								>
+									{genreOption}
+								</Link>
+							))}
+						</div>
+					) : (
+						<div className="genre-strip-spacer" />
+					)}
 
-          <div className="toolbar-controls">
-            <select
-              value={sort}
-              className="toolbar-sort-select"
-              onChange={(event) => updateSearch({ sort: event.target.value as LibrarySort })}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.value === 'DateCreated'
-                    ? t('library.sort.dateCreated')
-                    : option.value === 'PremiereDate'
-                      ? t('library.sort.premiereDate')
-                      : option.value === 'CommunityRating'
-                        ? t('library.sort.communityRating')
-                        : t('library.sort.sortName')}
-                </option>
-              ))}
-            </select>
+					<div className="toolbar-controls">
+						<select
+							value={sort}
+							className="toolbar-sort-select"
+							onChange={(event) => updateSearch({ sort: event.target.value as LibrarySort })}
+						>
+							{SORT_OPTIONS.map((option) => (
+								<option key={option.value} value={option.value}>
+									{option.value === "DateCreated"
+										? t("library.sort.dateCreated")
+										: option.value === "PremiereDate"
+											? t("library.sort.premiereDate")
+											: option.value === "CommunityRating"
+												? t("library.sort.communityRating")
+												: t("library.sort.sortName")}
+								</option>
+							))}
+						</select>
 
-            <button
-              type="button"
-              className="toolbar-dir-btn"
-              title={order === 'Descending' ? t('library.order.desc') : t('library.order.asc')}
-              onClick={() => updateSearch({ order: order === 'Descending' ? 'Ascending' : 'Descending' })}
-              data-tv-focusable="true"
-            >
-              {order === 'Descending' ? <ArrowDown size={15} /> : <ArrowUp size={15} />}
-            </button>
+						<button
+							type="button"
+							className="toolbar-dir-btn"
+							title={order === "Descending" ? t("library.order.desc") : t("library.order.asc")}
+							onClick={() =>
+								updateSearch({ order: order === "Descending" ? "Ascending" : "Descending" })
+							}
+							data-tv-focusable="true"
+						>
+							{order === "Descending" ? <ArrowDown size={15} /> : <ArrowUp size={15} />}
+						</button>
 
-            <button
-              type="button"
-              className={`filter-toggle${filterOpen ? ' filter-toggle-open' : ''}${activeFilterCount > 0 ? ' filter-toggle-active' : ''}`}
-              onClick={() => setFilterOpen((v) => !v)}
-              aria-expanded={filterOpen}
-              data-tv-focusable="true"
-            >
-              <SlidersHorizontal size={14} />
-              {t('library.filters')}
-              {activeFilterCount > 0 ? (
-                <span className="filter-badge">{activeFilterCount}</span>
-              ) : null}
-            </button>
-          </div>
-        </div>
-      ) : null}
+						<button
+							type="button"
+							className={`filter-toggle${filterOpen ? " filter-toggle-open" : ""}${activeFilterCount > 0 ? " filter-toggle-active" : ""}`}
+							onClick={() => setFilterOpen((v) => !v)}
+							aria-expanded={filterOpen}
+							data-tv-focusable="true"
+						>
+							<SlidersHorizontal size={14} />
+							{t("library.filters")}
+							{activeFilterCount > 0 ? (
+								<span className="filter-badge">{activeFilterCount}</span>
+							) : null}
+						</button>
+					</div>
+				</div>
+			) : null}
 
-      {mode === 'library' && filterOpen ? (
-        <div className="page-wrap filter-panel">
-          <div className="filter-section">
-            <p className="filter-section-label">{t('library.ageRating')}</p>
-            <div className="filter-chip-row">
-              {ratingOptions.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`filter-chip${activeRatings.includes(r) ? ' filter-chip-active' : ''}`}
-                  onClick={() => toggleRating(r)}
-                  data-tv-focusable="true"
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
+			{mode === "library" && filterOpen ? (
+				<div className="page-wrap filter-panel">
+					<div className="filter-section">
+						<p className="filter-section-label">{t("library.ageRating")}</p>
+						<div className="filter-chip-row">
+							{ratingOptions.map((r) => (
+								<button
+									key={r}
+									type="button"
+									className={`filter-chip${activeRatings.includes(r) ? " filter-chip-active" : ""}`}
+									onClick={() => toggleRating(r)}
+									data-tv-focusable="true"
+								>
+									{r}
+								</button>
+							))}
+						</div>
+					</div>
 
-          <div className="filter-section">
-            <p className="filter-section-label">{t('library.decade')}</p>
-            <div className="filter-chip-row">
-              {DECADES.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`filter-chip${decade === d ? ' filter-chip-active' : ''}`}
-                  onClick={() => updateSearch({ decade: decade === d ? '' : d })}
-                  data-tv-focusable="true"
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
+					<div className="filter-section">
+						<p className="filter-section-label">{t("library.decade")}</p>
+						<div className="filter-chip-row">
+							{DECADES.map((d) => (
+								<button
+									key={d}
+									type="button"
+									className={`filter-chip${decade === d ? " filter-chip-active" : ""}`}
+									onClick={() => updateSearch({ decade: decade === d ? "" : d })}
+									data-tv-focusable="true"
+								>
+									{d}
+								</button>
+							))}
+						</div>
+					</div>
 
-          <div className="filter-section">
-            <p className="filter-section-label">{t('library.minScore')}</p>
-            <div className="filter-chip-row">
-              <button
-                type="button"
-                className={`filter-chip${minScore === 0 ? ' filter-chip-active' : ''}`}
-                onClick={() => updateSearch({ minScore: 0 })}
-                data-tv-focusable="true"
-              >
-                {t('library.anyScore')}
-              </button>
-              {SCORE_OPTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`filter-chip${minScore === s ? ' filter-chip-active' : ''}`}
-                  onClick={() => updateSearch({ minScore: minScore === s ? 0 : s })}
-                  data-tv-focusable="true"
-                >
-                  {s}+
-                </button>
-              ))}
-            </div>
-          </div>
+					<div className="filter-section">
+						<p className="filter-section-label">{t("library.minScore")}</p>
+						<div className="filter-chip-row">
+							<button
+								type="button"
+								className={`filter-chip${minScore === 0 ? " filter-chip-active" : ""}`}
+								onClick={() => updateSearch({ minScore: 0 })}
+								data-tv-focusable="true"
+							>
+								{t("library.anyScore")}
+							</button>
+							{SCORE_OPTIONS.map((s) => (
+								<button
+									key={s}
+									type="button"
+									className={`filter-chip${minScore === s ? " filter-chip-active" : ""}`}
+									onClick={() => updateSearch({ minScore: minScore === s ? 0 : s })}
+									data-tv-focusable="true"
+								>
+									{s}+
+								</button>
+							))}
+						</div>
+					</div>
 
-          <div className="filter-section">
-            <p className="filter-section-label">{t('library.watchStatus')}</p>
-            <div className="filter-chip-row">
-              {(['unwatched', 'inprogress', 'watched'] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`filter-chip${watchStatus === s ? ' filter-chip-active' : ''}`}
-                  onClick={() => updateSearch({ watchStatus: watchStatus === s ? undefined : s })}
-                  data-tv-focusable="true"
-                >
-                  {t(`library.watchStatus.${s}`)}
-                </button>
-              ))}
-            </div>
-          </div>
+					<div className="filter-section">
+						<p className="filter-section-label">{t("library.watchStatus")}</p>
+						<div className="filter-chip-row">
+							{(["unwatched", "inprogress", "watched"] as const).map((s) => (
+								<button
+									key={s}
+									type="button"
+									className={`filter-chip${watchStatus === s ? " filter-chip-active" : ""}`}
+									onClick={() => updateSearch({ watchStatus: watchStatus === s ? undefined : s })}
+									data-tv-focusable="true"
+								>
+									{t(`library.watchStatus.${s}`)}
+								</button>
+							))}
+						</div>
+					</div>
 
-          {activeFilterCount > 0 ? (
-            <div className="filter-panel-footer">
-              <button type="button" className="filter-clear" onClick={clearFilters} data-tv-focusable="true">
-                <X size={13} /> {t('library.clearFilters')}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+					{activeFilterCount > 0 ? (
+						<div className="filter-panel-footer">
+							<button
+								type="button"
+								className="filter-clear"
+								onClick={clearFilters}
+								data-tv-focusable="true"
+							>
+								<X size={13} /> {t("library.clearFilters")}
+							</button>
+						</div>
+					) : null}
+				</div>
+			) : null}
 
-      {activeFilterCount > 0 && mode === 'library' ? (
-        <div className="page-wrap active-filters-row">
-          {activeRatings.map((r) => (
-            <button key={r} type="button" className="active-filter-chip" onClick={() => toggleRating(r)} data-tv-focusable="true">
-              {r} <X size={11} />
-            </button>
-          ))}
-          {decade ? (
-            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ decade: '' })} data-tv-focusable="true">
-              {decade} <X size={11} />
-            </button>
-          ) : null}
-          {minScore > 0 ? (
-            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ minScore: 0 })} data-tv-focusable="true">
-              {minScore}+ ★ <X size={11} />
-            </button>
-          ) : null}
-          {watchStatus ? (
-            <button type="button" className="active-filter-chip" onClick={() => updateSearch({ watchStatus: undefined })} data-tv-focusable="true">
-              {t(`library.watchStatus.${watchStatus}`)} <X size={11} />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+			{activeFilterCount > 0 && mode === "library" ? (
+				<div className="page-wrap active-filters-row">
+					{activeRatings.map((r) => (
+						<button
+							key={r}
+							type="button"
+							className="active-filter-chip"
+							onClick={() => toggleRating(r)}
+							data-tv-focusable="true"
+						>
+							{r} <X size={11} />
+						</button>
+					))}
+					{decade ? (
+						<button
+							type="button"
+							className="active-filter-chip"
+							onClick={() => updateSearch({ decade: "" })}
+							data-tv-focusable="true"
+						>
+							{decade} <X size={11} />
+						</button>
+					) : null}
+					{minScore > 0 ? (
+						<button
+							type="button"
+							className="active-filter-chip"
+							onClick={() => updateSearch({ minScore: 0 })}
+							data-tv-focusable="true"
+						>
+							{minScore}+ ★ <X size={11} />
+						</button>
+					) : null}
+					{watchStatus ? (
+						<button
+							type="button"
+							className="active-filter-chip"
+							onClick={() => updateSearch({ watchStatus: undefined })}
+							data-tv-focusable="true"
+						>
+							{t(`library.watchStatus.${watchStatus}`)} <X size={11} />
+						</button>
+					) : null}
+				</div>
+			) : null}
 
-      <div className="page-wrap library-grid">
-        {mode === 'library' && isLoading
-          ? Array.from({ length: 24 }, (_, i) => (
-              <div
-                key={i}
-                className={`media-card media-card-skeleton media-card-${cardVariant(i)}`}
-                aria-hidden="true"
-              />
-            ))
-          : resolvedItems.map((item, index) => (
-              <MediaCard
-                key={item.id}
-                item={item}
-                priority={index < 8}
-                variant={cardVariant(index)}
-                onClick={() => setSelectedItem(item)}
-                onPlay={playMedia}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            ))}
-        {mode === 'library' && resolvedItems.length === 0 && !isLoading && !isFetchingNextPage ? (
-          <div className="library-empty">
-            <p className="eyebrow">{t('section.readyWhenYouAre')}</p>
-            <h3>{t('library.noResults')}</h3>
-            {activeFilterCount > 0 ? (
-              <button type="button" className="filter-clear" onClick={clearFilters} data-tv-focusable="true">
-                <X size={13} /> {t('library.clearFilters')}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+			<div className="page-wrap library-grid">
+				{mode === "library" && isLoading
+					? Array.from({ length: 24 }, (_, i) => (
+							<div
+								key={i}
+								className={`media-card media-card-skeleton media-card-${cardVariant(i)}`}
+								aria-hidden="true"
+							/>
+						))
+					: resolvedItems.map((item, index) => (
+							<MediaCard
+								key={item.id}
+								item={item}
+								priority={index < 8}
+								variant={cardVariant(index)}
+								onClick={() => setSelectedItem(item)}
+								onPlay={playMedia}
+								onToggleFavorite={handleToggleFavorite}
+							/>
+						))}
+				{mode === "library" && resolvedItems.length === 0 && !isLoading && !isFetchingNextPage ? (
+					<div className="library-empty">
+						<p className="eyebrow">{t("section.readyWhenYouAre")}</p>
+						<h3>{t("library.noResults")}</h3>
+						{activeFilterCount > 0 ? (
+							<button
+								type="button"
+								className="filter-clear"
+								onClick={clearFilters}
+								data-tv-focusable="true"
+							>
+								<X size={13} /> {t("library.clearFilters")}
+							</button>
+						) : null}
+					</div>
+				) : null}
+			</div>
 
-      <div ref={sentinelRef} />
+			<div ref={sentinelRef} />
 
-      <div className="page-wrap library-footer library-footer-compact">
-        {isLoading || isFetchingNextPage ? (
-          <span className="eyebrow" style={{ opacity: 0.5 }}>{t('search.searching')}</span>
-        ) : (
-          <span>{t('library.totalTitles', { count: resolvedTotal })}</span>
-        )}
-      </div>
+			<div className="page-wrap library-footer library-footer-compact">
+				{isLoading || isFetchingNextPage ? (
+					<span className="eyebrow" style={{ opacity: 0.5 }}>
+						{t("search.searching")}
+					</span>
+				) : (
+					<span>{t("library.totalTitles", { count: resolvedTotal })}</span>
+				)}
+			</div>
 
-      <MediaPlayerDialog
-        item={playingItem}
-        open={playingItem != null}
-        onClose={() => setPlayingItem(null)}
-        queue={playQueue}
-        onSelectQueueItem={setPlayingItem}
-      />
+			<MediaPlayerDialog
+				item={playingItem}
+				open={playingItem != null}
+				onClose={() => setPlayingItem(null)}
+				queue={playQueue}
+				onSelectQueueItem={setPlayingItem}
+			/>
 
-      <MediaSpotlightDialog
-        item={selectedItem}
-        open={selectedItem != null}
-        onClose={() => setSelectedItem(null)}
-        onPlay={playMedia}
-        onSelectSimilar={setSelectedItem}
-        onToggleFavorite={handleToggleFavorite}
-        onWatchedChange={handleWatchedChange}
-      />
-    </main>
-  )
+			<MediaSpotlightDialog
+				item={selectedItem}
+				open={selectedItem != null}
+				onClose={() => setSelectedItem(null)}
+				onPlay={playMedia}
+				onSelectSimilar={setSelectedItem}
+				onToggleFavorite={handleToggleFavorite}
+				onWatchedChange={handleWatchedChange}
+			/>
+		</main>
+	);
 }

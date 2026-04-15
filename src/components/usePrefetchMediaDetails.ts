@@ -1,72 +1,68 @@
-import { useQueryClient } from '@tanstack/react-query'
-import {
-  fetchItemDetailsRuntime,
-  fetchSeriesDetailsRuntime,
-} from '../lib/runtime-functions'
-import type { MediaItem } from '../lib/media'
+import { useQueryClient } from "@tanstack/react-query";
+import { fetchItemDetailsRuntime, fetchSeriesDetailsRuntime } from "../lib/runtime-functions";
+import type { MediaItem } from "../lib/media";
 
-const prefetchedImages = new Set<string>()
+const prefetchedImages = new Set<string>();
 
 function preloadImage(url?: string) {
-  if (!url || typeof Image === 'undefined' || prefetchedImages.has(url)) return
+	if (!url || typeof Image === "undefined" || prefetchedImages.has(url)) return;
 
-  prefetchedImages.add(url)
-  const image = new Image()
-  image.src = url
+	prefetchedImages.add(url);
+	const image = new Image();
+	image.src = url;
 }
 
 function preloadMediaImages(item: MediaItem) {
-  preloadImage(item.backdropUrl)
-  preloadImage(item.posterUrl)
-  preloadImage(item.thumbUrl)
-  preloadImage(item.logoUrl)
+	preloadImage(item.backdropUrl);
+	preloadImage(item.posterUrl);
+	preloadImage(item.thumbUrl);
+	preloadImage(item.logoUrl);
 }
 
 export function usePrefetchMediaDetails() {
-  const queryClient = useQueryClient()
+	const queryClient = useQueryClient();
 
-  return async function prefetchMediaDetails(item: MediaItem) {
-    preloadMediaImages(item)
+	return async function prefetchMediaDetails(item: MediaItem) {
+		preloadMediaImages(item);
 
-    if (item.type === 'series') {
-      const data = await queryClient.prefetchQuery({
-        queryKey: ['series-details', item.id],
-        queryFn: () => fetchSeriesDetailsRuntime({ data: { id: item.id } }),
-        staleTime: 5 * 60 * 1000,
-      })
+		if (item.type === "series") {
+			const data = await queryClient.prefetchQuery({
+				queryKey: ["series-details", item.id],
+				queryFn: () => fetchSeriesDetailsRuntime({ data: { id: item.id } }),
+				staleTime: 5 * 60 * 1000,
+			});
 
-      void data
-      const cached = queryClient.getQueryData<Awaited<ReturnType<typeof fetchSeriesDetailsRuntime>>>([
-        'series-details',
-        item.id,
-      ])
+			void data;
+			const cached = queryClient.getQueryData<
+				Awaited<ReturnType<typeof fetchSeriesDetailsRuntime>>
+			>(["series-details", item.id]);
 
-      if (!cached) return
+			if (!cached) return;
 
-      preloadMediaImages(cached.item)
-      cached.episodes.slice(0, 8).forEach(preloadMediaImages)
-      cached.nextUp.slice(0, 4).forEach(preloadMediaImages)
-      cached.similar.slice(0, 6).forEach(preloadMediaImages)
-      cached.item.cast.slice(0, 10).forEach((person) => preloadImage(person.imageUrl))
-      return
-    }
+			preloadMediaImages(cached.item);
+			cached.episodes.slice(0, 8).forEach(preloadMediaImages);
+			cached.nextUp.slice(0, 4).forEach(preloadMediaImages);
+			cached.similar.slice(0, 6).forEach(preloadMediaImages);
+			cached.item.cast.slice(0, 10).forEach((person) => preloadImage(person.imageUrl));
+			return;
+		}
 
-    const data = await queryClient.prefetchQuery({
-      queryKey: ['item-details', item.id],
-      queryFn: () => fetchItemDetailsRuntime({ data: { id: item.id } }),
-      staleTime: 5 * 60 * 1000,
-    })
+		const data = await queryClient.prefetchQuery({
+			queryKey: ["item-details", item.id],
+			queryFn: () => fetchItemDetailsRuntime({ data: { id: item.id } }),
+			staleTime: 5 * 60 * 1000,
+		});
 
-    void data
-    const cached = queryClient.getQueryData<Awaited<ReturnType<typeof fetchItemDetailsRuntime>>>([
-      'item-details',
-      item.id,
-    ])
+		void data;
+		const cached = queryClient.getQueryData<Awaited<ReturnType<typeof fetchItemDetailsRuntime>>>([
+			"item-details",
+			item.id,
+		]);
 
-    if (!cached) return
+		if (!cached) return;
 
-    preloadMediaImages(cached.item)
-    cached.similar.slice(0, 6).forEach(preloadMediaImages)
-    cached.item.cast.slice(0, 10).forEach((person) => preloadImage(person.imageUrl))
-  }
+		preloadMediaImages(cached.item);
+		cached.similar.slice(0, 6).forEach(preloadMediaImages);
+		cached.item.cast.slice(0, 10).forEach((person) => preloadImage(person.imageUrl));
+	};
 }
