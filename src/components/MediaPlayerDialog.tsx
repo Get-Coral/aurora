@@ -53,6 +53,15 @@ function formatTime(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function getVideoErrorDetails(video: HTMLVideoElement | null) {
+  if (!video?.error) return null
+
+  return {
+    code: video.error.code,
+    message: video.error.message,
+  }
+}
+
 export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueItem }: MediaPlayerDialogProps) {
   const { t } = useI18n()
   useLockBodyScroll(open)
@@ -96,6 +105,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   const seekReloadRequestIdRef = useRef(0)
   // Tracks the drag ratio so handleProgressPointerUp can commit the final seek.
   const lastDragRatioRef = useRef(0)
+  const pendingUserSeekRef = useRef<number | null>(null)
 
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -139,10 +149,30 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   })
 
   const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl
+  const isNativeHlsPlayback = playbackSession?.playMethod === 'Transcode' && streamUrl?.includes('.m3u8')
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
   const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1
   const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null
   const showNextButton = item?.type === 'episode' && nextItem !== null
+
+  function logPlaybackDebug(event: string, extra?: Record<string, unknown>) {
+    const video = videoRef.current
+    console.info('[AuroraPlayer]', event, {
+      itemId: item?.id ?? null,
+      title: item?.title ?? null,
+      streamUrl,
+      playMethod: playbackSession?.playMethod ?? null,
+      readyState: video?.readyState ?? null,
+      networkState: video?.networkState ?? null,
+      currentTime: video?.currentTime ?? null,
+      duration: video?.duration ?? null,
+      muted: video?.muted ?? null,
+      paused: video?.paused ?? null,
+      error: getVideoErrorDetails(video),
+      userAgent: typeof navigator === 'undefined' ? null : navigator.userAgent,
+      ...extra,
+    })
+  }
 
   // Reset + start playback session when item changes
   useEffect(() => {
@@ -161,16 +191,23 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     setAutoplayMuted(false)
     setOnlineCues([])
     setAutoplayCountdown(null)
+    pendingUserSeekRef.current = null
     videoRef.current?.querySelector('track[data-online]')?.remove()
 
     if (!open || !item?.streamUrl) return
 
     let cancelled = false
     const client = getClientPlaybackContext()
+    logPlaybackDebug('begin-session', { client })
 
     void beginPlaybackSessionRuntime({ data: { id: item.id, client } })
       .then((session) => {
         if (cancelled) return
+        logPlaybackDebug('begin-session:success', {
+          sessionPlayMethod: session.playMethod ?? null,
+          sessionStreamUrl: session.streamUrl,
+          subtitleTrackCount: session.subtitleTracks.length,
+        })
         // For transcoded streams, bake the resume position into StartTimeTicks
         // so that Jellyfin starts the transcode from the right point. This
         // avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
@@ -184,7 +221,10 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
           setPlaybackSession(session)
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        logPlaybackDebug('begin-session:error', {
+          error: error instanceof Error ? { name: error.name, message: error.message } : error,
+        })
         if (!cancelled) setPlaybackSession({ streamUrl: item.streamUrl!, canSyncProgress: false, playMethod: 'DirectPlay', subtitleTracks: [] })
       })
 
@@ -194,6 +234,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   // Reload video when stream URL changes
   useEffect(() => {
     if (!open || !streamUrl) return
+    logPlaybackDebug('stream-url:load', { streamUrl })
     videoRef.current?.load()
   }, [open, streamUrl])
 
@@ -201,8 +242,27 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   useEffect(() => {
     const video = videoRef.current
     if (!video || !open || !item?.streamUrl) return
+    const media = video
 
     function secondsToTicks(s: number) { return Math.max(0, Math.floor(s * 10_000_000)) }
+
+    async function attemptAutoplay() {
+      try {
+        await media.play()
+        logPlaybackDebug('autoplay:success')
+      } catch {
+        logPlaybackDebug('autoplay:blocked-initial')
+        if (media.muted) return
+        media.muted = true
+        try {
+          await media.play()
+          logPlaybackDebug('autoplay:success-muted-fallback')
+        } catch {
+          logPlaybackDebug('autoplay:blocked-muted-fallback')
+          // Leave playback paused if the browser still rejects autoplay.
+        }
+      }
+    }
 
     function buildPayload(overrides?: { isPaused?: boolean; isStopped?: boolean; played?: boolean }) {
       return {
@@ -225,11 +285,9 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     }
 
     function handleLoadedMetadata() {
+      logPlaybackDebug('video:loadedmetadata')
       if (seekPendingRef.current) {
         const pendingTarget = pendingSeekTargetRef.current ?? startTimeOffsetRef.current
-        const knownRuntime = (item?.runtimeMinutes ?? 0) * 60
-        const remainingRuntime = knownRuntime > 0 ? Math.max(0, knownRuntime - pendingTarget) : null
-        const rawDuration = video!.duration
 
         // Jellyfin transcode responses can report a tiny placeholder duration
         // during metadata load even when StartTimeTicks was honored. Trust the
@@ -241,26 +299,58 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         seekPendingRef.current = false
         pendingSeekTargetRef.current = null
         optimisticSeekTargetRef.current = null
-        video!.play().catch(() => undefined)
+        void attemptAutoplay()
         return
       }
       if (item!.playbackPositionTicks) setVideoCurrentTime(item!.playbackPositionTicks / 10_000_000)
+      void attemptAutoplay()
+    }
+    function handleLoadedData() {
+      logPlaybackDebug('video:loadeddata')
+      setIsBuffering(false)
     }
     function handleTimeUpdate() { if (playbackSession?.canSyncProgress) syncProgress() }
-    function handlePause() { syncProgress({ isPaused: true, force: true }) }
+    function handlePause() {
+      logPlaybackDebug('video:pause')
+      syncProgress({ isPaused: true, force: true })
+    }
     function handleEnded() {
+      logPlaybackDebug('video:ended')
       if (stopReportedRef.current) return
       stopReportedRef.current = true
       syncProgress({ isStopped: true, played: true, force: true })
     }
+    function handleLoadStart() { logPlaybackDebug('video:loadstart') }
+    function handleCanPlay() { logPlaybackDebug('video:canplay') }
+    function handlePlaying() { logPlaybackDebug('video:playing') }
+    function handleStalled() { logPlaybackDebug('video:stalled') }
+    function handleSuspend() { logPlaybackDebug('video:suspend') }
+    function handleAbort() { logPlaybackDebug('video:abort') }
+    function handleError() { logPlaybackDebug('video:error') }
 
+    video.addEventListener('loadstart', handleLoadStart)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
+    video.addEventListener('loadeddata', handleLoadedData)
+    video.addEventListener('canplay', handleCanPlay)
+    video.addEventListener('playing', handlePlaying)
+    video.addEventListener('stalled', handleStalled)
+    video.addEventListener('suspend', handleSuspend)
+    video.addEventListener('abort', handleAbort)
+    video.addEventListener('error', handleError)
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('pause', handlePause)
     video.addEventListener('ended', handleEnded)
 
     return () => {
+      video.removeEventListener('loadstart', handleLoadStart)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      video.removeEventListener('loadeddata', handleLoadedData)
+      video.removeEventListener('canplay', handleCanPlay)
+      video.removeEventListener('playing', handlePlaying)
+      video.removeEventListener('stalled', handleStalled)
+      video.removeEventListener('suspend', handleSuspend)
+      video.removeEventListener('abort', handleAbort)
+      video.removeEventListener('error', handleError)
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('pause', handlePause)
       video.removeEventListener('ended', handleEnded)
@@ -290,7 +380,25 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       }
       if (seekPendingRef.current) return
       if (playbackSession?.playMethod !== 'Transcode') return
-      seekToMovieTime(video.currentTime + startTimeOffsetRef.current)
+      if (isNativeHlsPlayback) {
+        logPlaybackDebug('video:seeking:ignored-native-hls', {
+          seekTarget: video.currentTime + startTimeOffsetRef.current,
+        })
+        pendingUserSeekRef.current = null
+        return
+      }
+      const pendingUserSeek = pendingUserSeekRef.current
+      if (pendingUserSeek == null) {
+        logPlaybackDebug('video:seeking:ignored-native', {
+          seekTarget: video.currentTime + startTimeOffsetRef.current,
+        })
+        return
+      }
+      pendingUserSeekRef.current = null
+      logPlaybackDebug('video:seeking:user-commit', {
+        seekTarget: pendingUserSeek,
+      })
+      seekToMovieTime(pendingUserSeek)
     }
     const onDurationChange = () => {
       const d = video.duration
@@ -341,7 +449,7 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
       video.removeEventListener('waiting', onWaiting)
       video.removeEventListener('playing', onPlaying)
     }
-  }, [open, playbackSession?.playMethod, streamUrl])
+  }, [isNativeHlsPlayback, open, playbackSession?.playMethod, streamUrl])
 
 
   // RAF-based subtitle sync: reads video.currentTime at 60fps and updates the DOM directly,
@@ -467,22 +575,44 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
     video.paused ? void video.play() : video.pause()
   }
 
+  function resumePlaybackAfterSeek() {
+    const video = videoRef.current
+    if (!video) return
+
+    requestAnimationFrame(() => {
+      void video.play()
+        .then(() => {
+          logPlaybackDebug('seek:resume-playback')
+        })
+        .catch(() => {
+          logPlaybackDebug('seek:resume-playback-blocked')
+        })
+    })
+  }
+
   async function reloadStreamAtMovieTime(targetMovieTime: number) {
     if (!item) return
 
     const requestId = ++seekReloadRequestIdRef.current
     const client = getClientPlaybackContext()
+    logPlaybackDebug('seek:reload-stream', { requestId, targetMovieTime, client })
 
     try {
       const freshSession = await beginPlaybackSessionRuntime({ data: { id: item.id, client } })
       if (seekReloadRequestIdRef.current !== requestId) return
 
       const nextStreamUrl = prepareSeekReloadUrl(freshSession.streamUrl, Math.floor(targetMovieTime * 10_000_000))
+      logPlaybackDebug('seek:reload-stream:success', { requestId, nextStreamUrl })
       setPlaybackSession({ ...freshSession, streamUrl: nextStreamUrl })
-    } catch {
+    } catch (error) {
       if (seekReloadRequestIdRef.current !== requestId || !playbackSession) return
 
       const nextStreamUrl = prepareSeekReloadUrl(playbackSession.streamUrl, Math.floor(targetMovieTime * 10_000_000))
+      logPlaybackDebug('seek:reload-stream:fallback', {
+        requestId,
+        nextStreamUrl,
+        error: error instanceof Error ? { name: error.name, message: error.message } : error,
+      })
       setPlaybackSession({ ...playbackSession, streamUrl: nextStreamUrl })
     }
   }
@@ -545,11 +675,20 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   // if the target is not within the buffered range we rebuild the URL with
   // StartTimeTicks so Jellyfin starts the transcode from the right point,
   // preventing iOS from restarting playback at 0:00.
-  function seekToMovieTime(targetMovieTime: number) {
+  function seekToMovieTime(targetMovieTime: number, options?: { resumeIfPlaying?: boolean }) {
     const video = videoRef.current
     if (!video) return
     const d = getBestDuration()
     const clamped = d != null ? Math.max(0, Math.min(d, targetMovieTime)) : Math.max(0, targetMovieTime)
+
+    if (isNativeHlsPlayback) {
+      setVideoCurrentTime(clamped)
+      pendingUserSeekRef.current = null
+      if (options?.resumeIfPlaying) resumePlaybackAfterSeek()
+      return
+    }
+
+    pendingUserSeekRef.current = clamped
 
     if (playbackSession?.playMethod === 'Transcode') {
       const streamTime = clamped - startTimeOffsetRef.current
@@ -580,12 +719,18 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
         return
       }
       setVideoCurrentTime(streamTime)
+      pendingUserSeekRef.current = null
+      if (options?.resumeIfPlaying) resumePlaybackAfterSeek()
     } else {
       setVideoCurrentTime(clamped)
+      pendingUserSeekRef.current = null
+      if (options?.resumeIfPlaying) resumePlaybackAfterSeek()
     }
   }
 
   function handleProgressPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+    e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     seekDraggingRef.current = true
     const rect = e.currentTarget.getBoundingClientRect()
@@ -611,6 +756,8 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
 
   function handleProgressPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!seekDraggingRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     lastDragRatioRef.current = ratio
@@ -630,19 +777,21 @@ export function MediaPlayerDialog({ item, open, onClose, queue, onSelectQueueIte
   }
 
   function handleProgressPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+    e.stopPropagation()
     seekDraggingRef.current = false
     e.currentTarget.releasePointerCapture(e.pointerId)
     // Commit the final seek position — may trigger a URL reload if not buffered.
     const d = getBestDuration()
-    if (d != null) seekToMovieTime(lastDragRatioRef.current * d)
+    if (d != null) seekToMovieTime(lastDragRatioRef.current * d, { resumeIfPlaying: true })
   }
 
   function seekBack() {
-    seekToMovieTime(currentTime - 15)
+    seekToMovieTime(currentTime - 15, { resumeIfPlaying: !videoRef.current?.paused })
   }
 
   function seekForward() {
-    seekToMovieTime(currentTime + 30)
+    seekToMovieTime(currentTime + 30, { resumeIfPlaying: !videoRef.current?.paused })
   }
 
   if (!open || !item) return null

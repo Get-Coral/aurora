@@ -42,7 +42,9 @@ self.addEventListener('message', (event) => {
 })
 
 function isVideoRequest(url) {
-  return url.pathname.includes('/Videos/') || url.pathname.includes('/Audio/')
+  return url.pathname.includes('/Videos/')
+    || url.pathname.includes('/Audio/')
+    || url.pathname === '/api/jellyfin-stream'
 }
 
 function isJellyfinImageRequest(url) {
@@ -139,7 +141,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isVideoRequest(url)) {
-    event.respondWith(fetch(request))
     return
   }
 

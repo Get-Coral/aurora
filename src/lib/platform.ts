@@ -43,10 +43,17 @@ export function detectClientPlaybackContext(
     'smarttv',
     'hbbtv',
   ])
+  // Desktop Safari: has "safari" in UA but not "chrome"/"chromium".
+  // Safari does not support VP8/VP9/AV1/Opus/FLAC, so we must force
+  // transcoding to H.264/AAC to prevent direct-play failures.
+  const isDesktopSafari = !isIos
+    && userAgent.includes('safari')
+    && !userAgent.includes('chrome')
+    && !userAgent.includes('chromium')
 
-  if (isIos) {
+  if (isIos || isDesktopSafari) {
     return {
-      platform: 'ios',
+      platform: isIos ? 'ios' : 'other',
       prefersSafeVideo: true,
       prefersTvMode: false,
     }
