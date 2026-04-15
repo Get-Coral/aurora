@@ -74,15 +74,6 @@ function formatTime(seconds: number) {
 	return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function getVideoErrorDetails(video: HTMLVideoElement | null) {
-	if (!video?.error) return null;
-
-	return {
-		code: video.error.code,
-		message: video.error.message,
-	};
-}
-
 export function MediaPlayerDialog({
 	item,
 	open,
@@ -158,7 +149,7 @@ export function MediaPlayerDialog({
 	const { data: osApiKey } = useQuery({
 		queryKey: ["opensubtitles-key"],
 		queryFn: () => fetchOpenSubtitlesKeyRuntime(),
-		staleTime: Infinity,
+		staleTime: Number.POSITIVE_INFINITY,
 	});
 
 	const { data: onlineSubtitles = [], isFetching: searchingSubtitles } = useQuery({
@@ -184,25 +175,6 @@ export function MediaPlayerDialog({
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
 
-	function logPlaybackDebug(event: string, extra?: Record<string, unknown>) {
-		const video = videoRef.current;
-		console.info("[AuroraPlayer]", event, {
-			itemId: item?.id ?? null,
-			title: item?.title ?? null,
-			streamUrl,
-			playMethod: playbackSession?.playMethod ?? null,
-			readyState: video?.readyState ?? null,
-			networkState: video?.networkState ?? null,
-			currentTime: video?.currentTime ?? null,
-			duration: video?.duration ?? null,
-			muted: video?.muted ?? null,
-			paused: video?.paused ?? null,
-			error: getVideoErrorDetails(video),
-			userAgent: typeof navigator === "undefined" ? null : navigator.userAgent,
-			...extra,
-		});
-	}
-
 	// Reset + start playback session when item changes
 	useEffect(() => {
 		stopReportedRef.current = false;
@@ -227,16 +199,10 @@ export function MediaPlayerDialog({
 
 		let cancelled = false;
 		const client = getClientPlaybackContext();
-		logPlaybackDebug("begin-session", { client });
 
 		void beginPlaybackSessionRuntime({ data: { id: item.id, client } })
 			.then((session) => {
 				if (cancelled) return;
-				logPlaybackDebug("begin-session:success", {
-					sessionPlayMethod: session.playMethod ?? null,
-					sessionStreamUrl: session.streamUrl,
-					subtitleTrackCount: session.subtitleTracks.length,
-				});
 				// For transcoded streams, bake the resume position into StartTimeTicks
 				// so that Jellyfin starts the transcode from the right point. This
 				// avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
@@ -253,10 +219,7 @@ export function MediaPlayerDialog({
 					setPlaybackSession(session);
 				}
 			})
-			.catch((error) => {
-				logPlaybackDebug("begin-session:error", {
-					error: error instanceof Error ? { name: error.name, message: error.message } : error,
-				});
+			.catch(() => {
 				if (!cancelled)
 					setPlaybackSession({
 						streamUrl: item.streamUrl!,
@@ -274,7 +237,6 @@ export function MediaPlayerDialog({
 	// Reload video when stream URL changes
 	useEffect(() => {
 		if (!open || !streamUrl) return;
-		logPlaybackDebug("stream-url:load", { streamUrl });
 		videoRef.current?.load();
 	}, [open, streamUrl]);
 
@@ -291,16 +253,12 @@ export function MediaPlayerDialog({
 		async function attemptAutoplay() {
 			try {
 				await media.play();
-				logPlaybackDebug("autoplay:success");
 			} catch {
-				logPlaybackDebug("autoplay:blocked-initial");
 				if (media.muted) return;
 				media.muted = true;
 				try {
 					await media.play();
-					logPlaybackDebug("autoplay:success-muted-fallback");
 				} catch {
-					logPlaybackDebug("autoplay:blocked-muted-fallback");
 					// Leave playback paused if the browser still rejects autoplay.
 				}
 			}
@@ -336,7 +294,6 @@ export function MediaPlayerDialog({
 		}
 
 		function handleLoadedMetadata() {
-			logPlaybackDebug("video:loadedmetadata");
 			if (seekPendingRef.current) {
 				const pendingTarget = pendingSeekTargetRef.current ?? startTimeOffsetRef.current;
 
@@ -358,67 +315,28 @@ export function MediaPlayerDialog({
 			void attemptAutoplay();
 		}
 		function handleLoadedData() {
-			logPlaybackDebug("video:loadeddata");
 			setIsBuffering(false);
 		}
 		function handleTimeUpdate() {
 			if (playbackSession?.canSyncProgress) syncProgress();
 		}
 		function handlePause() {
-			logPlaybackDebug("video:pause");
 			syncProgress({ isPaused: true, force: true });
 		}
 		function handleEnded() {
-			logPlaybackDebug("video:ended");
 			if (stopReportedRef.current) return;
 			stopReportedRef.current = true;
 			syncProgress({ isStopped: true, played: true, force: true });
 		}
-		function handleLoadStart() {
-			logPlaybackDebug("video:loadstart");
-		}
-		function handleCanPlay() {
-			logPlaybackDebug("video:canplay");
-		}
-		function handlePlaying() {
-			logPlaybackDebug("video:playing");
-		}
-		function handleStalled() {
-			logPlaybackDebug("video:stalled");
-		}
-		function handleSuspend() {
-			logPlaybackDebug("video:suspend");
-		}
-		function handleAbort() {
-			logPlaybackDebug("video:abort");
-		}
-		function handleError() {
-			logPlaybackDebug("video:error");
-		}
-
-		video.addEventListener("loadstart", handleLoadStart);
 		video.addEventListener("loadedmetadata", handleLoadedMetadata);
 		video.addEventListener("loadeddata", handleLoadedData);
-		video.addEventListener("canplay", handleCanPlay);
-		video.addEventListener("playing", handlePlaying);
-		video.addEventListener("stalled", handleStalled);
-		video.addEventListener("suspend", handleSuspend);
-		video.addEventListener("abort", handleAbort);
-		video.addEventListener("error", handleError);
 		video.addEventListener("timeupdate", handleTimeUpdate);
 		video.addEventListener("pause", handlePause);
 		video.addEventListener("ended", handleEnded);
 
 		return () => {
-			video.removeEventListener("loadstart", handleLoadStart);
 			video.removeEventListener("loadedmetadata", handleLoadedMetadata);
 			video.removeEventListener("loadeddata", handleLoadedData);
-			video.removeEventListener("canplay", handleCanPlay);
-			video.removeEventListener("playing", handlePlaying);
-			video.removeEventListener("stalled", handleStalled);
-			video.removeEventListener("suspend", handleSuspend);
-			video.removeEventListener("abort", handleAbort);
-			video.removeEventListener("error", handleError);
 			video.removeEventListener("timeupdate", handleTimeUpdate);
 			video.removeEventListener("pause", handlePause);
 			video.removeEventListener("ended", handleEnded);
@@ -452,23 +370,14 @@ export function MediaPlayerDialog({
 			if (seekPendingRef.current) return;
 			if (playbackSession?.playMethod !== "Transcode") return;
 			if (isNativeHlsPlayback) {
-				logPlaybackDebug("video:seeking:ignored-native-hls", {
-					seekTarget: video.currentTime + startTimeOffsetRef.current,
-				});
 				pendingUserSeekRef.current = null;
 				return;
 			}
 			const pendingUserSeek = pendingUserSeekRef.current;
 			if (pendingUserSeek == null) {
-				logPlaybackDebug("video:seeking:ignored-native", {
-					seekTarget: video.currentTime + startTimeOffsetRef.current,
-				});
 				return;
 			}
 			pendingUserSeekRef.current = null;
-			logPlaybackDebug("video:seeking:user-commit", {
-				seekTarget: pendingUserSeek,
-			});
 			seekToMovieTime(pendingUserSeek);
 		};
 		const onDurationChange = () => {
@@ -654,14 +563,7 @@ export function MediaPlayerDialog({
 		if (!video) return;
 
 		requestAnimationFrame(() => {
-			void video
-				.play()
-				.then(() => {
-					logPlaybackDebug("seek:resume-playback");
-				})
-				.catch(() => {
-					logPlaybackDebug("seek:resume-playback-blocked");
-				});
+			void video.play().catch(() => undefined);
 		});
 	}
 
@@ -670,7 +572,6 @@ export function MediaPlayerDialog({
 
 		const requestId = ++seekReloadRequestIdRef.current;
 		const client = getClientPlaybackContext();
-		logPlaybackDebug("seek:reload-stream", { requestId, targetMovieTime, client });
 
 		try {
 			const freshSession = await beginPlaybackSessionRuntime({ data: { id: item.id, client } });
@@ -680,20 +581,14 @@ export function MediaPlayerDialog({
 				freshSession.streamUrl,
 				Math.floor(targetMovieTime * 10_000_000),
 			);
-			logPlaybackDebug("seek:reload-stream:success", { requestId, nextStreamUrl });
 			setPlaybackSession({ ...freshSession, streamUrl: nextStreamUrl });
-		} catch (error) {
+		} catch {
 			if (seekReloadRequestIdRef.current !== requestId || !playbackSession) return;
 
 			const nextStreamUrl = prepareSeekReloadUrl(
 				playbackSession.streamUrl,
 				Math.floor(targetMovieTime * 10_000_000),
 			);
-			logPlaybackDebug("seek:reload-stream:fallback", {
-				requestId,
-				nextStreamUrl,
-				error: error instanceof Error ? { name: error.name, message: error.message } : error,
-			});
 			setPlaybackSession({ ...playbackSession, streamUrl: nextStreamUrl });
 		}
 	}

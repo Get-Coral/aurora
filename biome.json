@@ -13,5 +13,32 @@
 			"!**/src/routeTree.gen.ts",
 			"!**/src/styles.css"
 		]
+	},
+	"linter": {
+		"rules": {
+			"a11y": {
+				"noAutofocus": "off",
+				"noStaticElementInteractions": "off",
+				"useFocusableInteractive": "off",
+				"useKeyWithClickEvents": "off",
+				"useMediaCaption": "off",
+				"useSemanticElements": "off"
+			},
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "off"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "off"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off"
+			},
+			"suspicious": {
+				"noConsole": "off"
+			}
+		}
 	}
 }

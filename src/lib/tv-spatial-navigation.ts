@@ -92,7 +92,7 @@ export function installTvSpatialNavigation() {
 		const activeElement =
 			document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-		if (!activeElement || !activeElement.matches(TV_FOCUS_SELECTOR)) {
+		if (!activeElement?.matches(TV_FOCUS_SELECTOR)) {
 			event.preventDefault();
 			focusFirstCandidate(candidates);
 			return;

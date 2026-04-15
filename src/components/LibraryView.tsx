@@ -56,6 +56,10 @@ const MOVIE_RATINGS = ["G", "PG", "PG-13", "R", "NC-17", "NR"];
 const SERIES_RATINGS = ["TV-G", "TV-PG", "TV-14", "TV-MA", "NR"];
 const DECADES = ["2020s", "2010s", "2000s", "1990s", "1980s", "Older"];
 const SCORE_OPTIONS = [5, 6, 7, 8, 9];
+const LIBRARY_SKELETON_KEYS = Array.from(
+	{ length: 24 },
+	(_, index) => `library-skeleton-${cardVariant(index)}-${Math.floor(index / 10)}-${index % 10}`,
+);
 
 export function LibraryView({
 	type,
@@ -452,10 +456,10 @@ export function LibraryView({
 
 			<div className="page-wrap library-grid">
 				{mode === "library" && isLoading
-					? Array.from({ length: 24 }, (_, i) => (
+					? LIBRARY_SKELETON_KEYS.map((skeletonKey, index) => (
 							<div
-								key={i}
-								className={`media-card media-card-skeleton media-card-${cardVariant(i)}`}
+								key={skeletonKey}
+								className={`media-card media-card-skeleton media-card-${cardVariant(index)}`}
 								aria-hidden="true"
 							/>
 						))

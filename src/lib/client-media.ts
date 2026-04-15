@@ -40,7 +40,6 @@ import {
 	type JellyfinItem,
 	type JellyfinItemCounts,
 	type JellyfinMediaType,
-	type JellyfinResponse,
 	type JellyfinSystemInfo,
 	type JellyfinUser,
 	type JellyfinUserPolicy,

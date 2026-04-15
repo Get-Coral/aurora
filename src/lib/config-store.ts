@@ -14,7 +14,7 @@ export interface JellyfinSettings {
 type SettingsSource = "database" | "env" | "merged" | "missing";
 
 function getDataDirectory() {
-	return process.env["AURORA_DATA_DIR"] ?? path.join(process.cwd(), "data");
+	return process.env.AURORA_DATA_DIR ?? path.join(process.cwd(), "data");
 }
 
 function getDatabasePath() {
@@ -62,11 +62,11 @@ function setSetting(key: string, value: string) {
 
 function readEnvSettings(): Partial<JellyfinSettings> {
 	return {
-		url: process.env["JELLYFIN_URL"]?.trim(),
-		apiKey: process.env["JELLYFIN_API_KEY"]?.trim(),
-		userId: process.env["JELLYFIN_USER_ID"]?.trim(),
-		username: process.env["JELLYFIN_USERNAME"]?.trim(),
-		password: process.env["JELLYFIN_PASSWORD"]?.trim(),
+		url: process.env.JELLYFIN_URL?.trim(),
+		apiKey: process.env.JELLYFIN_API_KEY?.trim(),
+		userId: process.env.JELLYFIN_USER_ID?.trim(),
+		username: process.env.JELLYFIN_USERNAME?.trim(),
+		password: process.env.JELLYFIN_PASSWORD?.trim(),
 	};
 }
 

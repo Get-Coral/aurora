@@ -50,10 +50,6 @@ function copyHeaderIfPresent(target: Headers, source: Headers, key: string) {
 	if (value) target.set(key, value);
 }
 
-function logProxyEvent(event: string, details: Record<string, unknown>) {
-	console.info("[AuroraStreamProxy]", event, details);
-}
-
 async function proxyJellyfinStreamRequest(request: Request) {
 	const { getEffectiveJellyfinSettings } = await import("../../lib/config-store");
 	const settings = getEffectiveJellyfinSettings();
@@ -78,11 +74,6 @@ async function proxyJellyfinStreamRequest(request: Request) {
 
 	const pathname = parsedPath.pathname;
 	if (!isAllowedMediaPath(pathname)) {
-		logProxyEvent("rejected-path", {
-			method: request.method,
-			pathname,
-			search: parsedPath.search,
-		});
 		return new Response("Path not allowed.", { status: 400 });
 	}
 
@@ -99,27 +90,9 @@ async function proxyJellyfinStreamRequest(request: Request) {
 	if (range) upstreamHeaders.range = range;
 	if (accept) upstreamHeaders.accept = accept;
 
-	logProxyEvent("request", {
-		method: request.method,
-		pathname: parsedPath.pathname,
-		search: parsedPath.search,
-		range,
-		accept,
-	});
-
 	const upstreamResponse = await fetch(upstream, {
 		method: request.method,
 		headers: upstreamHeaders,
-	});
-
-	logProxyEvent("response", {
-		method: request.method,
-		pathname: parsedPath.pathname,
-		status: upstreamResponse.status,
-		contentType: upstreamResponse.headers.get("content-type"),
-		contentLength: upstreamResponse.headers.get("content-length"),
-		contentRange: upstreamResponse.headers.get("content-range"),
-		acceptRanges: upstreamResponse.headers.get("accept-ranges"),
 	});
 
 	const headers = new Headers();
@@ -143,10 +116,6 @@ async function proxyJellyfinStreamRequest(request: Request) {
 	if (request.method !== "HEAD" && isHlsManifest) {
 		const rewrittenManifest = rewriteHlsManifest(await upstreamResponse.text(), parsedPath);
 		headers.set("content-length", String(Buffer.byteLength(rewrittenManifest)));
-		logProxyEvent("rewrite-manifest", {
-			pathname: parsedPath.pathname,
-			contentType,
-		});
 
 		return new Response(rewrittenManifest, {
 			status: upstreamResponse.status,

@@ -43,7 +43,9 @@ export function usePrefetchMediaDetails() {
 			cached.episodes.slice(0, 8).forEach(preloadMediaImages);
 			cached.nextUp.slice(0, 4).forEach(preloadMediaImages);
 			cached.similar.slice(0, 6).forEach(preloadMediaImages);
-			cached.item.cast.slice(0, 10).forEach((person) => preloadImage(person.imageUrl));
+			cached.item.cast.slice(0, 10).forEach((person) => {
+				preloadImage(person.imageUrl);
+			});
 			return;
 		}
 
@@ -63,6 +65,8 @@ export function usePrefetchMediaDetails() {
 
 		preloadMediaImages(cached.item);
 		cached.similar.slice(0, 6).forEach(preloadMediaImages);
-		cached.item.cast.slice(0, 10).forEach((person) => preloadImage(person.imageUrl));
+		cached.item.cast.slice(0, 10).forEach((person) => {
+			preloadImage(person.imageUrl);
+		});
 	};
 }

@@ -19,8 +19,6 @@ const CONNECTIVITY_RETRY_MS = 30_000;
 const IS_DEV = import.meta.env.DEV;
 
 export function PwaStatusBanner() {
-	if (IS_DEV) return null;
-
 	const [isOffline, setIsOffline] = useState(false);
 	const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(
 		null,
@@ -56,6 +54,8 @@ export function PwaStatusBanner() {
 	}
 
 	useEffect(() => {
+		if (IS_DEV) return;
+
 		let cancelled = false;
 		let intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -176,6 +176,8 @@ export function PwaStatusBanner() {
 		setInstallPromptEvent(null);
 		setShowIosInstallHint(false);
 	}
+
+	if (IS_DEV) return null;
 
 	const showAndroidInstallPrompt =
 		platform === "android" && !isStandalone && !dismissedInstallHint && installPromptEvent != null;

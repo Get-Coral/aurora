@@ -1,4 +1,4 @@
-import { Clock3, Heart, Play, Sparkles, Star } from "lucide-react";
+import { Clock3, Play, Sparkles, Star } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { isResumable, type MediaItem } from "../lib/media";
 import { useI18n } from "../lib/i18n";
@@ -47,7 +47,7 @@ export function HeroSection({
 		setFadeKey((k) => k + 1);
 		prevItemIdRef.current = item.id;
 		prevItemRef.current = item;
-	}, [item.id]);
+	}, [item]);
 
 	function renderCopyContent(i: MediaItem, isResumableItem: boolean) {
 		const rt = formatRuntime(i.runtimeMinutes);

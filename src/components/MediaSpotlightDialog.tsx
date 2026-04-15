@@ -44,6 +44,7 @@ export function MediaSpotlightDialog({
 	const prefetchMediaDetails = usePrefetchMediaDetails();
 	const [playedOverrides, setPlayedOverrides] = useState<Record<string, boolean>>({});
 	const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+	const itemId = item?.id;
 
 	useEffect(() => {
 		setSelectedSeason(null);
@@ -70,15 +71,21 @@ export function MediaSpotlightDialog({
 	}
 
 	const { data, isLoading } = useQuery({
-		queryKey: ["item-details", item?.id],
-		queryFn: () => fetchItemDetailsRuntime({ data: { id: item!.id } }),
-		enabled: open && Boolean(item?.id) && item?.type !== "series",
+		queryKey: ["item-details", itemId],
+		queryFn: () => {
+			if (!itemId) throw new Error("Missing media item id.");
+			return fetchItemDetailsRuntime({ data: { id: itemId } });
+		},
+		enabled: open && Boolean(itemId) && item?.type !== "series",
 	});
 
 	const { data: seriesData, isLoading: seriesLoading } = useQuery({
-		queryKey: ["series-details", item?.id],
-		queryFn: () => fetchSeriesDetailsRuntime({ data: { id: item!.id } }),
-		enabled: open && Boolean(item?.id) && item?.type === "series",
+		queryKey: ["series-details", itemId],
+		queryFn: () => {
+			if (!itemId) throw new Error("Missing media item id.");
+			return fetchSeriesDetailsRuntime({ data: { id: itemId } });
+		},
+		enabled: open && Boolean(itemId) && item?.type === "series",
 	});
 
 	if (!open || !item) return null;

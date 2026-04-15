@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useI18n } from "../lib/i18n";
 import { fetchSetupStatusRuntime, saveSetupConfigurationRuntime } from "../lib/runtime-functions";
 
-const IS_PRERENDER_BUILD = process.env["TSS_PRERENDERING"] === "true";
+const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 
 export const Route = createFileRoute("/setup")({
 	loader: async () => {

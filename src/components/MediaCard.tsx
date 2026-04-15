@@ -69,7 +69,7 @@ export function MediaCard({
 			<div className="card-overlay" />
 
 			{item.played ? (
-				<div className="card-watched-badge" aria-label="Watched">
+				<div className="card-watched-badge" aria-hidden="true">
 					<CheckCircle size={14} />
 				</div>
 			) : item.progress != null && item.progress > 0 ? (

@@ -7,7 +7,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-const enableSpaShellBuild = process.env["AURORA_DISABLE_SPA_PRERENDER"] !== "true";
+const enableSpaShellBuild = process.env.AURORA_DISABLE_SPA_PRERENDER !== "true";
 
 const config = defineConfig({
 	plugins: [

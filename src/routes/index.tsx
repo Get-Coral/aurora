@@ -20,7 +20,7 @@ import {
 import { useTvMode } from "../lib/tv-mode";
 import type { MediaItem } from "../lib/media";
 
-const IS_PRERENDER_BUILD = process.env["TSS_PRERENDERING"] === "true";
+const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 
 function hasGenre(item: MediaItem, genre: string) {
 	return item.genres.some((candidate) => candidate.toLowerCase() === genre.toLowerCase());
@@ -245,7 +245,10 @@ function HomePage() {
 	const spotlightItem = heroPool[heroIndex % Math.max(heroPool.length, 1)] ?? null;
 	const { data: recommendedItems = [] } = useQuery({
 		queryKey: ["recommended-from-item", spotlightItem?.id],
-		queryFn: () => fetchRecommendedFromItemRuntime({ data: { id: spotlightItem!.id } }),
+		queryFn: () => {
+			if (!spotlightItem?.id) throw new Error("Missing spotlight media id.");
+			return fetchRecommendedFromItemRuntime({ data: { id: spotlightItem.id } });
+		},
 		enabled: Boolean(spotlightItem?.id),
 	});
 	const companionItems = [...continueWatching, ...latestMovies, ...latestSeries]
