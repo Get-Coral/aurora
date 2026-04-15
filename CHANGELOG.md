@@ -25,6 +25,20 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.7.0](https://github.com/Get-Coral/aurora/compare/v1.6.0...v1.7.0) (2026-04-15)
+
+
+### Features
+
+* add quality selector ([98af33f](https://github.com/Get-Coral/aurora/commit/98af33f938a2925d690897e39042a8d2877ac2c9))
+* enhance jellyfin stream proxy with path validation and HLS manifest rewriting ([adf4a46](https://github.com/Get-Coral/aurora/commit/adf4a462ef4b0003ebffba1d456747b6f64c54af))
+
+
+### Bug Fixes
+
+* linting ([5df9c44](https://github.com/Get-Coral/aurora/commit/5df9c447996c903c978bacf27a5cc50fa8ad7a8d))
+* make loading faster for Safari / HLS ([a318a0d](https://github.com/Get-Coral/aurora/commit/a318a0d3ea4950527278281388ae5a70c21aac0a))
+
 ## [1.6.0](https://github.com/Get-Coral/aurora/compare/v1.5.0...v1.6.0) (2026-04-14)
 
 
