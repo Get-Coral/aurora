@@ -1,20 +1,18 @@
+import type { QueryClient } from "@tanstack/react-query";
 import {
+	createRootRouteWithContext,
 	HeadContent,
 	Scripts,
-	createRootRouteWithContext,
 	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
 import { AppBootstrap } from "../components/AppBootstrap";
+import { ErrorPage } from "../components/ErrorPage";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { PwaStatusBanner } from "../components/PwaStatusBanner";
-import { ErrorPage } from "../components/ErrorPage";
-
-import appCss from "../styles.css?url";
-
-import type { QueryClient } from "@tanstack/react-query";
 import { I18nProvider } from "../lib/i18n";
+import appCss from "../styles.css?url";
 
 interface MyRouterContext {
 	queryClient: QueryClient;

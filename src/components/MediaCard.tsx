@@ -1,6 +1,6 @@
 import { Check, CheckCircle, Heart, Info, Play, Plus, Star } from "lucide-react";
-import { isResumable, type MediaItem } from "../lib/media";
 import { useI18n } from "../lib/i18n";
+import { isResumable, type MediaItem } from "../lib/media";
 import { useTvMode } from "../lib/tv-mode";
 import { usePrefetchMediaDetails } from "./usePrefetchMediaDetails";
 

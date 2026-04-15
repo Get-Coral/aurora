@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { localeMessages, supportedLocales } from "./messages";
 import type { Locale } from "./types";
 
@@ -53,5 +53,5 @@ export function useI18n() {
 	return context;
 }
 
-export { supportedLocales };
 export type { Locale } from "./types";
+export { supportedLocales };

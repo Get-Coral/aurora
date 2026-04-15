@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Download, RefreshCw, Smartphone, WifiOff } from "lucide-react";
-import { localeMessages, supportedLocales } from "../lib/i18n/messages";
+import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "../lib/i18n";
+import { localeMessages, supportedLocales } from "../lib/i18n/messages";
 import { getClientPlaybackContext } from "../lib/platform";
 
 type PwaUpdateDetail = {

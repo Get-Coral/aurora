@@ -7,6 +7,7 @@ import { MediaPlayerDialog } from "../../components/MediaPlayerDialog";
 import { MediaSpotlightDialog } from "../../components/MediaSpotlightDialog";
 import { useFavoriteAction } from "../../components/useFavoriteAction";
 import { useI18n } from "../../lib/i18n";
+import type { MediaItem } from "../../lib/media";
 import {
 	addToCollectionRuntime,
 	fetchCollectionItemsRuntime,
@@ -15,7 +16,6 @@ import {
 	removeFromCollectionRuntime,
 } from "../../lib/runtime-functions";
 import { useTvMode } from "../../lib/tv-mode";
-import type { MediaItem } from "../../lib/media";
 
 export const Route = createFileRoute("/collections/$id")({
 	loader: async ({ params, context: { queryClient } }) => {
@@ -85,7 +85,7 @@ function CollectionDetailPage() {
 
 	function handleWatchedChange(id: string, played: boolean) {
 		queryClient.setQueryData<{ collection: unknown; items: MediaItem[] }>(
-			["collection-items", params.id],
+			["collection-items", id],
 			(old) => {
 				if (!old) return old;
 				return { ...old, items: old.items.map((i) => (i.id === id ? { ...i, played } : i)) };

@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, CheckCircle, Circle, Play, Plus, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useI18n } from "../lib/i18n";
-import { isResumable, type DetailedMediaItem, type MediaItem } from "../lib/media";
+import { type DetailedMediaItem, isResumable, type MediaItem } from "../lib/media";
 import {
 	fetchItemDetailsRuntime,
 	fetchSeriesDetailsRuntime,

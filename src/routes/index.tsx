@@ -1,5 +1,5 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { HeroSection } from "../components/HeroSection";
 import { MediaPlayerDialog } from "../components/MediaPlayerDialog";
@@ -7,6 +7,7 @@ import { MediaSpotlightDialog } from "../components/MediaSpotlightDialog";
 import { SectionShelf } from "../components/SectionShelf";
 import { useFavoriteAction } from "../components/useFavoriteAction";
 import { useI18n } from "../lib/i18n";
+import type { MediaItem } from "../lib/media";
 import {
 	fetchContinueWatchingRuntime,
 	fetchFavoriteMoviesRuntime,
@@ -18,7 +19,6 @@ import {
 	fetchSetupStatusRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
-import type { MediaItem } from "../lib/media";
 
 const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 

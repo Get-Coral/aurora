@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Bug, ExternalLink, Github, Heart, Tv } from "lucide-react";
 import { useState } from "react";
-import { useI18n, supportedLocales } from "../lib/i18n";
 import type { Locale } from "../lib/i18n";
+import { supportedLocales, useI18n } from "../lib/i18n";
 import {
 	fetchOpenSubtitlesKeyRuntime,
 	fetchSetupStatusRuntime,

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
-import type { MediaItem } from "../lib/media";
 import { useI18n } from "../lib/i18n";
+import type { MediaItem } from "../lib/media";
 import { MediaCard } from "./MediaCard";
 
 interface SectionShelfProps {

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { fetchItemDetailsRuntime, fetchSeriesDetailsRuntime } from "../lib/runtime-functions";
 import type { MediaItem } from "../lib/media";
+import { fetchItemDetailsRuntime, fetchSeriesDetailsRuntime } from "../lib/runtime-functions";
 
 const prefetchedImages = new Set<string>();
 

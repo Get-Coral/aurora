@@ -24,7 +24,6 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
-import { useTvMode } from "../lib/tv-mode";
 import {
 	createAdminUserRuntime,
 	deleteAdminUserRuntime,
@@ -37,6 +36,7 @@ import {
 	scanAllAdminLibrariesRuntime,
 	toggleAdminUserRuntime,
 } from "../lib/runtime-functions";
+import { useTvMode } from "../lib/tv-mode";
 
 export const Route = createFileRoute("/admin")({
 	loader: async () => {

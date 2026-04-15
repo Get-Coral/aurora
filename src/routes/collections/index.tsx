@@ -6,6 +6,7 @@ import { MediaPlayerDialog } from "../../components/MediaPlayerDialog";
 import { MediaSpotlightDialog } from "../../components/MediaSpotlightDialog";
 import { useFavoriteAction } from "../../components/useFavoriteAction";
 import { useI18n } from "../../lib/i18n";
+import type { MediaItem } from "../../lib/media";
 import {
 	createCollectionRuntime,
 	deleteCollectionRuntime,
@@ -14,7 +15,6 @@ import {
 	renameCollectionRuntime,
 } from "../../lib/runtime-functions";
 import { useTvMode } from "../../lib/tv-mode";
-import type { MediaItem } from "../../lib/media";
 
 export const Route = createFileRoute("/collections/")({
 	loader: async ({ context: { queryClient } }) => {

@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, Search, Settings, Sparkles, X } from "lucide-react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
-import type { MediaItem } from "../lib/media";
 import { useI18n } from "../lib/i18n";
+import type { MediaItem } from "../lib/media";
 import { fetchSearchRuntime, fetchUsernameRuntime } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 

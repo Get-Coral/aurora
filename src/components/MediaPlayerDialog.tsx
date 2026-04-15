@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import {
 	Captions,
 	Film,
@@ -12,13 +13,11 @@ import {
 	VolumeX,
 	X,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useI18n } from "../lib/i18n";
+import { prepareSeekReloadUrl, setStreamStartTicks } from "../lib/jellyfin-stream-proxy";
 import type { MediaItem } from "../lib/media";
 import { getClientPlaybackContext } from "../lib/platform";
-import { prepareSeekReloadUrl, setStreamStartTicks } from "../lib/jellyfin-stream-proxy";
 import {
 	beginPlaybackSessionRuntime,
 	fetchOnlineSubtitleRuntime,
@@ -26,6 +25,7 @@ import {
 	reportPlaybackStateRuntime,
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
+import { useLockBodyScroll } from "./useLockBodyScroll";
 
 interface MediaPlayerDialogProps {
 	item: MediaItem | null;
