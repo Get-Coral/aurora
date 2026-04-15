@@ -8,6 +8,7 @@ import {
 	Play,
 	RotateCcw,
 	RotateCw,
+	SlidersHorizontal,
 	SkipForward,
 	Volume2,
 	VolumeX,
@@ -15,7 +16,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
-import { prepareSeekReloadUrl, setStreamStartTicks } from "../lib/jellyfin-stream-proxy";
+import {
+	prepareSeekReloadUrl,
+	setStreamStartTicks,
+	setTranscodeQuality,
+} from "../lib/jellyfin-stream-proxy";
 import type { MediaItem } from "../lib/media";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
@@ -39,6 +44,59 @@ interface VttCue {
 	start: number;
 	end: number;
 	text: string;
+}
+
+interface TranscodeQualityProfile {
+	maxStreamingBitrate: number;
+	videoBitrate: number;
+	audioBitrate: number;
+}
+
+const TRANSCODE_QUALITY_LADDER: TranscodeQualityProfile[] = [
+	{ maxStreamingBitrate: 3_000_000, videoBitrate: 2_200_000, audioBitrate: 128_000 },
+	{ maxStreamingBitrate: 5_000_000, videoBitrate: 3_800_000, audioBitrate: 160_000 },
+	{ maxStreamingBitrate: 8_000_000, videoBitrate: 6_000_000, audioBitrate: 192_000 },
+	{ maxStreamingBitrate: 12_000_000, videoBitrate: 9_000_000, audioBitrate: 192_000 },
+	{ maxStreamingBitrate: 20_000_000, videoBitrate: 15_000_000, audioBitrate: 256_000 },
+	{ maxStreamingBitrate: 40_000_000, videoBitrate: 28_000_000, audioBitrate: 320_000 },
+	{ maxStreamingBitrate: 120_000_000, videoBitrate: 80_000_000, audioBitrate: 320_000 },
+];
+
+const BUFFER_DOWNGRADE_DELAY_MS = 1500;
+const STABLE_PLAYBACK_UPGRADE_DELAY_MS = 45000;
+
+function readTranscodeUrl(streamUrl: string) {
+	try {
+		if (streamUrl.startsWith("/api/jellyfin-stream")) {
+			const outer = new URL(streamUrl, "http://x");
+			const rawPath = outer.searchParams.get("path");
+			if (!rawPath) return null;
+			return new URL(rawPath, "http://x");
+		}
+		return new URL(streamUrl, "http://x");
+	} catch {
+		return null;
+	}
+}
+
+function getTranscodeQualityIndex(streamUrl: string) {
+	const url = readTranscodeUrl(streamUrl);
+	if (!url) return null;
+
+	const maxStreamingBitrate = Number(url.searchParams.get("MaxStreamingBitrate"));
+	if (!Number.isFinite(maxStreamingBitrate) || maxStreamingBitrate <= 0) return null;
+
+	let nearestIndex = 0;
+	let nearestDistance = Number.POSITIVE_INFINITY;
+	for (const [index, profile] of TRANSCODE_QUALITY_LADDER.entries()) {
+		const distance = Math.abs(profile.maxStreamingBitrate - maxStreamingBitrate);
+		if (distance < nearestDistance) {
+			nearestIndex = index;
+			nearestDistance = distance;
+		}
+	}
+
+	return nearestIndex;
 }
 
 function parseVttTime(s: string): number {
@@ -74,6 +132,12 @@ function formatTime(seconds: number) {
 	return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function formatQualityLabel(profile: TranscodeQualityProfile) {
+	const mbps = profile.maxStreamingBitrate / 1_000_000;
+	const rounded = Number(mbps.toFixed(mbps >= 10 ? 0 : 1));
+	return `${rounded} Mbps`;
+}
+
 export function MediaPlayerDialog({
 	item,
 	open,
@@ -87,6 +151,11 @@ export function MediaPlayerDialog({
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const seekDraggingRef = useRef(false);
+	const ignoreVideoClickUntilRef = useRef(0);
+	const qualityIndexRef = useRef<number | null>(null);
+	const qualitySwitchInFlightRef = useRef(false);
+	const bufferingDowngradeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const stablePlaybackUpgradeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const [playbackSession, setPlaybackSession] = useState<{
 		streamUrl: string;
@@ -133,8 +202,10 @@ export function MediaPlayerDialog({
 	const [autoplayMuted, setAutoplayMuted] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [controlsVisible, setControlsVisible] = useState(true);
+	const [qualityPickerOpen, setQualityPickerOpen] = useState(false);
 	const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false);
 	const [activeSubtitle, setActiveSubtitle] = useState<number | null>(null);
+	const [manualQualityIndex, setManualQualityIndex] = useState<number | null>(null);
 	const [onlineCues, setOnlineCues] = useState<VttCue[]>([]);
 	const [loadingOnlineSubtitle, setLoadingOnlineSubtitle] = useState(false);
 	const [onlineSubtitleError, setOnlineSubtitleError] = useState(false);
@@ -170,10 +241,16 @@ export function MediaPlayerDialog({
 	const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl;
 	const isNativeHlsPlayback =
 		playbackSession?.playMethod === "Transcode" && streamUrl?.includes(".m3u8");
+	const canSelectQuality = playbackSession?.playMethod === "Transcode";
+	const canAutoAdjustQuality = canSelectQuality && !isNativeHlsPlayback;
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
+	const displayedQualityLabel =
+		manualQualityIndex == null
+			? t("player.qualityAuto")
+			: formatQualityLabel(TRANSCODE_QUALITY_LADDER[manualQualityIndex]);
 
 	// Reset + start playback session when item changes
 	useEffect(() => {
@@ -187,12 +264,18 @@ export function MediaPlayerDialog({
 		setCurrentTime(0);
 		setDuration((item?.runtimeMinutes ?? 0) * 60);
 		setIsPlaying(false);
+		setQualityPickerOpen(false);
 		setActiveSubtitle(null);
 		setSubtitlePickerOpen(false);
+		setManualQualityIndex(null);
 		setAutoplayMuted(false);
 		setOnlineCues([]);
 		setAutoplayCountdown(null);
 		pendingUserSeekRef.current = null;
+		qualityIndexRef.current = null;
+		qualitySwitchInFlightRef.current = false;
+		if (bufferingDowngradeTimerRef.current) clearTimeout(bufferingDowngradeTimerRef.current);
+		if (stablePlaybackUpgradeTimerRef.current) clearTimeout(stablePlaybackUpgradeTimerRef.current);
 		videoRef.current?.querySelector("track[data-online]")?.remove();
 
 		if (!open || !item?.streamUrl) return;
@@ -237,8 +320,23 @@ export function MediaPlayerDialog({
 	// Reload video when stream URL changes
 	useEffect(() => {
 		if (!open || !streamUrl) return;
-		videoRef.current?.load();
-	}, [open, streamUrl]);
+		ignoreVideoClickUntilRef.current = Date.now() + 750;
+		qualityIndexRef.current = playbackSession?.playMethod === "Transcode"
+			? getTranscodeQualityIndex(streamUrl)
+			: null;
+		const video = videoRef.current;
+		video?.load();
+
+		return () => {
+			if (!video) return;
+			video.pause();
+			video.removeAttribute("src");
+			for (const track of Array.from(video.querySelectorAll("track"))) {
+				track.removeAttribute("src");
+			}
+			video.load();
+		};
+	}, [open, playbackSession?.playMethod, streamUrl]);
 
 	// Jellyfin progress sync
 	useEffect(() => {
@@ -356,6 +454,66 @@ export function MediaPlayerDialog({
 		const video = videoRef.current;
 		if (!video) return;
 
+		function clearAdaptiveTimers() {
+			if (bufferingDowngradeTimerRef.current) {
+				clearTimeout(bufferingDowngradeTimerRef.current);
+				bufferingDowngradeTimerRef.current = null;
+			}
+			if (stablePlaybackUpgradeTimerRef.current) {
+				clearTimeout(stablePlaybackUpgradeTimerRef.current);
+				stablePlaybackUpgradeTimerRef.current = null;
+			}
+		}
+
+		function reloadAtCurrentTimeWithQuality(index: number) {
+			if (!playbackSession || qualitySwitchInFlightRef.current) return;
+			const media = videoRef.current;
+			if (!media) return;
+			const currentMovieTime = media.currentTime + startTimeOffsetRef.current;
+			qualityIndexRef.current = index;
+			qualitySwitchInFlightRef.current = true;
+			pendingSeekTargetRef.current = currentMovieTime;
+			optimisticSeekTargetRef.current = currentMovieTime;
+			lastReportedSecondRef.current = 0;
+			seekPendingRef.current = true;
+			setCurrentTime(currentMovieTime);
+			setIsBuffering(true);
+			void reloadStreamAtMovieTime(currentMovieTime, {
+				qualityProfile: TRANSCODE_QUALITY_LADDER[index],
+			});
+		}
+
+		function scheduleAdaptiveUpgrade() {
+			if (!canAutoAdjustQuality) return;
+			if (manualQualityIndex != null) return;
+			if (seekPendingRef.current || qualitySwitchInFlightRef.current) return;
+			const currentIndex = qualityIndexRef.current;
+			if (currentIndex == null || currentIndex >= TRANSCODE_QUALITY_LADDER.length - 1) return;
+
+			if (stablePlaybackUpgradeTimerRef.current) clearTimeout(stablePlaybackUpgradeTimerRef.current);
+			stablePlaybackUpgradeTimerRef.current = setTimeout(() => {
+				reloadAtCurrentTimeWithQuality(currentIndex + 1);
+			}, STABLE_PLAYBACK_UPGRADE_DELAY_MS);
+		}
+
+		function scheduleAdaptiveDowngrade() {
+			if (!canAutoAdjustQuality) return;
+			if (manualQualityIndex != null) return;
+			const media = videoRef.current;
+			if (!media) return;
+			if (media.paused || seekPendingRef.current || qualitySwitchInFlightRef.current) return;
+
+			const fallbackIndex = TRANSCODE_QUALITY_LADDER.length - 1;
+			const currentIndex = qualityIndexRef.current ?? fallbackIndex;
+			if (currentIndex <= 0) return;
+
+			if (bufferingDowngradeTimerRef.current) return;
+			bufferingDowngradeTimerRef.current = setTimeout(() => {
+				bufferingDowngradeTimerRef.current = null;
+				reloadAtCurrentTimeWithQuality(currentIndex - 1);
+			}, BUFFER_DOWNGRADE_DELAY_MS);
+		}
+
 		const onTimeUpdate = () => {
 			const nextTime = video.currentTime + startTimeOffsetRef.current;
 			const optimisticTarget = optimisticSeekTargetRef.current;
@@ -407,8 +565,25 @@ export function MediaPlayerDialog({
 			setIsMuted(video.muted);
 			if (!video.muted) setAutoplayMuted(false);
 		};
-		const onWaiting = () => setIsBuffering(true);
-		const onPlaying = () => setIsBuffering(false);
+		const onWaiting = () => {
+			setIsBuffering(true);
+			if (stablePlaybackUpgradeTimerRef.current) {
+				clearTimeout(stablePlaybackUpgradeTimerRef.current);
+				stablePlaybackUpgradeTimerRef.current = null;
+			}
+			scheduleAdaptiveDowngrade();
+		};
+		const onPlaying = () => {
+			setIsBuffering(false);
+			if (bufferingDowngradeTimerRef.current) {
+				clearTimeout(bufferingDowngradeTimerRef.current);
+				bufferingDowngradeTimerRef.current = null;
+			}
+			if (qualitySwitchInFlightRef.current) {
+				qualitySwitchInFlightRef.current = false;
+			}
+			scheduleAdaptiveUpgrade();
+		};
 
 		video.addEventListener("timeupdate", onTimeUpdate);
 		video.addEventListener("seeking", onSeeking);
@@ -420,6 +595,7 @@ export function MediaPlayerDialog({
 		video.addEventListener("playing", onPlaying);
 
 		return () => {
+			clearAdaptiveTimers();
 			video.removeEventListener("timeupdate", onTimeUpdate);
 			video.removeEventListener("seeking", onSeeking);
 			video.removeEventListener("durationchange", onDurationChange);
@@ -429,7 +605,7 @@ export function MediaPlayerDialog({
 			video.removeEventListener("waiting", onWaiting);
 			video.removeEventListener("playing", onPlaying);
 		};
-	}, [isNativeHlsPlayback, open, playbackSession?.playMethod, streamUrl]);
+	}, [canAutoAdjustQuality, isNativeHlsPlayback, manualQualityIndex, open, playbackSession?.playMethod, streamUrl]);
 
 	// RAF-based subtitle sync: reads video.currentTime at 60fps and updates the DOM directly,
 	// bypassing React renders for tight timing (timeupdate only fires ~4x/sec).
@@ -558,6 +734,11 @@ export function MediaPlayerDialog({
 		video.paused ? void video.play() : video.pause();
 	}
 
+	function handleVideoClick() {
+		if (Date.now() < ignoreVideoClickUntilRef.current) return;
+		togglePlay();
+	}
+
 	function resumePlaybackAfterSeek() {
 		const video = videoRef.current;
 		if (!video) return;
@@ -567,18 +748,24 @@ export function MediaPlayerDialog({
 		});
 	}
 
-	async function reloadStreamAtMovieTime(targetMovieTime: number) {
+	async function reloadStreamAtMovieTime(
+		targetMovieTime: number,
+		options?: { qualityProfile?: TranscodeQualityProfile },
+	) {
 		if (!item) return;
 
 		const requestId = ++seekReloadRequestIdRef.current;
 		const client = getClientPlaybackContext();
+		const qualityProfile =
+			options?.qualityProfile ??
+			(qualityIndexRef.current != null ? TRANSCODE_QUALITY_LADDER[qualityIndexRef.current] : undefined);
 
 		try {
 			const freshSession = await beginPlaybackSessionRuntime({ data: { id: item.id, client } });
 			if (seekReloadRequestIdRef.current !== requestId) return;
 
 			const nextStreamUrl = prepareSeekReloadUrl(
-				freshSession.streamUrl,
+				setTranscodeQuality(freshSession.streamUrl, qualityProfile),
 				Math.floor(targetMovieTime * 10_000_000),
 			);
 			setPlaybackSession({ ...freshSession, streamUrl: nextStreamUrl });
@@ -586,7 +773,7 @@ export function MediaPlayerDialog({
 			if (seekReloadRequestIdRef.current !== requestId || !playbackSession) return;
 
 			const nextStreamUrl = prepareSeekReloadUrl(
-				playbackSession.streamUrl,
+				setTranscodeQuality(playbackSession.streamUrl, qualityProfile),
 				Math.floor(targetMovieTime * 10_000_000),
 			);
 			setPlaybackSession({ ...playbackSession, streamUrl: nextStreamUrl });
@@ -616,6 +803,7 @@ export function MediaPlayerDialog({
 	async function selectOnlineSubtitle(fileId: number) {
 		setLoadingOnlineSubtitle(true);
 		setOnlineSubtitleError(false);
+		setQualityPickerOpen(false);
 		try {
 			const { content } = await fetchOnlineSubtitleRuntime({ data: { fileId } });
 			subtitleOffsetRef.current = 0;
@@ -631,6 +819,7 @@ export function MediaPlayerDialog({
 
 	function selectSubtitle(index: number | null) {
 		setOnlineCues([]);
+		setQualityPickerOpen(false);
 		const video = videoRef.current;
 		if (video) {
 			for (const track of Array.from(video.textTracks)) track.mode = "disabled";
@@ -638,6 +827,43 @@ export function MediaPlayerDialog({
 		}
 		setActiveSubtitle(index);
 		setSubtitlePickerOpen(false);
+	}
+
+	function selectQuality(index: number | null) {
+		setQualityPickerOpen(false);
+		if (bufferingDowngradeTimerRef.current) {
+			clearTimeout(bufferingDowngradeTimerRef.current);
+			bufferingDowngradeTimerRef.current = null;
+		}
+		if (stablePlaybackUpgradeTimerRef.current) {
+			clearTimeout(stablePlaybackUpgradeTimerRef.current);
+			stablePlaybackUpgradeTimerRef.current = null;
+		}
+
+		if (index == null) {
+			setManualQualityIndex(null);
+			return;
+		}
+
+		setManualQualityIndex(index);
+		if (!playbackSession || qualitySwitchInFlightRef.current) return;
+		if (qualityIndexRef.current === index) return;
+
+		const media = videoRef.current;
+		if (!media) return;
+
+		const currentMovieTime = media.currentTime + startTimeOffsetRef.current;
+		qualityIndexRef.current = index;
+		qualitySwitchInFlightRef.current = true;
+		pendingSeekTargetRef.current = currentMovieTime;
+		optimisticSeekTargetRef.current = currentMovieTime;
+		lastReportedSecondRef.current = 0;
+		seekPendingRef.current = true;
+		setCurrentTime(currentMovieTime);
+		setIsBuffering(true);
+		void reloadStreamAtMovieTime(currentMovieTime, {
+			qualityProfile: TRANSCODE_QUALITY_LADDER[index],
+		});
 	}
 
 	// Returns the best available duration: React state first, then video element, then null
@@ -808,7 +1034,7 @@ export function MediaPlayerDialog({
 						playsInline
 						preload="metadata"
 						src={streamUrl}
-						onClick={togglePlay}
+						onClick={handleVideoClick}
 					>
 						{(playbackSession?.subtitleTracks ?? []).map((track) => (
 							<track
@@ -973,6 +1199,45 @@ export function MediaPlayerDialog({
 											<span>{t("player.nextEpisode")}</span>
 										</button>
 									) : null}
+										{canSelectQuality ? (
+											<div className="player-quality-wrap">
+												{qualityPickerOpen ? (
+													<div className="player-quality-picker">
+														<button
+															type="button"
+															className={`player-quality-option${manualQualityIndex === null ? " active" : ""}`}
+															onClick={() => selectQuality(null)}
+														>
+															<strong>{t("player.qualityAuto")}</strong>
+															<span>{qualityIndexRef.current != null ? formatQualityLabel(TRANSCODE_QUALITY_LADDER[qualityIndexRef.current]) : t("player.qualityAdaptive")}</span>
+														</button>
+														{TRANSCODE_QUALITY_LADDER.map((profile, index) => (
+															<button
+																key={profile.maxStreamingBitrate}
+																type="button"
+																className={`player-quality-option${manualQualityIndex === index ? " active" : ""}`}
+																onClick={() => selectQuality(index)}
+															>
+																<strong>{formatQualityLabel(profile)}</strong>
+																<span>{`${Math.round(profile.videoBitrate / 1_000_000)} Mbps video`}</span>
+															</button>
+														))}
+													</div>
+												) : null}
+												<button
+													type="button"
+													className={`icon-button player-quality-trigger${manualQualityIndex !== null ? " nav-pill-active" : ""}`}
+													onClick={() => {
+														setQualityPickerOpen((open) => !open);
+														setSubtitlePickerOpen(false);
+													}}
+													aria-label={t("player.quality")}
+												>
+													<SlidersHorizontal size={18} />
+													<span>{displayedQualityLabel}</span>
+												</button>
+											</div>
+										) : null}
 									{(playbackSession?.subtitleTracks?.length ?? 0) > 0 || osApiKey ? (
 										<div className="player-subtitle-wrap">
 											{subtitlePickerOpen ? (
@@ -1035,7 +1300,10 @@ export function MediaPlayerDialog({
 											<button
 												type="button"
 												className={`icon-button${activeSubtitle !== null || onlineCues.length > 0 ? " nav-pill-active" : ""}`}
-												onClick={() => setSubtitlePickerOpen((o) => !o)}
+													onClick={() => {
+														setSubtitlePickerOpen((o) => !o);
+														setQualityPickerOpen(false);
+													}}
 												aria-label={t("player.subtitles")}
 											>
 												<Captions size={20} />

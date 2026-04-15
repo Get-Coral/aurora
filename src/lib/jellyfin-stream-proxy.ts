@@ -60,11 +60,14 @@ export function setTranscodeQuality(
 	},
 ): string {
 	return mutateInnerStreamUrl(streamUrl, (url) => {
-		if (!url.pathname.endsWith("/stream.mp4")) return;
+		const isProgressiveTranscode = url.pathname.endsWith("/stream.mp4");
+		const isHlsTranscode =
+			url.pathname.endsWith(".m3u8") || url.searchParams.get("SegmentContainer") === "ts";
+		if (!isProgressiveTranscode && !isHlsTranscode) return;
 
-		const maxStreamingBitrate = options?.maxStreamingBitrate ?? 120_000_000;
-		const videoBitrate = options?.videoBitrate ?? 80_000_000;
-		const audioBitrate = options?.audioBitrate ?? 320_000;
+		const maxStreamingBitrate = options?.maxStreamingBitrate ?? (isHlsTranscode ? 8_000_000 : 120_000_000);
+		const videoBitrate = options?.videoBitrate ?? (isHlsTranscode ? 6_000_000 : 80_000_000);
+		const audioBitrate = options?.audioBitrate ?? (isHlsTranscode ? 192_000 : 320_000);
 
 		url.searchParams.set("MaxStreamingBitrate", String(maxStreamingBitrate));
 		url.searchParams.set("VideoBitrate", String(videoBitrate));
