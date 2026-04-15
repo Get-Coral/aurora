@@ -99,6 +99,12 @@ function getTranscodeQualityIndex(streamUrl: string) {
 	return nearestIndex;
 }
 
+function isNativeHlsStreamUrl(streamUrl: string) {
+	const url = readTranscodeUrl(streamUrl);
+	if (!url) return false;
+	return url.pathname.endsWith(".m3u8") || url.searchParams.get("SegmentContainer") === "ts";
+}
+
 function parseVttTime(s: string): number {
 	const m = s.trim().match(/^(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})/);
 	if (!m) return 0;
@@ -138,6 +144,43 @@ function formatQualityLabel(profile: TranscodeQualityProfile) {
 	return `${rounded} Mbps`;
 }
 
+function describeMediaError(error: MediaError | null) {
+	if (!error) return null;
+
+	const codeName =
+		error.code === MediaError.MEDIA_ERR_ABORTED
+			? "MEDIA_ERR_ABORTED"
+			: error.code === MediaError.MEDIA_ERR_NETWORK
+				? "MEDIA_ERR_NETWORK"
+				: error.code === MediaError.MEDIA_ERR_DECODE
+					? "MEDIA_ERR_DECODE"
+					: error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
+						? "MEDIA_ERR_SRC_NOT_SUPPORTED"
+						: "UNKNOWN";
+
+	return {
+		code: error.code,
+		codeName,
+		message: error.message,
+	};
+}
+
+function snapshotMediaState(video: HTMLVideoElement | null) {
+	if (!video) return null;
+
+	return {
+		currentTime: Number(video.currentTime.toFixed(3)),
+		duration: Number.isFinite(video.duration) ? Number(video.duration.toFixed(3)) : video.duration,
+		paused: video.paused,
+		muted: video.muted,
+		ended: video.ended,
+		readyState: video.readyState,
+		networkState: video.networkState,
+		currentSrc: video.currentSrc,
+		error: describeMediaError(video.error),
+	};
+}
+
 export function MediaPlayerDialog({
 	item,
 	open,
@@ -147,6 +190,8 @@ export function MediaPlayerDialog({
 }: MediaPlayerDialogProps) {
 	const { t } = useI18n();
 	useLockBodyScroll(open);
+	const playbackClient = getClientPlaybackContext();
+	const debugPlayback = process.env.NODE_ENV === "development";
 	const containerRef = useRef<HTMLDivElement>(null);
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -238,11 +283,13 @@ export function MediaPlayerDialog({
 		staleTime: 0,
 	});
 
-	const streamUrl = playbackSession?.streamUrl ?? item?.streamUrl;
+	const streamUrl = playbackSession?.streamUrl ?? (playbackClient.prefersSafeVideo ? null : item?.streamUrl);
 	const isNativeHlsPlayback =
 		playbackSession?.playMethod === "Transcode" && streamUrl?.includes(".m3u8");
 	const canSelectQuality = playbackSession?.playMethod === "Transcode";
 	const canAutoAdjustQuality = canSelectQuality && !isNativeHlsPlayback;
+	const isPreparingStream =
+		Boolean(item?.streamUrl) && playbackClient.prefersSafeVideo && playbackSession == null;
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
@@ -252,7 +299,26 @@ export function MediaPlayerDialog({
 			? t("player.qualityAuto")
 			: formatQualityLabel(TRANSCODE_QUALITY_LADDER[manualQualityIndex]);
 
-	// Reset + start playback session when item changes
+	function logPlayback(event: string, details?: Record<string, unknown>) {
+		if (!debugPlayback) return;
+		console.info("[aurora-playback]", event, {
+			itemId: item?.id,
+			title: item?.title,
+			platform: playbackClient.platform,
+			prefersSafeVideo: playbackClient.prefersSafeVideo,
+			playMethod: playbackSession?.playMethod,
+			isNativeHlsPlayback,
+			resumeTicks: item?.playbackPositionTicks ?? 0,
+			startTimeOffset: startTimeOffsetRef.current,
+			seekPending: seekPendingRef.current,
+			pendingSeekTarget: pendingSeekTargetRef.current,
+			qualityIndex: qualityIndexRef.current,
+			manualQualityIndex,
+			...details,
+		});
+	}
+
+	// Reset + prewarm playback session when the selected item changes.
 	useEffect(() => {
 		stopReportedRef.current = false;
 		lastReportedSecondRef.current = 0;
@@ -278,19 +344,35 @@ export function MediaPlayerDialog({
 		if (stablePlaybackUpgradeTimerRef.current) clearTimeout(stablePlaybackUpgradeTimerRef.current);
 		videoRef.current?.querySelector("track[data-online]")?.remove();
 
-		if (!open || !item?.streamUrl) return;
+		if (!item?.streamUrl) return;
 
 		let cancelled = false;
-		const client = getClientPlaybackContext();
+		const client = playbackClient;
+		logPlayback("session:start", {
+			streamUrl: item.streamUrl,
+			client,
+		});
 
 		void beginPlaybackSessionRuntime({ data: { id: item.id, client } })
 			.then((session) => {
 				if (cancelled) return;
+				logPlayback("session:resolved", {
+					sessionPlayMethod: session.playMethod,
+					sessionStreamUrl: session.streamUrl,
+					subtitleTrackCount: session.subtitleTracks.length,
+				});
 				// For transcoded streams, bake the resume position into StartTimeTicks
 				// so that Jellyfin starts the transcode from the right point. This
 				// avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
 				const resumeTicks = item!.playbackPositionTicks ?? 0;
-				if (resumeTicks > 0 && session.playMethod === "Transcode") {
+				const isNativeHlsSession =
+					session.playMethod === "Transcode" && isNativeHlsStreamUrl(session.streamUrl);
+				if (resumeTicks > 0 && session.playMethod === "Transcode" && !isNativeHlsSession) {
+					logPlayback("session:resume-from-ticks", {
+						resumeTicks,
+						resumeSeconds: resumeTicks / 10_000_000,
+						sessionStreamUrl: session.streamUrl,
+					});
 					startTimeOffsetRef.current = 0;
 					seekPendingRef.current = true;
 					pendingSeekTargetRef.current = resumeTicks / 10_000_000;
@@ -298,11 +380,24 @@ export function MediaPlayerDialog({
 						...session,
 						streamUrl: setStreamStartTicks(session.streamUrl, resumeTicks),
 					});
+				} else if (resumeTicks > 0 && isNativeHlsSession) {
+					logPlayback("session:resume-via-element-seek", {
+						resumeTicks,
+						resumeSeconds: resumeTicks / 10_000_000,
+						sessionStreamUrl: session.streamUrl,
+					});
+					setPlaybackSession(session);
 				} else {
+					logPlayback("session:start-from-zero", {
+						sessionStreamUrl: session.streamUrl,
+					});
 					setPlaybackSession(session);
 				}
 			})
-			.catch(() => {
+			.catch((error: unknown) => {
+				logPlayback("session:error", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 				if (!cancelled)
 					setPlaybackSession({
 						streamUrl: item.streamUrl!,
@@ -314,8 +409,9 @@ export function MediaPlayerDialog({
 
 		return () => {
 			cancelled = true;
+			logPlayback("session:cleanup");
 		};
-	}, [open, item]);
+	}, [debugPlayback, item]);
 
 	// Reload video when stream URL changes
 	useEffect(() => {
@@ -325,10 +421,18 @@ export function MediaPlayerDialog({
 			? getTranscodeQualityIndex(streamUrl)
 			: null;
 		const video = videoRef.current;
+		logPlayback("stream:load", {
+			streamUrl,
+			videoState: snapshotMediaState(video),
+		});
 		video?.load();
 
 		return () => {
 			if (!video) return;
+			logPlayback("stream:teardown", {
+				streamUrl,
+				videoState: snapshotMediaState(video),
+			});
 			video.pause();
 			video.removeAttribute("src");
 			for (const track of Array.from(video.querySelectorAll("track"))) {
@@ -350,13 +454,33 @@ export function MediaPlayerDialog({
 
 		async function attemptAutoplay() {
 			try {
+				logPlayback("autoplay:attempt", {
+					videoState: snapshotMediaState(media),
+				});
 				await media.play();
-			} catch {
+				logPlayback("autoplay:success", {
+					videoState: snapshotMediaState(media),
+				});
+			} catch (error) {
+				logPlayback("autoplay:failed", {
+					error: error instanceof Error ? error.message : String(error),
+					videoState: snapshotMediaState(media),
+				});
 				if (media.muted) return;
 				media.muted = true;
 				try {
+					logPlayback("autoplay:retry-muted", {
+						videoState: snapshotMediaState(media),
+					});
 					await media.play();
-				} catch {
+					logPlayback("autoplay:retry-muted-success", {
+						videoState: snapshotMediaState(media),
+					});
+				} catch (mutedError) {
+					logPlayback("autoplay:retry-muted-failed", {
+						error: mutedError instanceof Error ? mutedError.message : String(mutedError),
+						videoState: snapshotMediaState(media),
+					});
 					// Leave playback paused if the browser still rejects autoplay.
 				}
 			}
@@ -392,6 +516,9 @@ export function MediaPlayerDialog({
 		}
 
 		function handleLoadedMetadata() {
+			logPlayback("media:loadedmetadata", {
+				videoState: snapshotMediaState(video),
+			});
 			if (seekPendingRef.current) {
 				const pendingTarget = pendingSeekTargetRef.current ?? startTimeOffsetRef.current;
 
@@ -405,14 +532,26 @@ export function MediaPlayerDialog({
 				seekPendingRef.current = false;
 				pendingSeekTargetRef.current = null;
 				optimisticSeekTargetRef.current = null;
+				logPlayback("media:resume-offset-applied", {
+					pendingTarget,
+					videoState: snapshotMediaState(video),
+				});
 				void attemptAutoplay();
 				return;
 			}
-			if (item!.playbackPositionTicks)
+			if (item!.playbackPositionTicks) {
+				logPlayback("media:seek-to-resume-position", {
+					resumeSeconds: item!.playbackPositionTicks / 10_000_000,
+					videoState: snapshotMediaState(video),
+				});
 				setVideoCurrentTime(item!.playbackPositionTicks / 10_000_000);
+			}
 			void attemptAutoplay();
 		}
 		function handleLoadedData() {
+			logPlayback("media:loadeddata", {
+				videoState: snapshotMediaState(video),
+			});
 			setIsBuffering(false);
 		}
 		function handleTimeUpdate() {
@@ -422,15 +561,35 @@ export function MediaPlayerDialog({
 			syncProgress({ isPaused: true, force: true });
 		}
 		function handleEnded() {
+			logPlayback("media:ended", {
+				videoState: snapshotMediaState(video),
+			});
 			if (stopReportedRef.current) return;
 			stopReportedRef.current = true;
 			syncProgress({ isStopped: true, played: true, force: true });
 		}
+		function handleMediaEvent(eventName: string) {
+			logPlayback(`media:${eventName}`, {
+				videoState: snapshotMediaState(video),
+			});
+		}
+		const handleCanPlay = () => handleMediaEvent("canplay");
+		const handleStalled = () => handleMediaEvent("stalled");
+		const handleSuspend = () => handleMediaEvent("suspend");
+		const handleEmptied = () => handleMediaEvent("emptied");
+		const handleAbort = () => handleMediaEvent("abort");
+		const handleError = () => handleMediaEvent("error");
 		video.addEventListener("loadedmetadata", handleLoadedMetadata);
 		video.addEventListener("loadeddata", handleLoadedData);
 		video.addEventListener("timeupdate", handleTimeUpdate);
 		video.addEventListener("pause", handlePause);
 		video.addEventListener("ended", handleEnded);
+		video.addEventListener("canplay", handleCanPlay);
+		video.addEventListener("stalled", handleStalled);
+		video.addEventListener("suspend", handleSuspend);
+		video.addEventListener("emptied", handleEmptied);
+		video.addEventListener("abort", handleAbort);
+		video.addEventListener("error", handleError);
 
 		return () => {
 			video.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -438,6 +597,12 @@ export function MediaPlayerDialog({
 			video.removeEventListener("timeupdate", handleTimeUpdate);
 			video.removeEventListener("pause", handlePause);
 			video.removeEventListener("ended", handleEnded);
+			video.removeEventListener("canplay", handleCanPlay);
+			video.removeEventListener("stalled", handleStalled);
+			video.removeEventListener("suspend", handleSuspend);
+			video.removeEventListener("emptied", handleEmptied);
+			video.removeEventListener("abort", handleAbort);
+			video.removeEventListener("error", handleError);
 
 			if (stopReportedRef.current || video.ended) return;
 			const played =
@@ -447,7 +612,7 @@ export function MediaPlayerDialog({
 				() => undefined,
 			);
 		};
-	}, [open, item, playbackSession, streamUrl]);
+	}, [debugPlayback, item, open, playbackSession, streamUrl]);
 
 	// Player UI state tracking
 	useEffect(() => {
@@ -759,6 +924,12 @@ export function MediaPlayerDialog({
 		const qualityProfile =
 			options?.qualityProfile ??
 			(qualityIndexRef.current != null ? TRANSCODE_QUALITY_LADDER[qualityIndexRef.current] : undefined);
+		logPlayback("stream:reload-requested", {
+			targetMovieTime,
+			qualityProfile,
+			currentStreamUrl: playbackSession?.streamUrl,
+			videoState: snapshotMediaState(videoRef.current),
+		});
 
 		try {
 			const freshSession = await beginPlaybackSessionRuntime({ data: { id: item.id, client } });
@@ -768,14 +939,24 @@ export function MediaPlayerDialog({
 				setTranscodeQuality(freshSession.streamUrl, qualityProfile),
 				Math.floor(targetMovieTime * 10_000_000),
 			);
+			logPlayback("stream:reload-fresh-session", {
+				nextStreamUrl,
+				freshPlayMethod: freshSession.playMethod,
+			});
 			setPlaybackSession({ ...freshSession, streamUrl: nextStreamUrl });
-		} catch {
+		} catch (error) {
+			logPlayback("stream:reload-fallback", {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			if (seekReloadRequestIdRef.current !== requestId || !playbackSession) return;
 
 			const nextStreamUrl = prepareSeekReloadUrl(
 				setTranscodeQuality(playbackSession.streamUrl, qualityProfile),
 				Math.floor(targetMovieTime * 10_000_000),
 			);
+			logPlayback("stream:reload-existing-session", {
+				nextStreamUrl,
+			});
 			setPlaybackSession({ ...playbackSession, streamUrl: nextStreamUrl });
 		}
 	}
@@ -880,6 +1061,11 @@ export function MediaPlayerDialog({
 	function seekToMovieTime(targetMovieTime: number, options?: { resumeIfPlaying?: boolean }) {
 		const video = videoRef.current;
 		if (!video) return;
+		logPlayback("seek:requested", {
+			targetMovieTime,
+			resumeIfPlaying: options?.resumeIfPlaying ?? false,
+			videoState: snapshotMediaState(video),
+		});
 		const d = getBestDuration();
 		const clamped =
 			d != null ? Math.max(0, Math.min(d, targetMovieTime)) : Math.max(0, targetMovieTime);
@@ -1320,6 +1506,46 @@ export function MediaPlayerDialog({
 									</button>
 								</div>
 							</div>
+						</div>
+					</div>
+				</>
+			) : isPreparingStream ? (
+				<>
+					{(item.backdropUrl ?? item.posterUrl) ? (
+						<div className="player-poster-layer visible" aria-hidden="true">
+							<img
+								src={item.backdropUrl ?? item.posterUrl}
+								alt=""
+								className="player-poster-image"
+							/>
+						</div>
+					) : null}
+
+					<div className="player-buffering-overlay" aria-hidden="true">
+						<div className="player-buffering-spinner" />
+					</div>
+
+					<div className="player-controls-overlay visible">
+						<div className="player-controls-top">
+							<div className="player-controls-title">
+								<p className="eyebrow">{t("player.nowPlaying")}</p>
+								<h2>{item.title}</h2>
+								{item.type === "episode" && item.seriesTitle ? (
+									<span>
+										{item.seriesTitle}
+										{item.episodeNumber ? ` · E${item.episodeNumber}` : ""}
+									</span>
+								) : null}
+							</div>
+							<button
+								type="button"
+								className="icon-button"
+								onClick={onClose}
+								data-aurora-overlay-close
+								aria-label={t("player.close")}
+							>
+								<X size={20} />
+							</button>
 						</div>
 					</div>
 				</>
