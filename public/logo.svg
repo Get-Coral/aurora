@@ -1,0 +1,50 @@
+<svg width="512" height="512" viewBox="0 0 512 512" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Aurora App Icon</title>
+  <desc>Aurora app icon — a single luminous arc on deep navy</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#030C18"/>
+      <stop offset="100%" style="stop-color:#050F20"/>
+    </linearGradient>
+
+    <!-- Arc gradient: blue → teal → violet → coral -->
+    <linearGradient id="arc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   style="stop-color:#185FA5;stop-opacity:0"/>
+      <stop offset="15%"  style="stop-color:#185FA5;stop-opacity:1"/>
+      <stop offset="42%"  style="stop-color:#5DCAA5;stop-opacity:1"/>
+      <stop offset="72%"  style="stop-color:#AFA9EC;stop-opacity:1"/>
+      <stop offset="88%"  style="stop-color:#D85A30;stop-opacity:0.85"/>
+      <stop offset="100%" style="stop-color:#D85A30;stop-opacity:0"/>
+    </linearGradient>
+
+    <!-- Glow layer — wider, more diffuse, same gradient -->
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   style="stop-color:#185FA5;stop-opacity:0"/>
+      <stop offset="15%"  style="stop-color:#185FA5;stop-opacity:0.35"/>
+      <stop offset="42%"  style="stop-color:#5DCAA5;stop-opacity:0.35"/>
+      <stop offset="72%"  style="stop-color:#AFA9EC;stop-opacity:0.35"/>
+      <stop offset="88%"  style="stop-color:#D85A30;stop-opacity:0.28"/>
+      <stop offset="100%" style="stop-color:#D85A30;stop-opacity:0"/>
+    </linearGradient>
+
+    <clipPath id="icon">
+      <rect width="512" height="512" rx="115" ry="115"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" rx="115" ry="115" fill="url(#bg)"/>
+
+  <g clip-path="url(#icon)">
+    <!-- Outer atmospheric glow -->
+    <path d="M30 320 Q160 130 256 175 Q352 220 482 145"
+      stroke="url(#glow)" stroke-width="80" fill="none" stroke-linecap="round"/>
+
+    <!-- Mid glow -->
+    <path d="M30 320 Q160 130 256 175 Q352 220 482 145"
+      stroke="url(#glow)" stroke-width="38" fill="none" stroke-linecap="round"/>
+
+    <!-- The arc -->
+    <path d="M30 320 Q160 130 256 175 Q352 220 482 145"
+      stroke="url(#arc)" stroke-width="10" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -7,7 +7,6 @@ import {
 	Menu,
 	Search,
 	Settings,
-	Sparkles,
 	Users,
 	X,
 } from "lucide-react";
@@ -144,9 +143,7 @@ export default function Header() {
 			<nav className="page-wrap header-bar">
 				<div className="header-top-row">
 					<Link to="/" className="brand-mark" data-tv-focusable="true">
-						<span className="brand-glyph">
-							<Sparkles size={15} />
-						</span>
+						<img src="/logo.svg" alt="Aurora" className="brand-logo" width={24} height={24} />
 						<span>
 							{t("brand.wordmark")} <em>{t("brand.forJellyfin")}</em>
 						</span>

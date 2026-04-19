@@ -131,6 +131,13 @@ button { font: inherit; }
   box-shadow: 0 8px 24px rgba(112, 168, 255, 0.34);
 }
 
+.brand-logo {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.55rem;
+  flex-shrink: 0;
+}
+
 .header-nav,
 .header-actions {
   display: flex;
@@ -3387,6 +3394,7 @@ html.tv-mode .hero-copy-in {
   }
 
   .brand-glyph,
+  .brand-logo,
   .icon-button,
   .avatar-chip {
     width: 2.5rem;
