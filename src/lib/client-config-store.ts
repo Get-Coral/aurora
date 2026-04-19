@@ -172,6 +172,36 @@ export function saveClientJellyfinSettings(settings: ClientJellyfinSettings) {
 	writeJson(JELLYFIN_SETTINGS_KEY, normalizeSettings(settings));
 }
 
+export function updateStoredClientJellyfinPasswordForUser(userId: string, password: string) {
+	const current = getStoredClientJellyfinSettings();
+	if (!current.userId || current.userId !== userId.trim()) {
+		return;
+	}
+
+	writeJson(
+		JELLYFIN_SETTINGS_KEY,
+		normalizeSettings({
+			...current,
+			password: password.trim(),
+		}),
+	);
+}
+
+export function clearStoredClientJellyfinPasswordForUser(userId: string) {
+	const current = getStoredClientJellyfinSettings();
+	if (!current.userId || current.userId !== userId.trim()) {
+		return;
+	}
+
+	writeJson(
+		JELLYFIN_SETTINGS_KEY,
+		normalizeSettings({
+			...current,
+			password: "",
+		}),
+	);
+}
+
 export function getClientOpenSubtitlesApiKey() {
 	if (typeof window === "undefined") return null;
 

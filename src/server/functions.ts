@@ -308,6 +308,33 @@ export const fetchUsername = createServerFn({ method: "GET" }).handler(async () 
 	return settings?.username ?? "";
 });
 
+export const fetchCurrentProfile = createServerFn({ method: "GET" }).handler(async () => {
+	const { getCurrentUserProfile } = await import("../lib/jellyfin");
+	return getCurrentUserProfile();
+});
+
+export const updateCurrentProfileImage = createServerFn({ method: "POST" })
+	.inputValidator((input: { imageUrl: string }) => input)
+	.handler(async ({ data }) => {
+		const { updateCurrentUserProfileImage } = await import("../lib/jellyfin");
+		return updateCurrentUserProfileImage(data.imageUrl);
+	});
+
+export const updateCurrentProfilePassword = createServerFn({ method: "POST" })
+	.inputValidator((input: { currentPassword: string; newPassword: string }) => input)
+	.handler(async ({ data }) => {
+		const { updateCurrentUserPassword } = await import("../lib/jellyfin");
+		const { updateStoredJellyfinPasswordForUser, clearStoredJellyfinPasswordForUser } =
+			await import("../lib/config-store");
+		const result = await updateCurrentUserPassword(data.currentPassword, data.newPassword);
+		if (data.newPassword.trim()) {
+			updateStoredJellyfinPasswordForUser(result.userId, data.newPassword);
+		} else {
+			clearStoredJellyfinPasswordForUser(result.userId);
+		}
+		return { ok: true };
+	});
+
 export const saveSettings = createServerFn({ method: "POST" })
 	.inputValidator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
@@ -566,10 +593,17 @@ export const reportPlaybackState = createServerFn({ method: "POST" })
 
 export const fetchAdminUsers = createServerFn({ method: "GET" }).handler(async () => {
 	const { getUsers } = await import("../lib/jellyfin");
+	const { jellyfinImageProxyUrl } = await import("../lib/jellyfin-image-proxy");
 	const users = await getUsers();
 	return users.map((u) => ({
 		id: u.Id,
 		name: u.Name,
+		imageUrl: u.PrimaryImageTag
+			? jellyfinImageProxyUrl(u.Id, "Primary", 160, {
+					tag: u.PrimaryImageTag,
+					resource: "users",
+				})
+			: undefined,
 		isAdmin: u.Policy?.IsAdministrator ?? false,
 		isDisabled: u.Policy?.IsDisabled ?? false,
 		lastLoginDate: u.LastLoginDate ?? null,

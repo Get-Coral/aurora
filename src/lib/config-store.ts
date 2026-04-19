@@ -67,6 +67,11 @@ function setSetting(key: string, value: string) {
 	statement.run(key, value);
 }
 
+function clearSetting(key: string) {
+	const statement = getDatabase().prepare("DELETE FROM app_settings WHERE key = ?");
+	statement.run(key);
+}
+
 function readEnvSettings(): Partial<JellyfinSettings> {
 	return {
 		url: process.env.JELLYFIN_URL?.trim(),
@@ -225,6 +230,24 @@ export function saveJellyfinSettings(settings: JellyfinSettings) {
 	setSetting("jellyfin.userId", settings.userId.trim());
 	setSetting("jellyfin.username", settings.username.trim());
 	setSetting("jellyfin.password", settings.password.trim());
+}
+
+export function updateStoredJellyfinPasswordForUser(userId: string, password: string) {
+	const storedUserId = getSetting("jellyfin.userId")?.trim();
+	if (!storedUserId || storedUserId !== userId.trim()) {
+		return;
+	}
+
+	setSetting("jellyfin.password", password.trim());
+}
+
+export function clearStoredJellyfinPasswordForUser(userId: string) {
+	const storedUserId = getSetting("jellyfin.userId")?.trim();
+	if (!storedUserId || storedUserId !== userId.trim()) {
+		return;
+	}
+
+	clearSetting("jellyfin.password");
 }
 
 export async function saveServerConnection(url: string, apiKey: string) {

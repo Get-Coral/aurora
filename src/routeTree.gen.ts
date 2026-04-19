@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProfilesRouteImport } from './routes/profiles'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -39,6 +40,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ProfilesRoute = ProfilesRouteImport.update({
   id: '/profiles',
   path: '/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OfflineRoute = OfflineRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
+  '/profile': typeof ProfileRoute
   '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
+  '/profile': typeof ProfileRoute
   '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
+  '/profile': typeof ProfileRoute
   '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/my-list'
     | '/offline'
+    | '/profile'
     | '/profiles'
     | '/settings'
     | '/setup'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/my-list'
     | '/offline'
+    | '/profile'
     | '/profiles'
     | '/settings'
     | '/setup'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/my-list'
     | '/offline'
+    | '/profile'
     | '/profiles'
     | '/settings'
     | '/setup'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   MyListRoute: typeof MyListRoute
   OfflineRoute: typeof OfflineRoute
+  ProfileRoute: typeof ProfileRoute
   ProfilesRoute: typeof ProfilesRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
@@ -255,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/profiles'
       fullPath: '/profiles'
       preLoaderRoute: typeof ProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/offline': {
@@ -371,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   MyListRoute: MyListRoute,
   OfflineRoute: OfflineRoute,
+  ProfileRoute: ProfileRoute,
   ProfilesRoute: ProfilesRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,

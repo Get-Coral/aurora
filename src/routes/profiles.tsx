@@ -36,6 +36,7 @@ export const Route = createFileRoute("/profiles")({
 type AdminUser = {
 	id: string;
 	name: string;
+	imageUrl?: string;
 	isAdmin: boolean;
 	isDisabled: boolean;
 	lastLoginDate: string | null;
@@ -85,6 +86,8 @@ function ProfilesPage() {
 								<div className="profiles-avatar">
 									{isSelecting ? (
 										<span className="profiles-avatar-spinner" />
+									) : user.imageUrl ? (
+										<img src={user.imageUrl} alt={user.name} className="profiles-avatar-image" />
 									) : (
 										(user.name ?? "?").slice(0, 2).toUpperCase()
 									)}

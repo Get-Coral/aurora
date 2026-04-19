@@ -1,6 +1,7 @@
 import {
 	beginPlaybackSession,
 	clearActiveUserServerFn,
+	fetchCurrentProfile,
 	fetchContinueWatching,
 	fetchFavoriteMovies,
 	fetchFeatured,
@@ -30,15 +31,19 @@ import {
 	setActiveUserServerFn,
 	setMultiUserModeServerFn,
 	toggleFavorite,
+	updateCurrentProfileImage,
+	updateCurrentProfilePassword,
 	updateUserParentalPolicy,
 } from "../server/functions";
 import {
 	type ClientJellyfinSettings,
+	clearStoredClientJellyfinPasswordForUser,
 	getClientConfigurationSummary,
 	getClientOpenSubtitlesApiKey,
 	getStoredClientJellyfinSettings,
 	saveClientJellyfinSettings,
 	saveClientOpenSubtitlesApiKey,
+	updateStoredClientJellyfinPasswordForUser,
 	validateClientJellyfinSettings,
 } from "./client-config-store";
 import {
@@ -55,6 +60,7 @@ import {
 	fetchClientCollectionItems,
 	fetchClientCollections,
 	fetchClientContinueWatching,
+	fetchClientCurrentProfile,
 	fetchClientCurrentUsername,
 	fetchClientFavoriteItems,
 	fetchClientFeatured,
@@ -77,6 +83,8 @@ import {
 	searchClientOnlineSubtitles,
 	toggleClientAdminUser,
 	toggleClientFavorite,
+	updateClientCurrentProfileImage,
+	updateClientCurrentUserPassword,
 } from "./client-media";
 import {
 	clearClientActiveUserId,
@@ -174,6 +182,14 @@ export async function fetchUsernameRuntime() {
 	}
 
 	return fetchUsername();
+}
+
+export async function fetchCurrentProfileRuntime() {
+	if (shouldUseClientRuntime()) {
+		return fetchClientCurrentProfile();
+	}
+
+	return fetchCurrentProfile();
 }
 
 export async function fetchLibraryRuntime(input: {
@@ -556,6 +572,32 @@ export async function clearActiveUserRuntime() {
 	}
 
 	return clearActiveUserServerFn();
+}
+
+export async function updateCurrentProfileImageRuntime(imageUrl: string) {
+	if (shouldUseClientRuntime()) {
+		return updateClientCurrentProfileImage(imageUrl);
+	}
+
+	return updateCurrentProfileImage({ data: { imageUrl } });
+}
+
+export async function updateCurrentProfilePasswordRuntime(input: {
+	currentPassword: string;
+	newPassword: string;
+}) {
+	if (shouldUseClientRuntime()) {
+		const profile = await fetchClientCurrentProfile();
+		const result = await updateClientCurrentUserPassword(input.currentPassword, input.newPassword);
+		if (input.newPassword.trim()) {
+			updateStoredClientJellyfinPasswordForUser(profile.id, input.newPassword);
+		} else {
+			clearStoredClientJellyfinPasswordForUser(profile.id);
+		}
+		return result;
+	}
+
+	return updateCurrentProfilePassword({ data: input });
 }
 
 export async function saveServerConnectionRuntime(url: string, apiKey: string) {

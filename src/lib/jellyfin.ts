@@ -51,12 +51,16 @@ import {
 	transcodeUrl,
 	patchUserPolicy as patchUserPolicyBase,
 	updateItemName as updateItemNameBase,
+	updateUserPassword as updateUserPasswordBase,
+	updateUserPrimaryImage as updateUserPrimaryImageBase,
 	updateUserPolicy as updateUserPolicyBase,
 } from "@get-coral/jellyfin";
 import {
 	getEffectiveJellyfinSettings,
 	getEffectiveServerConnectionSettings,
 } from "./config-store";
+import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
+import type { UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
 const AURORA_CLIENT_NAME = "Aurora";
@@ -307,4 +311,54 @@ export async function scanAllLibraries(): Promise<void> {
 
 export async function scanLibrary(itemId: string): Promise<void> {
 	return scanLibraryBase(getAdminJellyfinClient(), itemId);
+}
+
+export async function getCurrentUserProfile(): Promise<UserProfileSummary> {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	const user = await getUserByIdBase(getAdminJellyfinClient(), settings.userId);
+	return {
+		id: user.Id,
+		name: user.Name,
+		hasPassword: user.HasPassword,
+		imageUrl: user.PrimaryImageTag
+			? jellyfinImageProxyUrl(user.Id, "Primary", 160, {
+					tag: user.PrimaryImageTag,
+					resource: "users",
+				})
+			: undefined,
+	};
+}
+
+export async function updateCurrentUserProfileImage(imageUrl: string): Promise<UserProfileSummary> {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await updateUserPrimaryImageBase(getAdminJellyfinClient(), settings.userId, imageUrl);
+
+	return getCurrentUserProfile();
+}
+
+export async function updateCurrentUserPassword(currentPassword: string, newPassword: string) {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await updateUserPasswordBase(
+		getAdminJellyfinClient(),
+		settings.userId,
+		currentPassword,
+		newPassword,
+	);
+
+	return { userId: settings.userId };
 }

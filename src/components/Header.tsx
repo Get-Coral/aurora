@@ -4,7 +4,7 @@ import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, Settings, Sparkles,
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
-import { clearActiveUserRuntime } from "../lib/runtime-functions";
+import { clearActiveUserRuntime, fetchCurrentProfileRuntime } from "../lib/runtime-functions";
 import { useMultiUserMode } from "../lib/multi-user-mode";
 import { fetchSearchRuntime, fetchUsernameRuntime } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
@@ -15,6 +15,10 @@ export default function Header() {
 	const pathname = useRouterState({ select: (state) => state.location.pathname });
 	const multiUser = useMultiUserMode();
 
+	const { data: profile } = useQuery({
+		queryKey: ["current-profile", multiUser.activeUserId],
+		queryFn: () => fetchCurrentProfileRuntime(),
+	});
 	const { data: username = "" } = useQuery({
 		queryKey: ["current-user", multiUser.activeUserId],
 		queryFn: () => fetchUsernameRuntime(),
@@ -159,15 +163,6 @@ export default function Header() {
 							{searchOpen ? <X size={18} /> : <Search size={20} />}
 						</button>
 
-						<Link
-							to="/settings"
-							className="icon-button"
-							aria-label={t("nav.settings")}
-							data-tv-focusable="true"
-						>
-							<Settings size={20} />
-						</Link>
-
 						<div className="header-profile-menu-shell">
 							<button
 								type="button"
@@ -177,9 +172,17 @@ export default function Header() {
 								aria-expanded={profileOpen}
 								data-tv-focusable="true"
 							>
-								<span className="header-profile-avatar">
-									{username.slice(0, 2).toUpperCase() || "??"}
-								</span>
+								{profile?.imageUrl ? (
+									<img
+										src={profile.imageUrl}
+										alt={profile.name || username || t("header.profileFallback")}
+										className="header-profile-avatar-image"
+									/>
+								) : (
+									<span className="header-profile-avatar">
+										{username.slice(0, 2).toUpperCase() || "??"}
+									</span>
+								)}
 								<ChevronDown size={14} className="header-profile-caret" />
 							</button>
 
@@ -187,15 +190,24 @@ export default function Header() {
 								<div className="header-profile-dropdown">
 									<p className="header-profile-name">{username || t("header.profileFallback")}</p>
 									<div className="header-profile-links">
-										<Link
-											to="/settings"
-											className="header-profile-link"
-											aria-label={t("nav.settings")}
-											data-tv-focusable="true"
-										>
-											<Settings size={15} />
-											{t("nav.settings")}
-										</Link>
+											<Link
+												to="/profile"
+												className="header-profile-link"
+												aria-label={t("header.profile")}
+												data-tv-focusable="true"
+											>
+												<Users size={15} />
+												{t("header.profile")}
+											</Link>
+											<Link
+												to="/settings"
+												className="header-profile-link"
+												aria-label={t("nav.settings")}
+												data-tv-focusable="true"
+											>
+												<Settings size={15} />
+												{t("nav.settings")}
+											</Link>
 										<Link
 											to="/admin"
 											className="header-profile-link"

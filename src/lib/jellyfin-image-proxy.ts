@@ -18,6 +18,7 @@ export function jellyfinImageProxyUrl(
 		fillWidth?: number;
 		quality?: number;
 		tag?: string;
+		resource?: "items" | "users";
 	},
 ): string {
 	const params = new URLSearchParams({
@@ -25,6 +26,10 @@ export function jellyfinImageProxyUrl(
 		type,
 		width: String(normalizeDimension(width, 400)),
 	});
+
+	if (options?.resource === "users") {
+		params.set("resource", "users");
+	}
 
 	if (options?.fillWidth != null) {
 		params.set("fillWidth", String(normalizeDimension(options.fillWidth, 300)));
