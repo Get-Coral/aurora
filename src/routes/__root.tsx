@@ -10,6 +10,7 @@ import {
 import { AppBootstrap } from "../components/AppBootstrap";
 import { ErrorPage } from "../components/ErrorPage";
 import Footer from "../components/Footer";
+import { GlobalMediaDialogs } from "../components/GlobalMediaDialogs";
 import Header from "../components/Header";
 import { PwaStatusBanner } from "../components/PwaStatusBanner";
 import { I18nProvider } from "../lib/i18n";
@@ -117,7 +118,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<I18nProvider>
 					<AppBootstrap />
 					<PwaStatusBanner />
-					{hideHeader ? null : <Header />}
+					{hideHeader ? null : (
+						<>
+							<Header />
+							<GlobalMediaDialogs />
+						</>
+					)}
 					{children}
 					<Footer />
 					<Scripts />
