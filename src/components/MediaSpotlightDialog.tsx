@@ -550,9 +550,24 @@ export function MediaSpotlightDialog({
 								</div>
 							) : null}
 
+							{seasons.length > 1 ? (
+								<div className="detail-season-tabs">
+									{seasons.map((s) => (
+										<button
+											key={s}
+											type="button"
+											className={`detail-season-tab${activeSeason === s ? " detail-season-tab-active" : ""}`}
+											onClick={() => setSelectedSeason(s)}
+										>
+											{t("generic.season")} {s}
+										</button>
+									))}
+								</div>
+							) : null}
+
 							{episodes.length ? (
 								<div className="episode-list">
-									{episodes.slice(0, 20).map((episode) => {
+									{seasonEpisodes.map((episode) => {
 										const isPlayed = playedOverrides[episode.id] ?? episode.played ?? false;
 										return (
 											<div
@@ -571,9 +586,6 @@ export function MediaSpotlightDialog({
 														<strong>{episode.title}</strong>
 														<span>
 															{[
-																episode.seasonNumber
-																	? `${t("generic.season")} ${episode.seasonNumber}`
-																	: null,
 																episode.episodeNumber
 																	? `${t("generic.episode")} ${episode.episodeNumber}`
 																	: null,
