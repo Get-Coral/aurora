@@ -31,10 +31,8 @@ import {
 	setActiveUserServerFn,
 	setMultiUserModeServerFn,
 	toggleFavorite,
-	updateCurrentProfileImage,
 	updateCurrentProfilePassword,
 	updateUserParentalPolicy,
-	uploadCurrentProfileImage,
 } from "../server/functions";
 import {
 	type ClientJellyfinSettings,
@@ -90,9 +88,7 @@ import {
 	searchClientOnlineSubtitles,
 	toggleClientAdminUser,
 	toggleClientFavorite,
-	updateClientCurrentProfileImage,
 	updateClientCurrentUserPassword,
-	uploadClientCurrentProfileImage,
 } from "./client-media";
 import { shouldUseClientRuntime } from "./runtime-mode";
 
@@ -572,40 +568,6 @@ export async function clearActiveUserRuntime() {
 	}
 
 	return clearActiveUserServerFn();
-}
-
-export async function updateCurrentProfileImageRuntime(imageUrl: string) {
-	if (shouldUseClientRuntime()) {
-		return updateClientCurrentProfileImage(imageUrl);
-	}
-
-	return updateCurrentProfileImage({ data: { imageUrl } });
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-	let binary = "";
-	const bytes = new Uint8Array(buffer);
-	const chunkSize = 0x8000;
-	for (let index = 0; index < bytes.length; index += chunkSize) {
-		const chunk = bytes.subarray(index, index + chunkSize);
-		binary += String.fromCharCode(...chunk);
-	}
-	return btoa(binary);
-}
-
-export async function uploadCurrentProfileImageRuntime(file: File) {
-	const imageBuffer = await file.arrayBuffer();
-	const contentType = file.type || "image/jpeg";
-	if (shouldUseClientRuntime()) {
-		return uploadClientCurrentProfileImage(imageBuffer, contentType);
-	}
-
-	return uploadCurrentProfileImage({
-		data: {
-			contentType,
-			imageBase64: arrayBufferToBase64(imageBuffer),
-		},
-	});
 }
 
 export async function updateCurrentProfilePasswordRuntime(input: {

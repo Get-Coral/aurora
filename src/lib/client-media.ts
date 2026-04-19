@@ -45,8 +45,6 @@ import {
 	updateItemName,
 	updateUserPassword,
 	updateUserPolicy,
-	updateUserPrimaryImage,
-	uploadUserPrimaryImage,
 } from "@get-coral/jellyfin";
 import {
 	getClientOpenSubtitlesApiKey,
@@ -561,31 +559,6 @@ export async function fetchClientCurrentProfile(): Promise<UserProfileSummary> {
 			? withImageTag(imageUrl(client, user.Id, "Primary", 160), user.PrimaryImageTag)
 			: undefined,
 	};
-}
-
-export async function updateClientCurrentProfileImage(imageSourceUrl: string) {
-	const settings = getEffectiveClientJellyfinSettings();
-	if (!settings) {
-		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
-	}
-
-	await updateUserPrimaryImage(getClientAdminJellyfin(), settings.userId, imageSourceUrl);
-
-	return fetchClientCurrentProfile();
-}
-
-export async function uploadClientCurrentProfileImage(
-	imageBuffer: ArrayBuffer,
-	contentType: string,
-) {
-	const settings = getEffectiveClientJellyfinSettings();
-	if (!settings) {
-		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
-	}
-
-	await uploadUserPrimaryImage(getClientAdminJellyfin(), settings.userId, imageBuffer, contentType);
-
-	return fetchClientCurrentProfile();
 }
 
 export async function updateClientCurrentUserPassword(

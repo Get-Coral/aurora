@@ -53,8 +53,6 @@ import {
 	updateItemName as updateItemNameBase,
 	updateUserPassword as updateUserPasswordBase,
 	updateUserPolicy as updateUserPolicyBase,
-	updateUserPrimaryImage as updateUserPrimaryImageBase,
-	uploadUserPrimaryImage as uploadUserPrimaryImageBase,
 } from "@get-coral/jellyfin";
 import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
@@ -331,39 +329,6 @@ export async function getCurrentUserProfile(): Promise<UserProfileSummary> {
 			: undefined,
 	};
 }
-
-export async function updateCurrentUserProfileImage(imageUrl: string): Promise<UserProfileSummary> {
-	const settings = getEffectiveJellyfinSettings();
-
-	if (!settings) {
-		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
-	}
-
-	await updateUserPrimaryImageBase(getAdminJellyfinClient(), settings.userId, imageUrl);
-
-	return getCurrentUserProfile();
-}
-
-export async function uploadCurrentUserProfileImage(
-	imageBuffer: ArrayBuffer,
-	contentType: string,
-): Promise<UserProfileSummary> {
-	const settings = getEffectiveJellyfinSettings();
-
-	if (!settings) {
-		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
-	}
-
-	await uploadUserPrimaryImageBase(
-		getAdminJellyfinClient(),
-		settings.userId,
-		imageBuffer,
-		contentType,
-	);
-
-	return getCurrentUserProfile();
-}
-
 export async function updateCurrentUserPassword(currentPassword: string, newPassword: string) {
 	const settings = getEffectiveJellyfinSettings();
 

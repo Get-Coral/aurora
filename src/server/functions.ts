@@ -313,27 +313,6 @@ export const fetchCurrentProfile = createServerFn({ method: "GET" }).handler(asy
 	return getCurrentUserProfile();
 });
 
-export const updateCurrentProfileImage = createServerFn({ method: "POST" })
-	.inputValidator((input: { imageUrl: string }) => input)
-	.handler(async ({ data }) => {
-		const { updateCurrentUserProfileImage } = await import("../lib/jellyfin");
-		return updateCurrentUserProfileImage(data.imageUrl);
-	});
-
-export const uploadCurrentProfileImage = createServerFn({ method: "POST" })
-	.inputValidator((input: { contentType: string; imageBase64: string }) => input)
-	.handler(async ({ data }) => {
-		const { uploadCurrentUserProfileImage } = await import("../lib/jellyfin");
-		const imageBuffer = Buffer.from(data.imageBase64, "base64");
-		return uploadCurrentUserProfileImage(
-			imageBuffer.buffer.slice(
-				imageBuffer.byteOffset,
-				imageBuffer.byteOffset + imageBuffer.byteLength,
-			),
-			data.contentType,
-		);
-	});
-
 export const updateCurrentProfilePassword = createServerFn({ method: "POST" })
 	.inputValidator((input: { currentPassword: string; newPassword: string }) => input)
 	.handler(async ({ data }) => {
