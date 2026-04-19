@@ -25,6 +25,13 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.8.1](https://github.com/Get-Coral/aurora/compare/v1.8.0...v1.8.1) (2026-04-19)
+
+
+### Bug Fixes
+
+* allow search from every page ([57dc1ee](https://github.com/Get-Coral/aurora/commit/57dc1eef4fbd396c3b4374c1661c8ef8929195bf))
+
 ## [1.8.0](https://github.com/Get-Coral/aurora/compare/v1.7.0...v1.8.0) (2026-04-19)
 
 
