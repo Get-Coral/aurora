@@ -15,8 +15,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0
       '@get-coral/jellyfin':
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.5
+        version: 1.6.5
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0))
@@ -517,8 +517,8 @@ packages:
     peerDependencies:
       '@biomejs/biome': '>=2.4.0'
 
-  '@get-coral/jellyfin@1.6.2':
-    resolution: {integrity: sha512-WNP9FjeLpwlbwz8YxS5JJiLYmr4M7zg8zHKRnAv53Rnm581qa3+5vFAUpTyc9ZG9xUiIPWPYiLmnwYqJadheug==}
+  '@get-coral/jellyfin@1.6.5':
+    resolution: {integrity: sha512-pZ7MIiayRuEpsw8Z/wkDX0CskXaZ6zPDtPjkmXig8tiKfh7E8Wa0DyP6s3miW5P5LN0LMgrxGPjHVpa1rfFNsA==}
     engines: {node: '>=18'}
 
   '@get-coral/tsconfig@0.2.0':
@@ -2683,7 +2683,7 @@ snapshots:
     dependencies:
       '@biomejs/biome': 2.4.11
 
-  '@get-coral/jellyfin@1.6.2': {}
+  '@get-coral/jellyfin@1.6.5': {}
 
   '@get-coral/tsconfig@0.2.0(typescript@5.9.3)':
     dependencies:
