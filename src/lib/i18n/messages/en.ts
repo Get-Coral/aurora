@@ -297,4 +297,25 @@ export const enMessages: MessageDictionary = {
 	"pwa.iosInstallCopy":
 		"In Safari, open Share and choose Add to Home Screen for a cleaner iPhone or iPad launch experience.",
 	"pwa.dismiss": "Dismiss",
+	"setup.multiUser.title": "User Profiles",
+	"setup.multiUser.subtitle": "Would you like to enable multiple user profiles?",
+	"setup.multiUser.hint":
+		"Enable this if multiple people share this Aurora instance. Each person picks their own profile when opening Aurora.",
+	"setup.multiUser.enableButton": "Yes, enable profiles",
+	"setup.multiUser.disableButton": "No, single user",
+	"profiles.title": "Who's watching?",
+	"profiles.switchProfile": "Switch profile",
+	"profiles.active": "Active",
+	"profiles.disabled": "Disabled",
+	"header.profileMenu": "Open profile menu",
+	"header.profileFallback": "Profile",
+	"header.dashboard": "Dashboard",
+	"header.logout": "Log out",
+	"header.loggingOut": "Logging out…",
+	"settings.userProfilesSection": "User profiles",
+	"settings.userProfiles.toggle": "Enable multiple user profiles",
+	"settings.userProfiles.lockedNote":
+		"Forced on by the AURORA_MULTI_USER environment variable.",
+	"settings.userProfiles.switchProfile": "Switch profile",
+	"settings.userProfiles.manageUsers": "Manage users",
 };

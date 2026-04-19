@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
+	redirect,
 	Scripts,
 	useRouter,
 	useRouterState,
@@ -22,7 +23,23 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 
 const TV_MODE_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('aurora-tv-mode');var ua=(navigator.userAgent||'').toLowerCase();var touch=navigator.maxTouchPoints||0;var isIos=/iphone|ipad|ipod/.test(ua)||(ua.indexOf('macintosh')!==-1&&touch>1);var isTv=/(android tv|googletv|google tv|afts|aftt|aftm|bravia|smarttv|hbbtv)/.test(ua);var enabled=stored==='1'||(stored!=='0'&&isTv&&!isIos);var platform=isIos?'ios':(isTv?'android-tv':(/android/.test(ua)?'android':'other'));document.documentElement.dataset.platform=platform;if(enabled){document.documentElement.classList.add('tv-mode');}}catch(e){}})();`;
 
+const SKIP_PROFILE_GUARD = ["/setup", "/profiles"];
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+	beforeLoad: async ({ location }) => {
+		if (SKIP_PROFILE_GUARD.some((p) => location.pathname.startsWith(p))) return;
+
+		const { fetchMultiUserSettingsRuntime, fetchSetupStatusRuntime } = await import(
+			"../lib/runtime-functions"
+		);
+		const multiUser = await fetchMultiUserSettingsRuntime();
+		if (multiUser.multiUserMode && !multiUser.activeUserId) {
+			const setup = await fetchSetupStatusRuntime();
+			if (setup.configured) {
+				throw redirect({ to: "/profiles" });
+			}
+		}
+	},
 	head: () => ({
 		meta: [
 			{
@@ -87,7 +104,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const pathname = useRouterState({ select: (state) => state.location.pathname });
-	const hideHeader = pathname === "/setup";
+	const hideHeader = pathname === "/setup" || pathname === "/profiles";
 
 	return (
 		<html lang="en" suppressHydrationWarning>

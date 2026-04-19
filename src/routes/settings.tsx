@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Bug, ExternalLink, Github, Heart, Tv } from "lucide-react";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { Bug, ExternalLink, Github, Heart, Tv, Users } from "lucide-react";
 import { useState } from "react";
 import type { Locale } from "../lib/i18n";
 import { supportedLocales, useI18n } from "../lib/i18n";
 import {
+	clearActiveUserRuntime,
+	fetchMultiUserSettingsRuntime,
 	fetchOpenSubtitlesKeyRuntime,
 	fetchSetupStatusRuntime,
 	saveOpenSubtitlesKeyRuntime,
 	saveSettingsRuntime,
+	setMultiUserModeRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 
@@ -18,7 +21,8 @@ export const Route = createFileRoute("/settings")({
 		if (!setupStatus?.configured) {
 			throw redirect({ to: "/setup" });
 		}
-		return setupStatus;
+		const multiUser = await fetchMultiUserSettingsRuntime();
+		return { ...setupStatus, multiUser };
 	},
 	component: SettingsPage,
 });
@@ -31,13 +35,27 @@ const LOCALE_LABELS: Record<Locale, string> = {
 function SettingsPage() {
 	const { t, locale, setLocale } = useI18n();
 	const { tvMode, setTvMode } = useTvMode();
-	const setupStatus = Route.useLoaderData();
+	const navigate = useNavigate();
+	const loaderData = Route.useLoaderData();
+	const setupStatus = loaderData;
+	const { multiUser } = loaderData;
 
 	const [url, setUrl] = useState(setupStatus.current.url);
 	const [apiKey, setApiKey] = useState("");
 	const [userId, setUserId] = useState(setupStatus.current.userId);
 	const [username, setUsername] = useState(setupStatus.current.username);
 	const [password, setPassword] = useState("");
+
+	const multiUserMutation = useMutation({
+		mutationFn: async (enabled: boolean) => {
+			await setMultiUserModeRuntime(enabled);
+			if (!enabled) await clearActiveUserRuntime();
+		},
+		onSuccess: async (_, enabled) => {
+			if (enabled) await navigate({ to: "/profiles" });
+			else await navigate({ to: "/" });
+		},
+	});
 
 	const queryClient = useQueryClient();
 
@@ -166,6 +184,47 @@ function SettingsPage() {
 							{saveMutation.isPending ? t("settings.saving") : t("settings.save")}
 						</button>
 					</form>
+				</section>
+
+				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
+					<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+						<p className="eyebrow">{t("settings.userProfilesSection")}</p>
+					</div>
+
+					<div className="settings-toggle-row">
+						<div className="settings-toggle-copy">
+							<div className="settings-toggle-label">
+								<Users size={16} />
+								{t("settings.userProfiles.toggle")}
+							</div>
+						</div>
+						<button
+							type="button"
+							role="switch"
+							aria-checked={multiUser.multiUserMode}
+							className={`toggle-switch${multiUser.multiUserMode ? " toggle-switch-on" : ""}`}
+							disabled={multiUser.locked || multiUserMutation.isPending}
+							onClick={() => multiUserMutation.mutate(!multiUser.multiUserMode)}
+							aria-label={t("settings.userProfiles.toggle")}
+						>
+							<span className="toggle-switch-thumb" />
+						</button>
+					</div>
+
+					{multiUser.locked ? (
+						<p className="settings-locked-note">{t("settings.userProfiles.lockedNote")}</p>
+					) : null}
+
+					{multiUser.multiUserMode ? (
+						<div className="settings-multi-user-links">
+							<Link to="/profiles" className="settings-multi-user-link">
+								{t("settings.userProfiles.switchProfile")} →
+							</Link>
+							<Link to="/admin" className="settings-multi-user-link">
+								{t("settings.userProfiles.manageUsers")} →
+							</Link>
+						</div>
+					) : null}
 				</section>
 
 				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>

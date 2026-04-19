@@ -298,4 +298,25 @@ export const nlMessages: MessageDictionary = {
 	"pwa.iosInstallCopy":
 		"Open in Safari het Deel-menu en kies Zet op beginscherm voor een schonere iPhone- of iPad-ervaring.",
 	"pwa.dismiss": "Sluiten",
+	"setup.multiUser.title": "Gebruikersprofielen",
+	"setup.multiUser.subtitle": "Wil je meerdere gebruikersprofielen inschakelen?",
+	"setup.multiUser.hint":
+		"Schakel dit in als meerdere mensen deze Aurora-instantie delen. Iedereen kiest zijn eigen profiel bij het openen van Aurora.",
+	"setup.multiUser.enableButton": "Ja, profielen inschakelen",
+	"setup.multiUser.disableButton": "Nee, één gebruiker",
+	"profiles.title": "Wie kijkt er?",
+	"profiles.switchProfile": "Profiel wisselen",
+	"profiles.active": "Actief",
+	"profiles.disabled": "Uitgeschakeld",
+	"header.profileMenu": "Profielmenu openen",
+	"header.profileFallback": "Profiel",
+	"header.dashboard": "Dashboard",
+	"header.logout": "Uitloggen",
+	"header.loggingOut": "Bezig met uitloggen…",
+	"settings.userProfilesSection": "Gebruikersprofielen",
+	"settings.userProfiles.toggle": "Meerdere gebruikersprofielen inschakelen",
+	"settings.userProfiles.lockedNote":
+		"Ingeschakeld via de omgevingsvariabele AURORA_MULTI_USER.",
+	"settings.userProfiles.switchProfile": "Profiel wisselen",
+	"settings.userProfiles.manageUsers": "Gebruikers beheren",
 };

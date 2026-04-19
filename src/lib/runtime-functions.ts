@@ -1,5 +1,6 @@
 import {
 	beginPlaybackSession,
+	clearActiveUserServerFn,
 	fetchContinueWatching,
 	fetchFavoriteMovies,
 	fetchFeatured,
@@ -8,6 +9,7 @@ import {
 	fetchLatestSeries,
 	fetchLibrary,
 	fetchMostPlayed,
+	fetchMultiUserSettings,
 	fetchMyList,
 	fetchOnlineSubtitle,
 	fetchOpenSubtitlesKey,
@@ -15,15 +17,20 @@ import {
 	fetchSearch,
 	fetchSeriesDetails,
 	fetchSetupStatus,
+	fetchUserPolicy,
 	fetchUsername,
 	fetchWatchHistory,
 	markPlayed,
 	reportPlaybackState,
 	saveOpenSubtitlesKey,
+	saveServerConnectionFn,
 	saveSettings,
 	saveSetupConfiguration,
 	searchOnlineSubtitles,
+	setActiveUserServerFn,
+	setMultiUserModeServerFn,
 	toggleFavorite,
+	updateUserParentalPolicy,
 } from "../server/functions";
 import {
 	type ClientJellyfinSettings,
@@ -48,6 +55,7 @@ import {
 	fetchClientCollectionItems,
 	fetchClientCollections,
 	fetchClientContinueWatching,
+	fetchClientCurrentUsername,
 	fetchClientFavoriteItems,
 	fetchClientFeatured,
 	fetchClientItemDetails,
@@ -70,6 +78,14 @@ import {
 	toggleClientAdminUser,
 	toggleClientFavorite,
 } from "./client-media";
+import {
+	clearClientActiveUserId,
+	getClientActiveUserId,
+	getClientMultiUserMode,
+	saveClientServerConnection,
+	setClientActiveUserId,
+	setClientMultiUserMode,
+} from "./client-config-store";
 import { shouldUseClientRuntime } from "./runtime-mode";
 
 interface SetupPayload extends ClientJellyfinSettings {}
@@ -79,8 +95,10 @@ const EMPTY_SETUP_STATUS = {
 	source: "missing" as const,
 	current: {
 		url: "",
+		apiKey: "",
 		userId: "",
 		username: "",
+		password: "",
 		hasApiKey: false,
 		hasPassword: false,
 	},
@@ -152,7 +170,7 @@ export async function saveOpenSubtitlesKeyRuntime(apiKey: string) {
 
 export async function fetchUsernameRuntime() {
 	if (shouldUseClientRuntime()) {
-		return getStoredClientJellyfinSettings().username ?? "";
+		return fetchClientCurrentUsername();
 	}
 
 	return fetchUsername();
@@ -499,4 +517,79 @@ export async function markPlayedRuntime(input: { data: { id: string; played: boo
 	}
 
 	return markPlayed(input);
+}
+
+export async function fetchMultiUserSettingsRuntime() {
+	if (shouldUseClientRuntime()) {
+		return {
+			multiUserMode: getClientMultiUserMode(),
+			locked: false,
+			activeUserId: getClientActiveUserId(),
+		};
+	}
+
+	return fetchMultiUserSettings();
+}
+
+export async function setMultiUserModeRuntime(enabled: boolean) {
+	if (shouldUseClientRuntime()) {
+		setClientMultiUserMode(enabled);
+		return { ok: true };
+	}
+
+	return setMultiUserModeServerFn({ data: { enabled } });
+}
+
+export async function setActiveUserRuntime(userId: string) {
+	if (shouldUseClientRuntime()) {
+		setClientActiveUserId(userId);
+		return { ok: true };
+	}
+
+	return setActiveUserServerFn({ data: { userId } });
+}
+
+export async function clearActiveUserRuntime() {
+	if (shouldUseClientRuntime()) {
+		clearClientActiveUserId();
+		return { ok: true };
+	}
+
+	return clearActiveUserServerFn();
+}
+
+export async function saveServerConnectionRuntime(url: string, apiKey: string) {
+	if (shouldUseClientRuntime()) {
+		return saveClientServerConnection(url, apiKey);
+	}
+
+	return saveServerConnectionFn({ data: { url, apiKey } });
+}
+
+export async function fetchUserPolicyRuntime(userId: string) {
+	if (shouldUseClientRuntime()) {
+		const { fetchClientUserPolicy } = await import("./client-media");
+		return fetchClientUserPolicy(userId);
+	}
+
+	return fetchUserPolicy({ data: { userId } });
+}
+
+export async function updateUserParentalPolicyRuntime(input: {
+	userId: string;
+	policy: {
+		MaxActiveSessions?: number;
+		EnableRemoteAccess?: boolean;
+		MaxParentalRating?: number;
+		BlockedTags?: string[];
+		EnableContentDeletion?: boolean;
+		EnableLiveTvAccess?: boolean;
+	};
+}) {
+	if (shouldUseClientRuntime()) {
+		const { updateClientUserParentalPolicy } = await import("./client-media");
+		return updateClientUserParentalPolicy(input.userId, input.policy);
+	}
+
+	return updateUserParentalPolicy({ data: input });
 }
