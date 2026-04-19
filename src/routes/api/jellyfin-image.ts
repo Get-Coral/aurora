@@ -44,6 +44,8 @@ export const Route = createFileRoute("/api/jellyfin-image")({
 				const requestUrl = new URL(request.url);
 				const itemId = requestUrl.searchParams.get("itemId")?.trim();
 				const type = requestUrl.searchParams.get("type")?.trim() ?? "Primary";
+				const resource =
+					requestUrl.searchParams.get("resource")?.trim() === "users" ? "users" : "items";
 
 				if (!itemId || itemId.length > 128) {
 					return new Response("Missing or invalid itemId.", { status: 400 });
@@ -57,9 +59,11 @@ export const Route = createFileRoute("/api/jellyfin-image")({
 				const fillWidth = parsePositiveInt(requestUrl.searchParams.get("fillWidth"), 1, 4096);
 				const quality = parsePositiveInt(requestUrl.searchParams.get("quality"), 1, 100);
 
-				const upstream = new URL(
-					`${settings.url.replace(/\/+$/, "")}/Items/${encodeURIComponent(itemId)}/Images/${encodeURIComponent(type)}`,
-				);
+				const upstreamPath =
+					resource === "users"
+						? `/Users/${encodeURIComponent(itemId)}/Images/${encodeURIComponent(type)}`
+						: `/Items/${encodeURIComponent(itemId)}/Images/${encodeURIComponent(type)}`;
+				const upstream = new URL(`${settings.url.replace(/\/+$/, "")}${upstreamPath}`);
 				upstream.searchParams.set("api_key", settings.apiKey);
 
 				if (width != null) {

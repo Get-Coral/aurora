@@ -39,6 +39,7 @@ import {
 	type JellyfinUserPolicy,
 	type JellyfinVirtualFolder,
 	type PlaybackSyncInput,
+	patchUserPolicy as patchUserPolicyBase,
 	personImageUrl,
 	removeItemsFromCollection as removeItemsFromCollectionBase,
 	scanAllLibraries as scanAllLibrariesBase,
@@ -50,9 +51,12 @@ import {
 	syncPlaybackState as syncPlaybackStateBase,
 	transcodeUrl,
 	updateItemName as updateItemNameBase,
+	updateUserPassword as updateUserPasswordBase,
 	updateUserPolicy as updateUserPolicyBase,
 } from "@get-coral/jellyfin";
-import { getEffectiveJellyfinSettings } from "./config-store";
+import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
+import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
+import type { UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
 const AURORA_CLIENT_NAME = "Aurora";
@@ -86,6 +90,26 @@ function getJellyfinClient() {
 		url: settings.url,
 		apiKey: settings.apiKey,
 		userId: settings.userId,
+		username: settings.username,
+		password: settings.password,
+		clientName: AURORA_CLIENT_NAME,
+		deviceName: AURORA_DEVICE_NAME,
+		deviceId: AURORA_DEVICE_ID,
+		version: AURORA_VERSION,
+	});
+}
+
+function getAdminJellyfinClient() {
+	const settings = getEffectiveServerConnectionSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	return createClient({
+		url: settings.url,
+		apiKey: settings.apiKey,
+		userId: "",
 		username: settings.username,
 		password: settings.password,
 		clientName: AURORA_CLIENT_NAME,
@@ -235,45 +259,89 @@ export async function getFeaturedItem(): Promise<JellyfinItem | null> {
 }
 
 export async function getSystemInfo(): Promise<JellyfinSystemInfo> {
-	return getSystemInfoBase(getJellyfinClient());
+	return getSystemInfoBase(getAdminJellyfinClient());
 }
 
 export async function getItemCounts(): Promise<JellyfinItemCounts> {
-	return getItemCountsBase(getJellyfinClient());
+	return getItemCountsBase(getAdminJellyfinClient());
 }
 
 export async function getActiveSessions(): Promise<JellyfinActiveSession[]> {
-	return getActiveSessionsBase(getJellyfinClient());
+	return getActiveSessionsBase(getAdminJellyfinClient());
 }
 
 export async function getUsers(): Promise<JellyfinUser[]> {
-	return getUsersBase(getJellyfinClient());
+	return getUsersBase(getAdminJellyfinClient());
 }
 
 export async function getUserById(userId: string): Promise<JellyfinUser> {
-	return getUserByIdBase(getJellyfinClient(), userId);
+	return getUserByIdBase(getAdminJellyfinClient(), userId);
 }
 
 export async function updateUserPolicy(userId: string, policy: JellyfinUserPolicy): Promise<void> {
-	return updateUserPolicyBase(getJellyfinClient(), userId, policy);
+	return updateUserPolicyBase(getAdminJellyfinClient(), userId, policy);
+}
+
+export async function patchUserPolicy(
+	userId: string,
+	patch: Partial<JellyfinUserPolicy>,
+): Promise<void> {
+	return patchUserPolicyBase(getAdminJellyfinClient(), userId, patch);
 }
 
 export async function deleteJellyfinUser(userId: string): Promise<void> {
-	return deleteUserBase(getJellyfinClient(), userId);
+	return deleteUserBase(getAdminJellyfinClient(), userId);
 }
 
 export async function createJellyfinUser(name: string, password: string): Promise<JellyfinUser> {
-	return createUserBase(getJellyfinClient(), name, password);
+	return createUserBase(getAdminJellyfinClient(), name, password);
 }
 
 export async function getVirtualFolders(): Promise<JellyfinVirtualFolder[]> {
-	return getVirtualFoldersBase(getJellyfinClient());
+	return getVirtualFoldersBase(getAdminJellyfinClient());
 }
 
 export async function scanAllLibraries(): Promise<void> {
-	return scanAllLibrariesBase(getJellyfinClient());
+	return scanAllLibrariesBase(getAdminJellyfinClient());
 }
 
 export async function scanLibrary(itemId: string): Promise<void> {
-	return scanLibraryBase(getJellyfinClient(), itemId);
+	return scanLibraryBase(getAdminJellyfinClient(), itemId);
+}
+
+export async function getCurrentUserProfile(): Promise<UserProfileSummary> {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	const user = await getUserByIdBase(getAdminJellyfinClient(), settings.userId);
+	return {
+		id: user.Id,
+		name: user.Name,
+		hasPassword: user.HasPassword,
+		imageUrl: user.PrimaryImageTag
+			? jellyfinImageProxyUrl(user.Id, "Primary", 160, {
+					tag: user.PrimaryImageTag,
+					resource: "users",
+				})
+			: undefined,
+	};
+}
+export async function updateCurrentUserPassword(currentPassword: string, newPassword: string) {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await updateUserPasswordBase(
+		getAdminJellyfinClient(),
+		settings.userId,
+		currentPassword,
+		newPassword,
+	);
+
+	return { userId: settings.userId };
 }

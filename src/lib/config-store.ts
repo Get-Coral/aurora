@@ -1,12 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { createClient, getUserById } from "@get-coral/jellyfin";
+import { createClient, getSystemInfo, getUserById } from "@get-coral/jellyfin";
 
 export interface JellyfinSettings {
 	url: string;
 	apiKey: string;
 	userId: string;
+	username: string;
+	password: string;
+}
+
+export interface JellyfinServerConnectionSettings {
+	url: string;
+	apiKey: string;
 	username: string;
 	password: string;
 }
@@ -60,6 +67,11 @@ function setSetting(key: string, value: string) {
 	statement.run(key, value);
 }
 
+function clearSetting(key: string) {
+	const statement = getDatabase().prepare("DELETE FROM app_settings WHERE key = ?");
+	statement.run(key);
+}
+
 function readEnvSettings(): Partial<JellyfinSettings> {
 	return {
 		url: process.env.JELLYFIN_URL?.trim(),
@@ -96,18 +108,73 @@ function areSettingsComplete(settings: Partial<JellyfinSettings>): settings is J
 	);
 }
 
-export function getEffectiveJellyfinSettings(): JellyfinSettings | null {
+function areServerSettingsComplete(settings: Partial<JellyfinSettings>): boolean {
+	return Boolean(settings.url && settings.apiKey);
+}
+
+function getMergedStoredAndEnvSettings(): Partial<JellyfinSettings> {
 	const stored = normalizeSettings(getStoredJellyfinSettings());
 	const env = normalizeSettings(readEnvSettings());
-	const merged = {
+
+	return {
 		url: stored.url || env.url,
 		apiKey: stored.apiKey || env.apiKey,
 		userId: stored.userId || env.userId,
 		username: stored.username || env.username,
 		password: stored.password || env.password,
 	};
+}
+
+export function getMultiUserMode(): boolean {
+	if (process.env.AURORA_MULTI_USER === "true") return true;
+	return getSetting("aurora.multiUserMode") === "true";
+}
+
+export function isMultiUserModeLocked(): boolean {
+	return process.env.AURORA_MULTI_USER === "true";
+}
+
+export function getActiveUserId(): string | null {
+	return getSetting("aurora.activeUserId") ?? null;
+}
+
+export function setMultiUserMode(enabled: boolean): void {
+	setSetting("aurora.multiUserMode", enabled ? "true" : "false");
+}
+
+export function setActiveUserId(userId: string): void {
+	setSetting("aurora.activeUserId", userId.trim());
+}
+
+export function clearActiveUserId(): void {
+	setSetting("aurora.activeUserId", "");
+}
+
+export function getEffectiveJellyfinSettings(): JellyfinSettings | null {
+	const merged = getMergedStoredAndEnvSettings();
+
+	if (getMultiUserMode()) {
+		const activeUserId = getActiveUserId();
+		if (!activeUserId) return null;
+		merged.userId = activeUserId;
+	}
 
 	return areSettingsComplete(merged) ? merged : null;
+}
+
+export function getEffectiveServerConnectionSettings(): JellyfinServerConnectionSettings | null {
+	const merged = getMergedStoredAndEnvSettings();
+
+	if (!areServerSettingsComplete(merged)) {
+		return null;
+	}
+
+	return {
+		url: merged.url!,
+		apiKey: merged.apiKey!,
+		username: merged.username ?? "",
+		password: merged.password ?? "",
+	};
 }
 
 export function getJellyfinSettingsSource(): SettingsSource {
@@ -124,6 +191,9 @@ export function getJellyfinSettingsSource(): SettingsSource {
 }
 
 export function isAuroraConfigured() {
+	if (getMultiUserMode()) {
+		return getEffectiveServerConnectionSettings() != null;
+	}
 	return getEffectiveJellyfinSettings() != null;
 }
 
@@ -132,12 +202,14 @@ export function getConfigurationSummary() {
 	const effective = getEffectiveJellyfinSettings();
 
 	return {
-		configured: Boolean(effective),
+		configured: isAuroraConfigured(),
 		source: getJellyfinSettingsSource(),
 		current: {
 			url: stored.url ?? effective?.url ?? "",
+			apiKey: stored.apiKey ?? effective?.apiKey ?? "",
 			userId: stored.userId ?? effective?.userId ?? "",
 			username: stored.username ?? effective?.username ?? "",
+			password: stored.password ?? effective?.password ?? "",
 			hasApiKey: Boolean(stored.apiKey ?? effective?.apiKey),
 			hasPassword: Boolean(stored.password ?? effective?.password),
 		},
@@ -158,6 +230,52 @@ export function saveJellyfinSettings(settings: JellyfinSettings) {
 	setSetting("jellyfin.userId", settings.userId.trim());
 	setSetting("jellyfin.username", settings.username.trim());
 	setSetting("jellyfin.password", settings.password.trim());
+}
+
+export function updateStoredJellyfinPasswordForUser(userId: string, password: string) {
+	const storedUserId = getSetting("jellyfin.userId")?.trim();
+	if (!storedUserId || storedUserId !== userId.trim()) {
+		return;
+	}
+
+	setSetting("jellyfin.password", password.trim());
+}
+
+export function clearStoredJellyfinPasswordForUser(userId: string) {
+	const storedUserId = getSetting("jellyfin.userId")?.trim();
+	if (!storedUserId || storedUserId !== userId.trim()) {
+		return;
+	}
+
+	clearSetting("jellyfin.password");
+}
+
+export async function saveServerConnection(url: string, apiKey: string) {
+	const cleanUrl = url.trim().replace(/\/+$/, "");
+	const cleanApiKey = apiKey.trim();
+
+	if (!cleanUrl || !cleanApiKey) {
+		throw new Error("Server URL and API key are required.");
+	}
+
+	const client = createClient({
+		url: cleanUrl,
+		apiKey: cleanApiKey,
+		userId: "",
+		username: "",
+		password: "",
+		clientName: "Aurora",
+		deviceName: "Aurora Web",
+		deviceId: "aurora-ui-web",
+		version: "1.0.0",
+	});
+
+	await getSystemInfo(client);
+
+	setSetting("jellyfin.url", cleanUrl);
+	setSetting("jellyfin.apiKey", cleanApiKey);
+
+	return { url: cleanUrl };
 }
 
 export async function validateJellyfinSettings(settings: JellyfinSettings) {

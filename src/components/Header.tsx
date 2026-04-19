@@ -1,23 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Search, Settings, Sparkles, X } from "lucide-react";
+import {
+	ChevronDown,
+	LayoutDashboard,
+	LogOut,
+	Menu,
+	Search,
+	Settings,
+	Sparkles,
+	Users,
+	X,
+} from "lucide-react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
-import { fetchSearchRuntime, fetchUsernameRuntime } from "../lib/runtime-functions";
+import { useMultiUserMode } from "../lib/multi-user-mode";
+import {
+	clearActiveUserRuntime,
+	fetchCurrentProfileRuntime,
+	fetchSearchRuntime,
+	fetchUsernameRuntime,
+} from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 
 export default function Header() {
 	const { t } = useI18n();
 	const { tvMode } = useTvMode();
 	const pathname = useRouterState({ select: (state) => state.location.pathname });
+	const multiUser = useMultiUserMode();
 
+	const { data: profile } = useQuery({
+		queryKey: ["current-profile", multiUser.activeUserId],
+		queryFn: () => fetchCurrentProfileRuntime(),
+	});
 	const { data: username = "" } = useQuery({
-		queryKey: ["current-user"],
+		queryKey: ["current-user", multiUser.activeUserId],
 		queryFn: () => fetchUsernameRuntime(),
 	});
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [navOpen, setNavOpen] = useState(false);
+	const [profileOpen, setProfileOpen] = useState(false);
+	const [loggingOut, setLoggingOut] = useState(false);
 	const [query, setQuery] = useState("");
 	const headerRef = useRef<HTMLElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -37,6 +60,7 @@ export default function Header() {
 		if (!pathname) return;
 		setSearchOpen(false);
 		setNavOpen(false);
+		setProfileOpen(false);
 	}, [pathname]);
 
 	useEffect(() => {
@@ -46,6 +70,7 @@ export default function Header() {
 			if (headerRef.current?.contains(target)) return;
 			setSearchOpen(false);
 			setNavOpen(false);
+			setProfileOpen(false);
 		}
 
 		document.addEventListener("mousedown", handlePointerDown);
@@ -66,7 +91,10 @@ export default function Header() {
 	function toggleSearch() {
 		setSearchOpen((current) => {
 			const next = !current;
-			if (next) setNavOpen(false);
+			if (next) {
+				setNavOpen(false);
+				setProfileOpen(false);
+			}
 			if (!next) setQuery("");
 			return next;
 		});
@@ -80,9 +108,35 @@ export default function Header() {
 	function toggleNav() {
 		setNavOpen((current) => {
 			const next = !current;
-			if (next) setSearchOpen(false);
+			if (next) {
+				setSearchOpen(false);
+				setProfileOpen(false);
+			}
 			return next;
 		});
+	}
+
+	function toggleProfileMenu() {
+		setProfileOpen((current) => {
+			const next = !current;
+			if (next) {
+				setSearchOpen(false);
+				setNavOpen(false);
+			}
+			return next;
+		});
+	}
+
+	async function handleLogout() {
+		if (!multiUser.multiUserMode) return;
+		setLoggingOut(true);
+		try {
+			await clearActiveUserRuntime();
+			setProfileOpen(false);
+			window.location.assign("/profiles");
+		} finally {
+			setLoggingOut(false);
+		}
 	}
 
 	return (
@@ -123,24 +177,90 @@ export default function Header() {
 							{searchOpen ? <X size={18} /> : <Search size={20} />}
 						</button>
 
-						<Link
-							to="/settings"
-							className="icon-button"
-							aria-label={t("nav.settings")}
-							data-tv-focusable="true"
-						>
-							<Settings size={20} />
-						</Link>
+						<div className="header-profile-menu-shell">
+							<button
+								type="button"
+								onClick={toggleProfileMenu}
+								className={
+									profileOpen
+										? "header-profile-trigger header-profile-trigger-open"
+										: "header-profile-trigger"
+								}
+								aria-label={t("header.profileMenu")}
+								aria-expanded={profileOpen}
+								data-tv-focusable="true"
+							>
+								{profile?.imageUrl ? (
+									<img
+										src={profile.imageUrl}
+										alt={profile.name || username || t("header.profileFallback")}
+										className="header-profile-avatar-image"
+									/>
+								) : (
+									<span className="header-profile-avatar">
+										{username.slice(0, 2).toUpperCase() || "??"}
+									</span>
+								)}
+								<ChevronDown size={14} className="header-profile-caret" />
+							</button>
 
-						<Link
-							to="/admin"
-							className="avatar-chip"
-							aria-label="Admin dashboard"
-							title={username || "Admin"}
-							data-tv-focusable="true"
-						>
-							{username.slice(0, 2).toUpperCase() || "??"}
-						</Link>
+							{profileOpen ? (
+								<div className="header-profile-dropdown">
+									<p className="header-profile-name">{username || t("header.profileFallback")}</p>
+									<div className="header-profile-links">
+										<Link
+											to="/profile"
+											className="header-profile-link"
+											aria-label={t("header.profile")}
+											data-tv-focusable="true"
+										>
+											<Users size={15} />
+											{t("header.profile")}
+										</Link>
+										<Link
+											to="/settings"
+											className="header-profile-link"
+											aria-label={t("nav.settings")}
+											data-tv-focusable="true"
+										>
+											<Settings size={15} />
+											{t("nav.settings")}
+										</Link>
+										<Link
+											to="/admin"
+											className="header-profile-link"
+											aria-label={t("header.dashboard")}
+											data-tv-focusable="true"
+										>
+											<LayoutDashboard size={15} />
+											{t("header.dashboard")}
+										</Link>
+										{multiUser.multiUserMode ? (
+											<Link
+												to="/profiles"
+												className="header-profile-link"
+												aria-label={t("profiles.switchProfile")}
+												data-tv-focusable="true"
+											>
+												<Users size={15} />
+												{t("profiles.switchProfile")}
+											</Link>
+										) : null}
+										{multiUser.multiUserMode ? (
+											<button
+												type="button"
+												className="header-profile-link header-profile-link-danger"
+												onClick={handleLogout}
+												disabled={loggingOut}
+											>
+												<LogOut size={15} />
+												{loggingOut ? t("header.loggingOut") : t("header.logout")}
+											</button>
+										) : null}
+									</div>
+								</div>
+							) : null}
+						</div>
 					</div>
 				</div>
 

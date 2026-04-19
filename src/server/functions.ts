@@ -291,9 +291,42 @@ export const fetchSearch = createServerFn({ method: "GET" })
 	});
 
 export const fetchUsername = createServerFn({ method: "GET" }).handler(async () => {
-	const { getEffectiveJellyfinSettings } = await import("../lib/config-store");
-	return getEffectiveJellyfinSettings()?.username ?? "";
+	const { getEffectiveJellyfinSettings, getMultiUserMode, getActiveUserId } = await import(
+		"../lib/config-store"
+	);
+	const settings = getEffectiveJellyfinSettings();
+
+	if (getMultiUserMode()) {
+		const activeUserId = getActiveUserId();
+		if (activeUserId) {
+			const { getUserById } = await import("../lib/jellyfin");
+			const user = await getUserById(activeUserId);
+			return user.Name ?? settings?.username ?? "";
+		}
+	}
+
+	return settings?.username ?? "";
 });
+
+export const fetchCurrentProfile = createServerFn({ method: "GET" }).handler(async () => {
+	const { getCurrentUserProfile } = await import("../lib/jellyfin");
+	return getCurrentUserProfile();
+});
+
+export const updateCurrentProfilePassword = createServerFn({ method: "POST" })
+	.inputValidator((input: { currentPassword: string; newPassword: string }) => input)
+	.handler(async ({ data }) => {
+		const { updateCurrentUserPassword } = await import("../lib/jellyfin");
+		const { updateStoredJellyfinPasswordForUser, clearStoredJellyfinPasswordForUser } =
+			await import("../lib/config-store");
+		const result = await updateCurrentUserPassword(data.currentPassword, data.newPassword);
+		if (data.newPassword.trim()) {
+			updateStoredJellyfinPasswordForUser(result.userId, data.newPassword);
+		} else {
+			clearStoredJellyfinPasswordForUser(result.userId);
+		}
+		return { ok: true };
+	});
 
 export const saveSettings = createServerFn({ method: "POST" })
 	.inputValidator(
@@ -553,10 +586,17 @@ export const reportPlaybackState = createServerFn({ method: "POST" })
 
 export const fetchAdminUsers = createServerFn({ method: "GET" }).handler(async () => {
 	const { getUsers } = await import("../lib/jellyfin");
+	const { jellyfinImageProxyUrl } = await import("../lib/jellyfin-image-proxy");
 	const users = await getUsers();
 	return users.map((u) => ({
 		id: u.Id,
 		name: u.Name,
+		imageUrl: u.PrimaryImageTag
+			? jellyfinImageProxyUrl(u.Id, "Primary", 160, {
+					tag: u.PrimaryImageTag,
+					resource: "users",
+				})
+			: undefined,
 		isAdmin: u.Policy?.IsAdministrator ?? false,
 		isDisabled: u.Policy?.IsDisabled ?? false,
 		lastLoginDate: u.LastLoginDate ?? null,
@@ -567,10 +607,8 @@ export const fetchAdminUsers = createServerFn({ method: "GET" }).handler(async (
 export const toggleAdminUser = createServerFn({ method: "POST" })
 	.inputValidator((input: { userId: string; disabled: boolean }) => input)
 	.handler(async ({ data }) => {
-		const { getUserById, updateUserPolicy } = await import("../lib/jellyfin");
-		const user = await getUserById(data.userId);
-		const policy = { ...(user.Policy ?? {}), IsDisabled: data.disabled };
-		await updateUserPolicy(data.userId, policy);
+		const { patchUserPolicy } = await import("../lib/jellyfin");
+		await patchUserPolicy(data.userId, { IsDisabled: data.disabled });
 		return { ok: true };
 	});
 
@@ -595,6 +633,84 @@ export const createAdminUser = createServerFn({ method: "POST" })
 			lastLoginDate: user.LastLoginDate ?? null,
 			hasPolicy: user.Policy != null,
 		};
+	});
+
+// ── Multi-user mode ───────────────────────────────────────────────────────────
+
+export const fetchMultiUserSettings = createServerFn({ method: "GET" }).handler(async () => {
+	const { getMultiUserMode, isMultiUserModeLocked, getActiveUserId } = await import(
+		"../lib/config-store"
+	);
+	return {
+		multiUserMode: getMultiUserMode(),
+		locked: isMultiUserModeLocked(),
+		activeUserId: getActiveUserId(),
+	};
+});
+
+export const setMultiUserModeServerFn = createServerFn({ method: "POST" })
+	.inputValidator((input: { enabled: boolean }) => input)
+	.handler(async ({ data }) => {
+		const { setMultiUserMode } = await import("../lib/config-store");
+		setMultiUserMode(data.enabled);
+		return { ok: true };
+	});
+
+export const setActiveUserServerFn = createServerFn({ method: "POST" })
+	.inputValidator((input: { userId: string }) => input)
+	.handler(async ({ data }) => {
+		const { setActiveUserId } = await import("../lib/config-store");
+		setActiveUserId(data.userId);
+		return { ok: true };
+	});
+
+export const clearActiveUserServerFn = createServerFn({ method: "POST" }).handler(async () => {
+	const { clearActiveUserId } = await import("../lib/config-store");
+	clearActiveUserId();
+	return { ok: true };
+});
+
+export const saveServerConnectionFn = createServerFn({ method: "POST" })
+	.inputValidator((input: { url: string; apiKey: string }) => input)
+	.handler(async ({ data }) => {
+		const { saveServerConnection } = await import("../lib/config-store");
+		return saveServerConnection(data.url, data.apiKey);
+	});
+
+export const fetchUserPolicy = createServerFn({ method: "POST" })
+	.inputValidator((input: { userId: string }) => input)
+	.handler(async ({ data }) => {
+		const { getUserById } = await import("../lib/jellyfin");
+		const user = await getUserById(data.userId);
+		const p = user.Policy ?? {};
+		return {
+			MaxActiveSessions: (p.MaxActiveSessions as number) ?? 0,
+			EnableRemoteAccess: (p.EnableRemoteAccess as boolean) ?? true,
+			MaxParentalRating: (p.MaxParentalRating as number) ?? 0,
+			BlockedTags: (p.BlockedTags as string[]) ?? [],
+			EnableContentDeletion: (p.EnableContentDeletion as boolean) ?? false,
+			EnableLiveTvAccess: (p.EnableLiveTvAccess as boolean) ?? true,
+		};
+	});
+
+export const updateUserParentalPolicy = createServerFn({ method: "POST" })
+	.inputValidator(
+		(input: {
+			userId: string;
+			policy: {
+				MaxActiveSessions?: number;
+				EnableRemoteAccess?: boolean;
+				MaxParentalRating?: number;
+				BlockedTags?: string[];
+				EnableContentDeletion?: boolean;
+				EnableLiveTvAccess?: boolean;
+			};
+		}) => input,
+	)
+	.handler(async ({ data }) => {
+		const { patchUserPolicy } = await import("../lib/jellyfin");
+		await patchUserPolicy(data.userId, data.policy);
+		return { ok: true };
 	});
 
 // ── Admin: libraries ──────────────────────────────────────────────────────────

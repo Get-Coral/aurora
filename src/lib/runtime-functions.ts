@@ -1,6 +1,8 @@
 import {
 	beginPlaybackSession,
+	clearActiveUserServerFn,
 	fetchContinueWatching,
+	fetchCurrentProfile,
 	fetchFavoriteMovies,
 	fetchFeatured,
 	fetchItemDetails,
@@ -8,6 +10,7 @@ import {
 	fetchLatestSeries,
 	fetchLibrary,
 	fetchMostPlayed,
+	fetchMultiUserSettings,
 	fetchMyList,
 	fetchOnlineSubtitle,
 	fetchOpenSubtitlesKey,
@@ -16,22 +19,36 @@ import {
 	fetchSeriesDetails,
 	fetchSetupStatus,
 	fetchUsername,
+	fetchUserPolicy,
 	fetchWatchHistory,
 	markPlayed,
 	reportPlaybackState,
 	saveOpenSubtitlesKey,
+	saveServerConnectionFn,
 	saveSettings,
 	saveSetupConfiguration,
 	searchOnlineSubtitles,
+	setActiveUserServerFn,
+	setMultiUserModeServerFn,
 	toggleFavorite,
+	updateCurrentProfilePassword,
+	updateUserParentalPolicy,
 } from "../server/functions";
 import {
 	type ClientJellyfinSettings,
+	clearClientActiveUserId,
+	clearStoredClientJellyfinPasswordForUser,
+	getClientActiveUserId,
 	getClientConfigurationSummary,
+	getClientMultiUserMode,
 	getClientOpenSubtitlesApiKey,
 	getStoredClientJellyfinSettings,
 	saveClientJellyfinSettings,
 	saveClientOpenSubtitlesApiKey,
+	saveClientServerConnection,
+	setClientActiveUserId,
+	setClientMultiUserMode,
+	updateStoredClientJellyfinPasswordForUser,
 	validateClientJellyfinSettings,
 } from "./client-config-store";
 import {
@@ -48,6 +65,8 @@ import {
 	fetchClientCollectionItems,
 	fetchClientCollections,
 	fetchClientContinueWatching,
+	fetchClientCurrentProfile,
+	fetchClientCurrentUsername,
 	fetchClientFavoriteItems,
 	fetchClientFeatured,
 	fetchClientItemDetails,
@@ -69,6 +88,7 @@ import {
 	searchClientOnlineSubtitles,
 	toggleClientAdminUser,
 	toggleClientFavorite,
+	updateClientCurrentUserPassword,
 } from "./client-media";
 import { shouldUseClientRuntime } from "./runtime-mode";
 
@@ -79,8 +99,10 @@ const EMPTY_SETUP_STATUS = {
 	source: "missing" as const,
 	current: {
 		url: "",
+		apiKey: "",
 		userId: "",
 		username: "",
+		password: "",
 		hasApiKey: false,
 		hasPassword: false,
 	},
@@ -152,10 +174,18 @@ export async function saveOpenSubtitlesKeyRuntime(apiKey: string) {
 
 export async function fetchUsernameRuntime() {
 	if (shouldUseClientRuntime()) {
-		return getStoredClientJellyfinSettings().username ?? "";
+		return fetchClientCurrentUsername();
 	}
 
 	return fetchUsername();
+}
+
+export async function fetchCurrentProfileRuntime() {
+	if (shouldUseClientRuntime()) {
+		return fetchClientCurrentProfile();
+	}
+
+	return fetchCurrentProfile();
 }
 
 export async function fetchLibraryRuntime(input: {
@@ -499,4 +529,97 @@ export async function markPlayedRuntime(input: { data: { id: string; played: boo
 	}
 
 	return markPlayed(input);
+}
+
+export async function fetchMultiUserSettingsRuntime() {
+	if (shouldUseClientRuntime()) {
+		return {
+			multiUserMode: getClientMultiUserMode(),
+			locked: false,
+			activeUserId: getClientActiveUserId(),
+		};
+	}
+
+	return fetchMultiUserSettings();
+}
+
+export async function setMultiUserModeRuntime(enabled: boolean) {
+	if (shouldUseClientRuntime()) {
+		setClientMultiUserMode(enabled);
+		return { ok: true };
+	}
+
+	return setMultiUserModeServerFn({ data: { enabled } });
+}
+
+export async function setActiveUserRuntime(userId: string) {
+	if (shouldUseClientRuntime()) {
+		setClientActiveUserId(userId);
+		return { ok: true };
+	}
+
+	return setActiveUserServerFn({ data: { userId } });
+}
+
+export async function clearActiveUserRuntime() {
+	if (shouldUseClientRuntime()) {
+		clearClientActiveUserId();
+		return { ok: true };
+	}
+
+	return clearActiveUserServerFn();
+}
+
+export async function updateCurrentProfilePasswordRuntime(input: {
+	currentPassword: string;
+	newPassword: string;
+}) {
+	if (shouldUseClientRuntime()) {
+		const profile = await fetchClientCurrentProfile();
+		const result = await updateClientCurrentUserPassword(input.currentPassword, input.newPassword);
+		if (input.newPassword.trim()) {
+			updateStoredClientJellyfinPasswordForUser(profile.id, input.newPassword);
+		} else {
+			clearStoredClientJellyfinPasswordForUser(profile.id);
+		}
+		return result;
+	}
+
+	return updateCurrentProfilePassword({ data: input });
+}
+
+export async function saveServerConnectionRuntime(url: string, apiKey: string) {
+	if (shouldUseClientRuntime()) {
+		return saveClientServerConnection(url, apiKey);
+	}
+
+	return saveServerConnectionFn({ data: { url, apiKey } });
+}
+
+export async function fetchUserPolicyRuntime(userId: string) {
+	if (shouldUseClientRuntime()) {
+		const { fetchClientUserPolicy } = await import("./client-media");
+		return fetchClientUserPolicy(userId);
+	}
+
+	return fetchUserPolicy({ data: { userId } });
+}
+
+export async function updateUserParentalPolicyRuntime(input: {
+	userId: string;
+	policy: {
+		MaxActiveSessions?: number;
+		EnableRemoteAccess?: boolean;
+		MaxParentalRating?: number;
+		BlockedTags?: string[];
+		EnableContentDeletion?: boolean;
+		EnableLiveTvAccess?: boolean;
+	};
+}) {
+	if (shouldUseClientRuntime()) {
+		const { updateClientUserParentalPolicy } = await import("./client-media");
+		return updateClientUserParentalPolicy(input.userId, input.policy);
+	}
+
+	return updateUserParentalPolicy({ data: input });
 }

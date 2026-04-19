@@ -43,14 +43,22 @@ import {
 	setPlayed,
 	streamUrl,
 	updateItemName,
+	updateUserPassword,
 	updateUserPolicy,
 } from "@get-coral/jellyfin";
 import {
 	getClientOpenSubtitlesApiKey,
 	getEffectiveClientJellyfinSettings,
+	getEffectiveClientServerConnectionSettings,
 } from "./client-config-store";
+import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
 import { setTranscodeQuality } from "./jellyfin-stream-proxy";
-import type { DetailedMediaItem, MediaItem, SeriesDetailPayload } from "./media";
+import type {
+	DetailedMediaItem,
+	MediaItem,
+	SeriesDetailPayload,
+	UserProfileSummary,
+} from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
 type ClientSettings = NonNullable<ReturnType<typeof getEffectiveClientJellyfinSettings>>;
@@ -153,6 +161,33 @@ function getClientJellyfin() {
 		deviceId: "aurora-ui-local",
 		version: "1.0.0",
 	});
+}
+
+function getClientAdminJellyfin() {
+	const settings = getEffectiveClientServerConnectionSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	return createClient({
+		url: settings.url.replace(/\/+$/, ""),
+		apiKey: settings.apiKey,
+		userId: "",
+		username: settings.username,
+		password: settings.password,
+		clientName: "Aurora",
+		deviceName: "Aurora Local",
+		deviceId: "aurora-ui-local",
+		version: "1.0.0",
+	});
+}
+
+async function patchClientUserPolicy(userId: string, patch: Partial<JellyfinUserPolicy>) {
+	const client = getClientAdminJellyfin();
+	const user = await getUserById(client, userId);
+	const merged = { ...user.Policy, ...patch } as JellyfinUserPolicy;
+	await updateUserPolicy(client, userId, merged);
 }
 
 function fromClientJellyfin(item: JellyfinItem): MediaItem {
@@ -376,6 +411,7 @@ type ClientAdminSession = {
 type ClientAdminUser = {
 	id: string;
 	name: string;
+	imageUrl?: string;
 	isAdmin: boolean;
 	isDisabled: boolean;
 	lastLoginDate: string | null;
@@ -390,8 +426,11 @@ type ClientAdminLibrary = {
 };
 
 export async function fetchClientAdminOverview(): Promise<ClientAdminOverview> {
-	const client = getClientJellyfin();
-	const settings = getRequiredClientSettings();
+	const client = getClientAdminJellyfin();
+	const settings = getEffectiveClientServerConnectionSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
 	const [systemInfo, counts] = await Promise.all([getSystemInfo(client), getItemCounts(client)]);
 
 	return {
@@ -403,7 +442,7 @@ export async function fetchClientAdminOverview(): Promise<ClientAdminOverview> {
 }
 
 export async function fetchClientAdminSessions(): Promise<ClientAdminSession[]> {
-	const client = getClientJellyfin();
+	const client = getClientAdminJellyfin();
 	const sessions = await getActiveSessions(client);
 
 	return sessions.map((session: JellyfinActiveSession) => ({
@@ -434,10 +473,16 @@ export async function fetchClientAdminSessions(): Promise<ClientAdminSession[]> 
 }
 
 export async function fetchClientAdminUsers(): Promise<ClientAdminUser[]> {
-	const users = await getUsers(getClientJellyfin());
+	const users = await getUsers(getClientAdminJellyfin());
 	return users.map((user: JellyfinUser) => ({
 		id: user.Id,
 		name: user.Name,
+		imageUrl: user.PrimaryImageTag
+			? jellyfinImageProxyUrl(user.Id, "Primary", 160, {
+					tag: user.PrimaryImageTag,
+					resource: "users",
+				})
+			: undefined,
 		isAdmin: user.Policy?.IsAdministrator ?? false,
 		isDisabled: user.Policy?.IsDisabled ?? false,
 		lastLoginDate: user.LastLoginDate ?? null,
@@ -446,15 +491,12 @@ export async function fetchClientAdminUsers(): Promise<ClientAdminUser[]> {
 }
 
 export async function toggleClientAdminUser(input: { userId: string; disabled: boolean }) {
-	const client = getClientJellyfin();
-	const user = await getUserById(client, input.userId);
-	const policy: JellyfinUserPolicy = { ...(user.Policy ?? {}), IsDisabled: input.disabled };
-	await updateUserPolicy(client, input.userId, policy);
+	await patchClientUserPolicy(input.userId, { IsDisabled: input.disabled });
 	return { ok: true };
 }
 
 export async function deleteClientAdminUser(userId: string) {
-	await deleteUser(getClientJellyfin(), userId);
+	await deleteUser(getClientAdminJellyfin(), userId);
 	return { ok: true };
 }
 
@@ -462,7 +504,7 @@ export async function createClientAdminUser(input: {
 	name: string;
 	password: string;
 }): Promise<ClientAdminUser> {
-	const user = await createUser(getClientJellyfin(), input.name, input.password);
+	const user = await createUser(getClientAdminJellyfin(), input.name, input.password);
 	return {
 		id: user.Id,
 		name: user.Name,
@@ -473,8 +515,76 @@ export async function createClientAdminUser(input: {
 	};
 }
 
+export async function fetchClientUserPolicy(userId: string) {
+	const user = await getUserById(getClientAdminJellyfin(), userId);
+	const p = user.Policy ?? {};
+	return {
+		MaxActiveSessions: (p.MaxActiveSessions as number) ?? 0,
+		EnableRemoteAccess: (p.EnableRemoteAccess as boolean) ?? true,
+		MaxParentalRating: (p.MaxParentalRating as number) ?? 0,
+		BlockedTags: (p.BlockedTags as string[]) ?? [],
+		EnableContentDeletion: (p.EnableContentDeletion as boolean) ?? false,
+		EnableLiveTvAccess: (p.EnableLiveTvAccess as boolean) ?? true,
+	};
+}
+
+export async function fetchClientCurrentUsername() {
+	const settings = getEffectiveClientServerConnectionSettings();
+	if (!settings) {
+		return "";
+	}
+
+	const activeUserId = getEffectiveClientJellyfinSettings()?.userId;
+	if (!activeUserId) {
+		return settings.username ?? "";
+	}
+
+	const user = await getUserById(getClientAdminJellyfin(), activeUserId);
+	return user.Name ?? settings.username ?? "";
+}
+
+export async function fetchClientCurrentProfile(): Promise<UserProfileSummary> {
+	const settings = getEffectiveClientJellyfinSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	const client = getClientAdminJellyfin();
+	const user = await getUserById(client, settings.userId);
+	return {
+		id: user.Id,
+		name: user.Name,
+		hasPassword: user.HasPassword,
+		imageUrl: user.PrimaryImageTag
+			? withImageTag(imageUrl(client, user.Id, "Primary", 160), user.PrimaryImageTag)
+			: undefined,
+	};
+}
+
+export async function updateClientCurrentUserPassword(
+	currentPassword: string,
+	newPassword: string,
+) {
+	const settings = getEffectiveClientJellyfinSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await updateUserPassword(getClientAdminJellyfin(), settings.userId, currentPassword, newPassword);
+
+	return { userId: settings.userId };
+}
+
+export async function updateClientUserParentalPolicy(
+	userId: string,
+	policy: Partial<JellyfinUserPolicy>,
+) {
+	await patchClientUserPolicy(userId, policy);
+	return { ok: true };
+}
+
 export async function fetchClientAdminLibraries(): Promise<ClientAdminLibrary[]> {
-	const folders = await getVirtualFolders(getClientJellyfin());
+	const folders = await getVirtualFolders(getClientAdminJellyfin());
 	return folders.map((folder: JellyfinVirtualFolder) => ({
 		itemId: folder.ItemId,
 		name: folder.Name,
@@ -484,12 +594,12 @@ export async function fetchClientAdminLibraries(): Promise<ClientAdminLibrary[]>
 }
 
 export async function scanAllClientAdminLibraries() {
-	await scanAllLibraries(getClientJellyfin());
+	await scanAllLibraries(getClientAdminJellyfin());
 	return { ok: true };
 }
 
 export async function scanClientAdminLibrary(itemId: string) {
-	await scanLibrary(getClientJellyfin(), itemId);
+	await scanLibrary(getClientAdminJellyfin(), itemId);
 	return { ok: true };
 }
 

@@ -32,9 +32,11 @@ import {
 	fetchAdminSessionsRuntime,
 	fetchAdminUsersRuntime,
 	fetchSetupStatusRuntime,
+	fetchUserPolicyRuntime,
 	scanAdminLibraryRuntime,
 	scanAllAdminLibrariesRuntime,
 	toggleAdminUserRuntime,
+	updateUserParentalPolicyRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 
@@ -349,6 +351,7 @@ function UserManager({
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [newPassword, setNewPassword] = useState("");
+	const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
 	const toggleMutation = useMutation({
 		mutationFn: (vars: { userId: string; disabled: boolean }) =>
@@ -490,6 +493,13 @@ function UserManager({
 								<div className="admin-user-actions">
 									<button
 										type="button"
+										className="admin-user-expand-btn"
+										onClick={() => setExpandedUserId(expandedUserId === u.id ? null : u.id)}
+									>
+										{expandedUserId === u.id ? "Close" : "Controls"}
+									</button>
+									<button
+										type="button"
 										className="admin-icon-action"
 										title={u.isDisabled ? "Enable user" : "Disable user"}
 										disabled={toggleMutation.isPending}
@@ -507,11 +517,196 @@ function UserManager({
 									</button>
 								</div>
 							)}
+
+							{expandedUserId === u.id ? (
+								<ParentalControlsPanel userId={u.id} onClose={() => setExpandedUserId(null)} />
+							) : null}
 						</div>
 					))}
 				</div>
 			)}
 		</section>
+	);
+}
+
+// ── Parental Controls Panel ───────────────────────────────────────────────────
+
+type ParentalPolicy = {
+	MaxActiveSessions: number;
+	EnableRemoteAccess: boolean;
+	MaxParentalRating: number;
+	BlockedTags: string;
+	EnableContentDeletion: boolean;
+	EnableLiveTvAccess: boolean;
+};
+
+const RATING_OPTIONS = [
+	{ label: "All content", value: 0 },
+	{ label: "G", value: 1 },
+	{ label: "PG", value: 7 },
+	{ label: "PG-13", value: 10 },
+	{ label: "R", value: 13 },
+	{ label: "NC-17 / Adults only", value: 18 },
+];
+
+function ParentalControlsPanel({ userId, onClose }: { userId: string; onClose: () => void }) {
+	const queryClient = useQueryClient();
+
+	const { data: rawPolicy, isLoading } = useQuery({
+		queryKey: ["user-policy", userId],
+		queryFn: () => fetchUserPolicyRuntime(userId),
+	});
+
+	const [policy, setPolicy] = useState<ParentalPolicy | null>(null);
+
+	if (!policy && rawPolicy) {
+		setPolicy({
+			MaxActiveSessions: rawPolicy.MaxActiveSessions,
+			EnableRemoteAccess: rawPolicy.EnableRemoteAccess,
+			MaxParentalRating: rawPolicy.MaxParentalRating,
+			BlockedTags: rawPolicy.BlockedTags.join(", "),
+			EnableContentDeletion: rawPolicy.EnableContentDeletion,
+			EnableLiveTvAccess: rawPolicy.EnableLiveTvAccess,
+		});
+	}
+
+	const saveMutation = useMutation({
+		mutationFn: () =>
+			updateUserParentalPolicyRuntime({
+				userId,
+				policy: {
+					MaxActiveSessions: policy!.MaxActiveSessions,
+					EnableRemoteAccess: policy!.EnableRemoteAccess,
+					MaxParentalRating: policy!.MaxParentalRating,
+					BlockedTags: policy!.BlockedTags.split(",")
+						.map((t) => t.trim())
+						.filter(Boolean),
+					EnableContentDeletion: policy!.EnableContentDeletion,
+					EnableLiveTvAccess: policy!.EnableLiveTvAccess,
+				},
+			}),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["user-policy", userId] });
+			onClose();
+		},
+	});
+
+	function set<K extends keyof ParentalPolicy>(key: K, value: ParentalPolicy[K]) {
+		setPolicy((p) => (p ? { ...p, [key]: value } : p));
+	}
+
+	if (isLoading || !policy) {
+		return (
+			<div className="parental-panel">
+				<p style={{ color: "var(--ink-faint)", fontSize: "0.875rem" }}>Loading controls\u2026</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="parental-panel">
+			<div className="parental-panel-group">
+				<p className="parental-panel-group-title">Access</p>
+				<div className="parental-field">
+					<span className="parental-field-label">Max simultaneous streams (0 = unlimited)</span>
+					<input
+						type="number"
+						min={0}
+						className="parental-field-input"
+						value={policy.MaxActiveSessions}
+						onChange={(e) => set("MaxActiveSessions", Number(e.target.value))}
+					/>
+				</div>
+				<div className="parental-field">
+					<span className="parental-field-label">Allow remote access</span>
+					<button
+						type="button"
+						role="switch"
+						aria-checked={policy.EnableRemoteAccess}
+						className={`toggle-switch${policy.EnableRemoteAccess ? " toggle-switch-on" : ""}`}
+						onClick={() => set("EnableRemoteAccess", !policy.EnableRemoteAccess)}
+					>
+						<span className="toggle-switch-thumb" />
+					</button>
+				</div>
+			</div>
+
+			<div className="parental-panel-group">
+				<p className="parental-panel-group-title">Content</p>
+				<div className="parental-field">
+					<span className="parental-field-label">Max age rating</span>
+					<select
+						className="parental-field-select"
+						value={policy.MaxParentalRating}
+						onChange={(e) => set("MaxParentalRating", Number(e.target.value))}
+					>
+						{RATING_OPTIONS.map((opt) => (
+							<option key={opt.value} value={opt.value}>
+								{opt.label}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className="parental-field">
+					<span className="parental-field-label">Blocked tags (comma-separated)</span>
+					<input
+						type="text"
+						className="parental-field-tags"
+						value={policy.BlockedTags}
+						onChange={(e) => set("BlockedTags", e.target.value)}
+						placeholder="horror, violence"
+					/>
+				</div>
+			</div>
+
+			<div className="parental-panel-group">
+				<p className="parental-panel-group-title">Management</p>
+				<div className="parental-field">
+					<span className="parental-field-label">Allow content deletion</span>
+					<button
+						type="button"
+						role="switch"
+						aria-checked={policy.EnableContentDeletion}
+						className={`toggle-switch${policy.EnableContentDeletion ? " toggle-switch-on" : ""}`}
+						onClick={() => set("EnableContentDeletion", !policy.EnableContentDeletion)}
+					>
+						<span className="toggle-switch-thumb" />
+					</button>
+				</div>
+				<div className="parental-field">
+					<span className="parental-field-label">Allow Live TV access</span>
+					<button
+						type="button"
+						role="switch"
+						aria-checked={policy.EnableLiveTvAccess}
+						className={`toggle-switch${policy.EnableLiveTvAccess ? " toggle-switch-on" : ""}`}
+						onClick={() => set("EnableLiveTvAccess", !policy.EnableLiveTvAccess)}
+					>
+						<span className="toggle-switch-thumb" />
+					</button>
+				</div>
+			</div>
+
+			{saveMutation.error ? (
+				<p className="admin-inline-error">
+					{saveMutation.error instanceof Error ? saveMutation.error.message : "Save failed"}
+				</p>
+			) : null}
+
+			<div className="parental-panel-actions">
+				<button type="button" className="parental-cancel-btn" onClick={onClose}>
+					Cancel
+				</button>
+				<button
+					type="button"
+					className="parental-save-btn"
+					disabled={saveMutation.isPending}
+					onClick={() => saveMutation.mutate()}
+				>
+					{saveMutation.isPending ? "Saving\u2026" : "Save controls"}
+				</button>
+			</div>
+		</div>
 	);
 }
 

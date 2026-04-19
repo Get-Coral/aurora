@@ -49,6 +49,13 @@ export interface SeriesDetailPayload {
 	similar: MediaItem[];
 }
 
+export interface UserProfileSummary {
+	id: string;
+	name: string;
+	imageUrl?: string;
+	hasPassword: boolean;
+}
+
 export function isResumable(
 	item: Pick<MediaItem, "progress" | "playbackPositionTicks" | "played">,
 ) {
