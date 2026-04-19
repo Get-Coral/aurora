@@ -1,8 +1,8 @@
 import {
 	beginPlaybackSession,
 	clearActiveUserServerFn,
-	fetchCurrentProfile,
 	fetchContinueWatching,
+	fetchCurrentProfile,
 	fetchFavoriteMovies,
 	fetchFeatured,
 	fetchItemDetails,
@@ -18,8 +18,8 @@ import {
 	fetchSearch,
 	fetchSeriesDetails,
 	fetchSetupStatus,
-	fetchUserPolicy,
 	fetchUsername,
+	fetchUserPolicy,
 	fetchWatchHistory,
 	markPlayed,
 	reportPlaybackState,
@@ -34,15 +34,22 @@ import {
 	updateCurrentProfileImage,
 	updateCurrentProfilePassword,
 	updateUserParentalPolicy,
+	uploadCurrentProfileImage,
 } from "../server/functions";
 import {
 	type ClientJellyfinSettings,
+	clearClientActiveUserId,
 	clearStoredClientJellyfinPasswordForUser,
+	getClientActiveUserId,
 	getClientConfigurationSummary,
+	getClientMultiUserMode,
 	getClientOpenSubtitlesApiKey,
 	getStoredClientJellyfinSettings,
 	saveClientJellyfinSettings,
 	saveClientOpenSubtitlesApiKey,
+	saveClientServerConnection,
+	setClientActiveUserId,
+	setClientMultiUserMode,
 	updateStoredClientJellyfinPasswordForUser,
 	validateClientJellyfinSettings,
 } from "./client-config-store";
@@ -85,15 +92,8 @@ import {
 	toggleClientFavorite,
 	updateClientCurrentProfileImage,
 	updateClientCurrentUserPassword,
+	uploadClientCurrentProfileImage,
 } from "./client-media";
-import {
-	clearClientActiveUserId,
-	getClientActiveUserId,
-	getClientMultiUserMode,
-	saveClientServerConnection,
-	setClientActiveUserId,
-	setClientMultiUserMode,
-} from "./client-config-store";
 import { shouldUseClientRuntime } from "./runtime-mode";
 
 interface SetupPayload extends ClientJellyfinSettings {}
@@ -580,6 +580,32 @@ export async function updateCurrentProfileImageRuntime(imageUrl: string) {
 	}
 
 	return updateCurrentProfileImage({ data: { imageUrl } });
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+	let binary = "";
+	const bytes = new Uint8Array(buffer);
+	const chunkSize = 0x8000;
+	for (let index = 0; index < bytes.length; index += chunkSize) {
+		const chunk = bytes.subarray(index, index + chunkSize);
+		binary += String.fromCharCode(...chunk);
+	}
+	return btoa(binary);
+}
+
+export async function uploadCurrentProfileImageRuntime(file: File) {
+	const imageBuffer = await file.arrayBuffer();
+	const contentType = file.type || "image/jpeg";
+	if (shouldUseClientRuntime()) {
+		return uploadClientCurrentProfileImage(imageBuffer, contentType);
+	}
+
+	return uploadCurrentProfileImage({
+		data: {
+			contentType,
+			imageBase64: arrayBufferToBase64(imageBuffer),
+		},
+	});
 }
 
 export async function updateCurrentProfilePasswordRuntime(input: {

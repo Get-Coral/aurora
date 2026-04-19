@@ -1,12 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, Settings, Sparkles, Users, X } from "lucide-react";
+import {
+	ChevronDown,
+	LayoutDashboard,
+	LogOut,
+	Menu,
+	Search,
+	Settings,
+	Sparkles,
+	Users,
+	X,
+} from "lucide-react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
-import { clearActiveUserRuntime, fetchCurrentProfileRuntime } from "../lib/runtime-functions";
 import { useMultiUserMode } from "../lib/multi-user-mode";
-import { fetchSearchRuntime, fetchUsernameRuntime } from "../lib/runtime-functions";
+import {
+	clearActiveUserRuntime,
+	fetchCurrentProfileRuntime,
+	fetchSearchRuntime,
+	fetchUsernameRuntime,
+} from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 
 export default function Header() {
@@ -167,7 +181,11 @@ export default function Header() {
 							<button
 								type="button"
 								onClick={toggleProfileMenu}
-								className={profileOpen ? "header-profile-trigger header-profile-trigger-open" : "header-profile-trigger"}
+								className={
+									profileOpen
+										? "header-profile-trigger header-profile-trigger-open"
+										: "header-profile-trigger"
+								}
 								aria-label={t("header.profileMenu")}
 								aria-expanded={profileOpen}
 								data-tv-focusable="true"
@@ -190,24 +208,24 @@ export default function Header() {
 								<div className="header-profile-dropdown">
 									<p className="header-profile-name">{username || t("header.profileFallback")}</p>
 									<div className="header-profile-links">
-											<Link
-												to="/profile"
-												className="header-profile-link"
-												aria-label={t("header.profile")}
-												data-tv-focusable="true"
-											>
-												<Users size={15} />
-												{t("header.profile")}
-											</Link>
-											<Link
-												to="/settings"
-												className="header-profile-link"
-												aria-label={t("nav.settings")}
-												data-tv-focusable="true"
-											>
-												<Settings size={15} />
-												{t("nav.settings")}
-											</Link>
+										<Link
+											to="/profile"
+											className="header-profile-link"
+											aria-label={t("header.profile")}
+											data-tv-focusable="true"
+										>
+											<Users size={15} />
+											{t("header.profile")}
+										</Link>
+										<Link
+											to="/settings"
+											className="header-profile-link"
+											aria-label={t("nav.settings")}
+											data-tv-focusable="true"
+										>
+											<Settings size={15} />
+											{t("nav.settings")}
+										</Link>
 										<Link
 											to="/admin"
 											className="header-profile-link"

@@ -42,19 +42,25 @@ import {
 	setFavorite,
 	setPlayed,
 	streamUrl,
-	updateUserPassword,
-	updateUserPrimaryImage,
-	updateUserPolicy,
 	updateItemName,
+	updateUserPassword,
+	updateUserPolicy,
+	updateUserPrimaryImage,
+	uploadUserPrimaryImage,
 } from "@get-coral/jellyfin";
 import {
 	getClientOpenSubtitlesApiKey,
-	getEffectiveClientServerConnectionSettings,
 	getEffectiveClientJellyfinSettings,
+	getEffectiveClientServerConnectionSettings,
 } from "./client-config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
 import { setTranscodeQuality } from "./jellyfin-stream-proxy";
-import type { DetailedMediaItem, MediaItem, SeriesDetailPayload, UserProfileSummary } from "./media";
+import type {
+	DetailedMediaItem,
+	MediaItem,
+	SeriesDetailPayload,
+	UserProfileSummary,
+} from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
 type ClientSettings = NonNullable<ReturnType<typeof getEffectiveClientJellyfinSettings>>;
@@ -568,7 +574,24 @@ export async function updateClientCurrentProfileImage(imageSourceUrl: string) {
 	return fetchClientCurrentProfile();
 }
 
-export async function updateClientCurrentUserPassword(currentPassword: string, newPassword: string) {
+export async function uploadClientCurrentProfileImage(
+	imageBuffer: ArrayBuffer,
+	contentType: string,
+) {
+	const settings = getEffectiveClientJellyfinSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await uploadUserPrimaryImage(getClientAdminJellyfin(), settings.userId, imageBuffer, contentType);
+
+	return fetchClientCurrentProfile();
+}
+
+export async function updateClientCurrentUserPassword(
+	currentPassword: string,
+	newPassword: string,
+) {
 	const settings = getEffectiveClientJellyfinSettings();
 	if (!settings) {
 		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");

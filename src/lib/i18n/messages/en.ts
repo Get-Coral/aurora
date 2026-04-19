@@ -319,8 +319,15 @@ export const enMessages: MessageDictionary = {
 	"profile.subtitle": "Manage the active Jellyfin profile shown in Aurora.",
 	"profile.currentProfile": "Current profile",
 	"profile.avatarTitle": "Profile image",
-	"profile.avatarCopy": "Paste an image URL to update this profile's avatar in Jellyfin.",
+	"profile.avatarCopy":
+		"Upload an image file or paste an image URL to update this profile's avatar in Jellyfin.",
+	"profile.avatarUpload": "Upload image",
+	"profile.avatarUploadHint": "Choose a PNG, JPEG, WebP, or GIF image.",
+	"profile.avatarUploadUnsupported":
+		"Your Jellyfin server rejected direct file uploads for profile images. Use the image URL option below instead.",
 	"profile.avatarUrl": "Image URL",
+	"profile.uploadAvatar": "Upload avatar",
+	"profile.fileRequired": "Choose an image file first.",
 	"profile.passwordTitle": "Password",
 	"profile.passwordCopy": "Set a new Jellyfin password for this profile.",
 	"profile.currentPassword": "Current password",
@@ -335,8 +342,7 @@ export const enMessages: MessageDictionary = {
 	"profile.error": "Something went wrong while updating your profile.",
 	"settings.userProfilesSection": "User profiles",
 	"settings.userProfiles.toggle": "Enable multiple user profiles",
-	"settings.userProfiles.lockedNote":
-		"Forced on by the AURORA_MULTI_USER environment variable.",
+	"settings.userProfiles.lockedNote": "Forced on by the AURORA_MULTI_USER environment variable.",
 	"settings.userProfiles.switchProfile": "Switch profile",
 	"settings.userProfiles.manageUsers": "Manage users",
 };

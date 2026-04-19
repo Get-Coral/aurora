@@ -39,6 +39,7 @@ import {
 	type JellyfinUserPolicy,
 	type JellyfinVirtualFolder,
 	type PlaybackSyncInput,
+	patchUserPolicy as patchUserPolicyBase,
 	personImageUrl,
 	removeItemsFromCollection as removeItemsFromCollectionBase,
 	scanAllLibraries as scanAllLibrariesBase,
@@ -49,16 +50,13 @@ import {
 	streamUrl,
 	syncPlaybackState as syncPlaybackStateBase,
 	transcodeUrl,
-	patchUserPolicy as patchUserPolicyBase,
 	updateItemName as updateItemNameBase,
 	updateUserPassword as updateUserPasswordBase,
-	updateUserPrimaryImage as updateUserPrimaryImageBase,
 	updateUserPolicy as updateUserPolicyBase,
+	updateUserPrimaryImage as updateUserPrimaryImageBase,
+	uploadUserPrimaryImage as uploadUserPrimaryImageBase,
 } from "@get-coral/jellyfin";
-import {
-	getEffectiveJellyfinSettings,
-	getEffectiveServerConnectionSettings,
-} from "./config-store";
+import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
 import type { UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
@@ -342,6 +340,26 @@ export async function updateCurrentUserProfileImage(imageUrl: string): Promise<U
 	}
 
 	await updateUserPrimaryImageBase(getAdminJellyfinClient(), settings.userId, imageUrl);
+
+	return getCurrentUserProfile();
+}
+
+export async function uploadCurrentUserProfileImage(
+	imageBuffer: ArrayBuffer,
+	contentType: string,
+): Promise<UserProfileSummary> {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await uploadUserPrimaryImageBase(
+		getAdminJellyfinClient(),
+		settings.userId,
+		imageBuffer,
+		contentType,
+	);
 
 	return getCurrentUserProfile();
 }

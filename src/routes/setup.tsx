@@ -298,11 +298,7 @@ function SetupPage() {
 							disabled={!canAdvance() || isPending}
 							onClick={handleNext}
 						>
-							{isPending
-								? t("setup.saving")
-								: isLastStep
-									? t("setup.submit")
-									: "Continue"}
+							{isPending ? t("setup.saving") : isLastStep ? t("setup.submit") : "Continue"}
 							{!isPending && !isLastStep ? <ArrowRight size={15} /> : null}
 						</button>
 					</div>

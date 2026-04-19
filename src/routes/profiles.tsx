@@ -93,9 +93,7 @@ function ProfilesPage() {
 									)}
 								</div>
 								<span className="profiles-name">{user.name}</span>
-								{isActive && (
-									<span className="profiles-active-badge">{t("profiles.active")}</span>
-								)}
+								{isActive && <span className="profiles-active-badge">{t("profiles.active")}</span>}
 								{user.isDisabled && (
 									<span className="profiles-disabled-badge">{t("profiles.disabled")}</span>
 								)}

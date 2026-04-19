@@ -320,8 +320,15 @@ export const nlMessages: MessageDictionary = {
 	"profile.subtitle": "Beheer het actieve Jellyfin-profiel dat Aurora gebruikt.",
 	"profile.currentProfile": "Actief profiel",
 	"profile.avatarTitle": "Profielfoto",
-	"profile.avatarCopy": "Plak een afbeeldings-URL om de avatar van dit profiel in Jellyfin te updaten.",
+	"profile.avatarCopy":
+		"Upload een afbeeldingsbestand of plak een afbeeldings-URL om de avatar van dit profiel in Jellyfin te updaten.",
+	"profile.avatarUpload": "Afbeelding uploaden",
+	"profile.avatarUploadHint": "Kies een PNG-, JPEG-, WebP- of GIF-afbeelding.",
+	"profile.avatarUploadUnsupported":
+		"Je Jellyfin-server weigert directe bestandsuploads voor profielfoto's. Gebruik hieronder in plaats daarvan de afbeeldings-URL.",
 	"profile.avatarUrl": "Afbeeldings-URL",
+	"profile.uploadAvatar": "Avatar uploaden",
+	"profile.fileRequired": "Kies eerst een afbeeldingsbestand.",
 	"profile.passwordTitle": "Wachtwoord",
 	"profile.passwordCopy": "Stel een nieuw Jellyfin-wachtwoord in voor dit profiel.",
 	"profile.currentPassword": "Huidig wachtwoord",
@@ -336,8 +343,7 @@ export const nlMessages: MessageDictionary = {
 	"profile.error": "Er ging iets mis bij het bijwerken van je profiel.",
 	"settings.userProfilesSection": "Gebruikersprofielen",
 	"settings.userProfiles.toggle": "Meerdere gebruikersprofielen inschakelen",
-	"settings.userProfiles.lockedNote":
-		"Ingeschakeld via de omgevingsvariabele AURORA_MULTI_USER.",
+	"settings.userProfiles.lockedNote": "Ingeschakeld via de omgevingsvariabele AURORA_MULTI_USER.",
 	"settings.userProfiles.switchProfile": "Profiel wisselen",
 	"settings.userProfiles.manageUsers": "Gebruikers beheren",
 };

@@ -494,9 +494,7 @@ function UserManager({
 									<button
 										type="button"
 										className="admin-user-expand-btn"
-										onClick={() =>
-											setExpandedUserId(expandedUserId === u.id ? null : u.id)
-										}
+										onClick={() => setExpandedUserId(expandedUserId === u.id ? null : u.id)}
 									>
 										{expandedUserId === u.id ? "Close" : "Controls"}
 									</button>
@@ -521,10 +519,7 @@ function UserManager({
 							)}
 
 							{expandedUserId === u.id ? (
-								<ParentalControlsPanel
-									userId={u.id}
-									onClose={() => setExpandedUserId(null)}
-								/>
+								<ParentalControlsPanel userId={u.id} onClose={() => setExpandedUserId(null)} />
 							) : null}
 						</div>
 					))}
@@ -583,8 +578,7 @@ function ParentalControlsPanel({ userId, onClose }: { userId: string; onClose: (
 					MaxActiveSessions: policy!.MaxActiveSessions,
 					EnableRemoteAccess: policy!.EnableRemoteAccess,
 					MaxParentalRating: policy!.MaxParentalRating,
-					BlockedTags: policy!.BlockedTags
-						.split(",")
+					BlockedTags: policy!.BlockedTags.split(",")
 						.map((t) => t.trim())
 						.filter(Boolean),
 					EnableContentDeletion: policy!.EnableContentDeletion,

@@ -122,9 +122,7 @@ export function getEffectiveClientJellyfinSettings(): ClientJellyfinSettings | n
 	return areSettingsComplete(stored) ? stored : null;
 }
 
-export function getEffectiveClientServerConnectionSettings():
-	| ClientJellyfinServerConnectionSettings
-	| null {
+export function getEffectiveClientServerConnectionSettings(): ClientJellyfinServerConnectionSettings | null {
 	const stored = getStoredClientJellyfinSettings();
 
 	if (!stored.url || !stored.apiKey) {
@@ -152,9 +150,7 @@ export function getClientConfigurationSummary() {
 	const multiUserMode = getClientMultiUserMode();
 
 	return {
-		configured: multiUserMode
-			? Boolean(stored.url && stored.apiKey)
-			: Boolean(effective),
+		configured: multiUserMode ? Boolean(stored.url && stored.apiKey) : Boolean(effective),
 		source: getClientJellyfinSettingsSource(),
 		current: {
 			url: stored.url ?? effective?.url ?? "",
@@ -241,7 +237,10 @@ export async function saveClientServerConnection(url: string, apiKey: string) {
 	await getSystemInfo(client);
 
 	const current = getStoredClientJellyfinSettings();
-	writeJson(JELLYFIN_SETTINGS_KEY, normalizeSettings({ ...current, url: cleanUrl, apiKey: cleanApiKey }));
+	writeJson(
+		JELLYFIN_SETTINGS_KEY,
+		normalizeSettings({ ...current, url: cleanUrl, apiKey: cleanApiKey }),
+	);
 
 	return { url: cleanUrl };
 }

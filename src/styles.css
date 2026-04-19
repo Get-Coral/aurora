@@ -5628,6 +5628,19 @@ html.tv-mode .player-autoplay-cancel {
   line-height: 1.6;
 }
 
+.profile-file-meta {
+  margin: -0.35rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.profile-inline-note {
+  margin: -0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .profile-form {
   display: flex;
   flex-direction: column;
