@@ -25,6 +25,21 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.8.0](https://github.com/Get-Coral/aurora/compare/v1.7.0...v1.8.0) (2026-04-19)
+
+
+### Features
+
+* add User switching ([c2c7a33](https://github.com/Get-Coral/aurora/commit/c2c7a33e79a16996cbc354eb803f6c22860d1c42))
+* allow user switching ([c580308](https://github.com/Get-Coral/aurora/commit/c58030870239860442f53a9de2ac3f1d6b8bea38))
+* implement user images and profiles ([3362539](https://github.com/Get-Coral/aurora/commit/33625398c21a27ce2470b201020372f4475fe758))
+* update Jellyfin dependency to version 1.6.2 and implement profile management features ([e40a4b5](https://github.com/Get-Coral/aurora/commit/e40a4b528d814e278b6eff5c068e527ef7ccd058))
+
+
+### Bug Fixes
+
+* remove image upload ([da91bf5](https://github.com/Get-Coral/aurora/commit/da91bf5d60a0ac6262713f605eb856509a4b2348))
+
 ## [1.7.0](https://github.com/Get-Coral/aurora/compare/v1.6.0...v1.7.0) (2026-04-15)
 
 
