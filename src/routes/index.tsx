@@ -1,9 +1,7 @@
-import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { HeroSection } from "../components/HeroSection";
-import { MediaPlayerDialog } from "../components/MediaPlayerDialog";
-import { MediaSpotlightDialog } from "../components/MediaSpotlightDialog";
 import { SectionShelf } from "../components/SectionShelf";
 import { useFavoriteAction } from "../components/useFavoriteAction";
 import { useI18n } from "../lib/i18n";
@@ -155,31 +153,17 @@ function HomePage() {
 		queryKey: ["most-played"],
 		queryFn: () => fetchMostPlayedRuntime(),
 	});
-	const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-	const [playingItem, setPlayingItem] = useState<MediaItem | null>(null);
-	const [playQueue, setPlayQueue] = useState<MediaItem[]>([]);
 	const [heroIndex, setHeroIndex] = useState(0);
 	const [insightIndex, setInsightIndex] = useState(0);
 	const [screensaverActive, setScreensaverActive] = useState(false);
 	const [screensaverTime, setScreensaverTime] = useState("");
 	const { tvMode } = useTvMode();
 	const favoriteMutation = useFavoriteAction();
-	const queryClient = useQueryClient();
 	const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const insightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const lastInteractionRef = useRef(Date.now());
 	const screensaverCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const screensaverClockRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-	useEffect(() => {
-		function handleSelect(event: Event) {
-			const customEvent = event as CustomEvent<MediaItem>;
-			setSelectedItem(customEvent.detail);
-		}
-
-		window.addEventListener("aurora:select-media", handleSelect as EventListener);
-		return () => window.removeEventListener("aurora:select-media", handleSelect as EventListener);
-	}, []);
 
 	const heroPool = [...(featured ? [featured] : []), ...latestMovies, ...latestSeries].filter(
 		(item, index, arr) => arr.findIndex((c) => c.id === item.id) === index,
@@ -208,7 +192,7 @@ function HomePage() {
 		}
 
 		screensaverCheckRef.current = setInterval(() => {
-			if (playingItem) return;
+			if (document.documentElement.dataset.auroraPlaying === "true") return;
 			if (Date.now() - lastInteractionRef.current >= TIMEOUT_MS) setScreensaverActive(true);
 		}, 10_000);
 
@@ -224,7 +208,7 @@ function HomePage() {
 			window.removeEventListener("touchstart", resetInteraction);
 			window.removeEventListener("click", resetInteraction);
 		};
-	}, [screensaverActive, playingItem]);
+	}, [screensaverActive]);
 
 	// Screensaver clock
 	useEffect(() => {
@@ -289,37 +273,12 @@ function HomePage() {
 		};
 	}, [tvMode, spotlightInsights.length, spotlightItem?.id]);
 
-	function playMedia(item: MediaItem, queue: MediaItem[] = []) {
-		if (!item.streamUrl || item.type === "series") return;
-		setSelectedItem(null);
-		setPlayQueue(queue.length ? queue : [item]);
-		setPlayingItem(item);
+	function dispatchSelect(item: MediaItem) {
+		window.dispatchEvent(new CustomEvent("aurora:select-media", { detail: item }));
 	}
 
-	function handleToggleFavorite(item: MediaItem) {
-		setSelectedItem((current) =>
-			current?.id === item.id ? { ...current, isFavorite: !current.isFavorite } : current,
-		);
-		favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) });
-	}
-
-	function handleWatchedChange(id: string, played: boolean) {
-		// Patch every home-page query cache that might contain this item
-		const patchList = (items: MediaItem[]) =>
-			items.map((i) => (i.id === id ? { ...i, played } : i));
-
-		queryClient.setQueriesData<MediaItem[]>({ queryKey: ["continue-watching"] }, (old) =>
-			old ? patchList(old) : old,
-		);
-		queryClient.setQueriesData<MediaItem[]>({ queryKey: ["latest-movies"] }, (old) =>
-			old ? patchList(old) : old,
-		);
-		queryClient.setQueriesData<MediaItem[]>({ queryKey: ["latest-series"] }, (old) =>
-			old ? patchList(old) : old,
-		);
-		queryClient.setQueriesData<MediaItem[]>({ queryKey: ["favorite-movies"] }, (old) =>
-			old ? patchList(old) : old,
-		);
+	function dispatchPlay(item: MediaItem, queue: MediaItem[]) {
+		window.dispatchEvent(new CustomEvent("aurora:play-media", { detail: { item, queue } }));
 	}
 
 	return (
@@ -329,10 +288,10 @@ function HomePage() {
 					item={spotlightItem}
 					continueItem={continueWatching[0] ?? null}
 					companionItems={companionItems}
-					onPlay={() => playMedia(spotlightItem, [spotlightItem, ...recommendedItems])}
-					onPlayContinue={(resumeItem) => playMedia(resumeItem, continueWatching)}
-					onMoreInfo={() => setSelectedItem(spotlightItem)}
-					onSelectCompanion={setSelectedItem}
+					onPlay={() => dispatchPlay(spotlightItem, [spotlightItem, ...recommendedItems])}
+					onPlayContinue={(resumeItem) => dispatchPlay(resumeItem, continueWatching)}
+					onMoreInfo={() => dispatchSelect(spotlightItem)}
+					onSelectCompanion={dispatchSelect}
 				/>
 			) : null}
 
@@ -364,9 +323,11 @@ function HomePage() {
 					title={t("home.continue.title")}
 					subtitle={t("home.continue.subtitle")}
 					items={continueWatching}
-					onSelect={setSelectedItem}
-					onPlay={(item) => playMedia(item, continueWatching)}
-					onToggleFavorite={handleToggleFavorite}
+					onSelect={dispatchSelect}
+					onPlay={(item) => dispatchPlay(item, continueWatching)}
+					onToggleFavorite={(item) =>
+						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+					}
 					emptyTitle={t("home.continue.emptyTitle")}
 					emptyCopy={t("home.continue.emptyCopy")}
 				/>
@@ -375,9 +336,11 @@ function HomePage() {
 					title={t("home.movies.title")}
 					subtitle={t("home.movies.subtitle")}
 					items={latestMovies}
-					onSelect={setSelectedItem}
-					onPlay={(item) => playMedia(item, latestMovies)}
-					onToggleFavorite={handleToggleFavorite}
+					onSelect={dispatchSelect}
+					onPlay={(item) => dispatchPlay(item, latestMovies)}
+					onToggleFavorite={(item) =>
+						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+					}
 					browseTo="/library/movies"
 				/>
 				<SectionShelf
@@ -385,9 +348,11 @@ function HomePage() {
 					title={t("home.favorites.title")}
 					subtitle={t("home.favorites.subtitle")}
 					items={favoriteMovies}
-					onSelect={setSelectedItem}
-					onPlay={(item) => playMedia(item, favoriteMovies)}
-					onToggleFavorite={handleToggleFavorite}
+					onSelect={dispatchSelect}
+					onPlay={(item) => dispatchPlay(item, favoriteMovies)}
+					onToggleFavorite={(item) =>
+						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+					}
 					browseTo="/my-list"
 					emptyTitle={t("home.favorites.emptyTitle")}
 					emptyCopy={t("home.favorites.emptyCopy")}
@@ -397,9 +362,11 @@ function HomePage() {
 					title={t("home.series.title")}
 					subtitle={t("home.series.subtitle")}
 					items={latestSeries}
-					onSelect={setSelectedItem}
-					onPlay={(item) => playMedia(item, latestSeries)}
-					onToggleFavorite={handleToggleFavorite}
+					onSelect={dispatchSelect}
+					onPlay={(item) => dispatchPlay(item, latestSeries)}
+					onToggleFavorite={(item) =>
+						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+					}
 					browseTo="/library/series"
 				/>
 				<SectionShelf
@@ -407,9 +374,11 @@ function HomePage() {
 					title={t("home.recommended.title")}
 					subtitle={t("home.recommended.subtitle")}
 					items={recommendedItems}
-					onSelect={setSelectedItem}
-					onPlay={(item) => playMedia(item, recommendedItems)}
-					onToggleFavorite={handleToggleFavorite}
+					onSelect={dispatchSelect}
+					onPlay={(item) => dispatchPlay(item, recommendedItems)}
+					onToggleFavorite={(item) =>
+						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+					}
 					browseTo="/library/movies"
 					emptyTitle={t("home.recommended.emptyTitle")}
 					emptyCopy={t("home.recommended.emptyCopy")}
@@ -420,33 +389,15 @@ function HomePage() {
 						title={t("home.mostPlayed.title")}
 						subtitle={t("home.mostPlayed.subtitle")}
 						items={mostPlayed}
-						onSelect={setSelectedItem}
-						onPlay={(item) => playMedia(item, mostPlayed)}
-						onToggleFavorite={handleToggleFavorite}
+						onSelect={dispatchSelect}
+						onPlay={(item) => dispatchPlay(item, mostPlayed)}
+						onToggleFavorite={(item) =>
+							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+						}
 						browseTo="/history"
 					/>
 				) : null}
 			</div>
-
-			<MediaPlayerDialog
-				item={playingItem}
-				open={playingItem != null}
-				onClose={() => setPlayingItem(null)}
-				queue={playQueue}
-				onSelectQueueItem={setPlayingItem}
-			/>
-
-			<MediaSpotlightDialog
-				item={selectedItem}
-				open={selectedItem != null}
-				onClose={() => setSelectedItem(null)}
-				onPlay={(item, queue) =>
-					playMedia(item, queue ?? (item.type === "episode" ? [item] : [item, ...recommendedItems]))
-				}
-				onSelectSimilar={setSelectedItem}
-				onToggleFavorite={handleToggleFavorite}
-				onWatchedChange={handleWatchedChange}
-			/>
 
 			{screensaverActive && spotlightItem ? (
 				<div className="screensaver-shell" onClick={() => setScreensaverActive(false)}>
