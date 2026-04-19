@@ -1,4 +1,4 @@
-import { shouldUseClientRuntime } from "../runtime-mode";
+import { shouldUseClientRuntime } from "@/lib/runtime-mode";
 
 export async function callRuntime<T>(
 	clientCall: () => T | Promise<T>,

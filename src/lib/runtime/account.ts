@@ -1,4 +1,20 @@
 import {
+	clearClientActiveUserId,
+	clearStoredClientJellyfinPasswordForUser,
+	getClientActiveUserId,
+	getClientMultiUserMode,
+	setClientActiveUserId,
+	setClientMultiUserMode,
+	updateStoredClientJellyfinPasswordForUser,
+} from "@/lib/client-config-store";
+import {
+	fetchClientCurrentProfile,
+	fetchClientCurrentUsername,
+	fetchClientUserPolicy,
+	updateClientCurrentUserPassword,
+	updateClientUserParentalPolicy,
+} from "@/lib/client-media";
+import {
 	clearActiveUserServerFn,
 	fetchCurrentProfile,
 	fetchMultiUserSettings,
@@ -8,23 +24,7 @@ import {
 	setMultiUserModeServerFn,
 	updateCurrentProfilePassword,
 	updateUserParentalPolicy,
-} from "../../server/functions";
-import {
-	clearClientActiveUserId,
-	clearStoredClientJellyfinPasswordForUser,
-	getClientActiveUserId,
-	getClientMultiUserMode,
-	setClientActiveUserId,
-	setClientMultiUserMode,
-	updateStoredClientJellyfinPasswordForUser,
-} from "../client-config-store";
-import {
-	fetchClientCurrentProfile,
-	fetchClientCurrentUsername,
-	fetchClientUserPolicy,
-	updateClientCurrentUserPassword,
-	updateClientUserParentalPolicy,
-} from "../client-media";
+} from "@/server/functions";
 import { callRuntime } from "./shared";
 
 export async function fetchUsernameRuntime() {

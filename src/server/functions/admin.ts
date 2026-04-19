@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export const fetchAdminUsers = createServerFn({ method: "GET" }).handler(async () => {
-	const { getUsers } = await import("../../lib/jellyfin");
-	const { jellyfinImageProxyUrl } = await import("../../lib/jellyfin-image-proxy");
+	const { getUsers } = await import("@/lib/jellyfin");
+	const { jellyfinImageProxyUrl } = await import("@/lib/jellyfin-image-proxy");
 	const users = await getUsers();
 	return users.map((user) => ({
 		id: user.Id,
@@ -23,7 +23,7 @@ export const fetchAdminUsers = createServerFn({ method: "GET" }).handler(async (
 export const toggleAdminUser = createServerFn({ method: "POST" })
 	.inputValidator((input: { userId: string; disabled: boolean }) => input)
 	.handler(async ({ data }) => {
-		const { patchUserPolicy } = await import("../../lib/jellyfin");
+		const { patchUserPolicy } = await import("@/lib/jellyfin");
 		await patchUserPolicy(data.userId, { IsDisabled: data.disabled });
 		return { ok: true };
 	});
@@ -31,7 +31,7 @@ export const toggleAdminUser = createServerFn({ method: "POST" })
 export const deleteAdminUser = createServerFn({ method: "POST" })
 	.inputValidator((input: { userId: string }) => input)
 	.handler(async ({ data }) => {
-		const { deleteJellyfinUser } = await import("../../lib/jellyfin");
+		const { deleteJellyfinUser } = await import("@/lib/jellyfin");
 		await deleteJellyfinUser(data.userId);
 		return { ok: true };
 	});
@@ -39,7 +39,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
 export const createAdminUser = createServerFn({ method: "POST" })
 	.inputValidator((input: { name: string; password: string }) => input)
 	.handler(async ({ data }) => {
-		const { createJellyfinUser } = await import("../../lib/jellyfin");
+		const { createJellyfinUser } = await import("@/lib/jellyfin");
 		const user = await createJellyfinUser(data.name, data.password);
 		return {
 			id: user.Id,
@@ -52,7 +52,7 @@ export const createAdminUser = createServerFn({ method: "POST" })
 	});
 
 export const fetchAdminLibraries = createServerFn({ method: "GET" }).handler(async () => {
-	const { getVirtualFolders } = await import("../../lib/jellyfin");
+	const { getVirtualFolders } = await import("@/lib/jellyfin");
 	const folders = await getVirtualFolders();
 	return folders.map((folder) => ({
 		itemId: folder.ItemId,
@@ -63,7 +63,7 @@ export const fetchAdminLibraries = createServerFn({ method: "GET" }).handler(asy
 });
 
 export const scanAllAdminLibraries = createServerFn({ method: "POST" }).handler(async () => {
-	const { scanAllLibraries } = await import("../../lib/jellyfin");
+	const { scanAllLibraries } = await import("@/lib/jellyfin");
 	await scanAllLibraries();
 	return { ok: true };
 });
@@ -71,14 +71,14 @@ export const scanAllAdminLibraries = createServerFn({ method: "POST" }).handler(
 export const scanAdminLibrary = createServerFn({ method: "POST" })
 	.inputValidator((input: { itemId: string }) => input)
 	.handler(async ({ data }) => {
-		const { scanLibrary } = await import("../../lib/jellyfin");
+		const { scanLibrary } = await import("@/lib/jellyfin");
 		await scanLibrary(data.itemId);
 		return { ok: true };
 	});
 
 export const fetchAdminOverview = createServerFn({ method: "GET" }).handler(async () => {
-	const { getSystemInfo, getItemCounts } = await import("../../lib/jellyfin");
-	const { getEffectiveJellyfinSettings } = await import("../../lib/config-store");
+	const { getSystemInfo, getItemCounts } = await import("@/lib/jellyfin");
+	const { getEffectiveJellyfinSettings } = await import("@/lib/config-store");
 	const settings = getEffectiveJellyfinSettings();
 	const [systemInfo, counts] = await Promise.all([getSystemInfo(), getItemCounts()]);
 	return {
@@ -90,8 +90,8 @@ export const fetchAdminOverview = createServerFn({ method: "GET" }).handler(asyn
 });
 
 export const fetchAdminSessions = createServerFn({ method: "GET" }).handler(async () => {
-	const { getActiveSessions } = await import("../../lib/jellyfin");
-	const { jellyfinImageProxyUrl } = await import("../../lib/jellyfin-image-proxy");
+	const { getActiveSessions } = await import("@/lib/jellyfin");
+	const { jellyfinImageProxyUrl } = await import("@/lib/jellyfin-image-proxy");
 
 	const sessions = await getActiveSessions();
 	return sessions.map((session) => ({

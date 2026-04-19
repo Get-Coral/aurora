@@ -1,15 +1,4 @@
 import {
-	createAdminUser,
-	deleteAdminUser,
-	fetchAdminLibraries,
-	fetchAdminOverview,
-	fetchAdminSessions,
-	fetchAdminUsers,
-	scanAdminLibrary,
-	scanAllAdminLibraries,
-	toggleAdminUser,
-} from "../../server/functions";
-import {
 	createClientAdminUser,
 	deleteClientAdminUser,
 	fetchClientAdminLibraries,
@@ -19,7 +8,18 @@ import {
 	scanAllClientAdminLibraries,
 	scanClientAdminLibrary,
 	toggleClientAdminUser,
-} from "../client-media";
+} from "@/lib/client-media";
+import {
+	createAdminUser,
+	deleteAdminUser,
+	fetchAdminLibraries,
+	fetchAdminOverview,
+	fetchAdminSessions,
+	fetchAdminUsers,
+	scanAdminLibrary,
+	scanAllAdminLibraries,
+	toggleAdminUser,
+} from "@/server/functions";
 import { callRuntime } from "./shared";
 
 export async function fetchAdminOverviewRuntime() {

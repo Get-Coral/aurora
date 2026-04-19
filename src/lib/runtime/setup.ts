@@ -1,12 +1,4 @@
 import {
-	fetchOpenSubtitlesKey,
-	fetchSetupStatus,
-	saveOpenSubtitlesKey,
-	saveServerConnectionFn,
-	saveSettings,
-	saveSetupConfiguration,
-} from "../../server/functions";
-import {
 	type ClientJellyfinSettings,
 	getClientConfigurationSummary,
 	getClientOpenSubtitlesApiKey,
@@ -15,7 +7,15 @@ import {
 	saveClientOpenSubtitlesApiKey,
 	saveClientServerConnection,
 	validateClientJellyfinSettings,
-} from "../client-config-store";
+} from "@/lib/client-config-store";
+import {
+	fetchOpenSubtitlesKey,
+	fetchSetupStatus,
+	saveOpenSubtitlesKey,
+	saveServerConnectionFn,
+	saveSettings,
+	saveSetupConfiguration,
+} from "@/server/functions";
 import { callRuntime } from "./shared";
 
 interface SetupPayload extends ClientJellyfinSettings {}

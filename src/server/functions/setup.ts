@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export const fetchSetupStatus = createServerFn({ method: "GET" }).handler(async () => {
-	const { getConfigurationSummary } = await import("../../lib/config-store");
+	const { getConfigurationSummary } = await import("@/lib/config-store");
 	return getConfigurationSummary();
 });
 
@@ -12,7 +12,7 @@ export const saveSetupConfiguration = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const { validateJellyfinSettings, saveJellyfinSettings, isAuroraConfigured } = await import(
-			"../../lib/config-store"
+			"@/lib/config-store"
 		);
 		const validated = await validateJellyfinSettings({
 			url: data.url,
@@ -40,7 +40,7 @@ export const saveSettings = createServerFn({ method: "POST" })
 			saveJellyfinSettings,
 			getEffectiveJellyfinSettings,
 			isAuroraConfigured,
-		} = await import("../../lib/config-store");
+		} = await import("@/lib/config-store");
 		const existing = getEffectiveJellyfinSettings();
 		const settings = {
 			url: data.url,
@@ -55,14 +55,14 @@ export const saveSettings = createServerFn({ method: "POST" })
 	});
 
 export const fetchOpenSubtitlesKey = createServerFn({ method: "GET" }).handler(async () => {
-	const { getOpenSubtitlesApiKey } = await import("../../lib/config-store");
+	const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
 	return getOpenSubtitlesApiKey();
 });
 
 export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 	.inputValidator((input: { apiKey: string }) => input)
 	.handler(async ({ data }) => {
-		const { saveOpenSubtitlesApiKey } = await import("../../lib/config-store");
+		const { saveOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		saveOpenSubtitlesApiKey(data.apiKey);
 		return { ok: true };
 	});
@@ -70,6 +70,6 @@ export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 export const saveServerConnectionFn = createServerFn({ method: "POST" })
 	.inputValidator((input: { url: string; apiKey: string }) => input)
 	.handler(async ({ data }) => {
-		const { saveServerConnection } = await import("../../lib/config-store");
+		const { saveServerConnection } = await import("@/lib/config-store");
 		return saveServerConnection(data.url, data.apiKey);
 	});

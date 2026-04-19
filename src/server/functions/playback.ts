@@ -59,7 +59,7 @@ export const searchOnlineSubtitles = createServerFn({ method: "GET" })
 		(input: { title: string; year?: number; season?: number; episode?: number }) => input,
 	)
 	.handler(async ({ data }): Promise<OpenSubtitleResult[]> => {
-		const { getOpenSubtitlesApiKey } = await import("../../lib/config-store");
+		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		const apiKey = getOpenSubtitlesApiKey();
 		if (!apiKey) return [];
 
@@ -116,7 +116,7 @@ export const searchOnlineSubtitles = createServerFn({ method: "GET" })
 export const fetchOnlineSubtitle = createServerFn({ method: "POST" })
 	.inputValidator((input: { fileId: number }) => input)
 	.handler(async ({ data }) => {
-		const { getOpenSubtitlesApiKey } = await import("../../lib/config-store");
+		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		const apiKey = getOpenSubtitlesApiKey();
 		if (!apiKey) throw new Error("No OpenSubtitles API key configured");
 
@@ -153,9 +153,9 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 		}) => input,
 	)
 	.handler(async ({ data }) => {
-		const { createPlaybackSession } = await import("../../lib/jellyfin");
+		const { createPlaybackSession } = await import("@/lib/jellyfin");
 		const { jellyfinStreamProxyUrl, setTranscodeQuality } = await import(
-			"../../lib/jellyfin-stream-proxy"
+			"@/lib/jellyfin-stream-proxy"
 		);
 		const session = await createPlaybackSession(data.id, data.client);
 		const proxiedStreamUrl = jellyfinStreamProxyUrl(session.streamUrl);
@@ -187,7 +187,7 @@ export const reportPlaybackState = createServerFn({ method: "POST" })
 		}) => input,
 	)
 	.handler(async ({ data }) => {
-		const { syncPlaybackState } = await import("../../lib/jellyfin");
+		const { syncPlaybackState } = await import("@/lib/jellyfin");
 		return syncPlaybackState({
 			itemId: data.id,
 			positionTicks: data.positionTicks,

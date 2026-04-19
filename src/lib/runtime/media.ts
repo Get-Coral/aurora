@@ -1,4 +1,27 @@
 import {
+	addClientItemsToCollection,
+	createClientCollection,
+	deleteClientCollection,
+	fetchClientCollectionItems,
+	fetchClientCollections,
+	fetchClientContinueWatching,
+	fetchClientFavoriteItems,
+	fetchClientFeatured,
+	fetchClientItemDetails,
+	fetchClientLatestMedia,
+	fetchClientLibrary,
+	fetchClientMostPlayed,
+	fetchClientMyList,
+	fetchClientRecommendedFromItem,
+	fetchClientSearch,
+	fetchClientSeriesDetails,
+	fetchClientWatchHistory,
+	markClientPlayed,
+	removeClientItemFromCollection,
+	renameClientCollection,
+	toggleClientFavorite,
+} from "@/lib/client-media";
+import {
 	addToCollection,
 	createCollection,
 	deleteCollection,
@@ -21,30 +44,7 @@ import {
 	removeFromCollection,
 	renameCollection,
 	toggleFavorite,
-} from "../../server/functions";
-import {
-	addClientItemsToCollection,
-	createClientCollection,
-	deleteClientCollection,
-	fetchClientCollectionItems,
-	fetchClientCollections,
-	fetchClientContinueWatching,
-	fetchClientFavoriteItems,
-	fetchClientFeatured,
-	fetchClientItemDetails,
-	fetchClientLatestMedia,
-	fetchClientLibrary,
-	fetchClientMostPlayed,
-	fetchClientMyList,
-	fetchClientRecommendedFromItem,
-	fetchClientSearch,
-	fetchClientSeriesDetails,
-	fetchClientWatchHistory,
-	markClientPlayed,
-	removeClientItemFromCollection,
-	renameClientCollection,
-	toggleClientFavorite,
-} from "../client-media";
+} from "@/server/functions";
 import { callRuntime } from "./shared";
 
 export async function fetchLibraryRuntime(input: {

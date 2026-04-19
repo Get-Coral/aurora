@@ -1,15 +1,15 @@
 import {
-	beginPlaybackSession,
-	fetchOnlineSubtitle,
-	reportPlaybackState,
-	searchOnlineSubtitles,
-} from "../../server/functions";
-import {
 	beginClientPlaybackSession,
 	fetchClientOnlineSubtitle,
 	reportClientPlaybackState,
 	searchClientOnlineSubtitles,
-} from "../client-media";
+} from "@/lib/client-media";
+import {
+	beginPlaybackSession,
+	fetchOnlineSubtitle,
+	reportPlaybackState,
+	searchOnlineSubtitles,
+} from "@/server/functions";
 import { callRuntime } from "./shared";
 
 export async function beginPlaybackSessionRuntime(input: {
