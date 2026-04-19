@@ -35,7 +35,7 @@ export const updateCurrentProfilePassword = createServerFn({ method: "POST" })
 		} else {
 			clearStoredJellyfinPasswordForUser(result.userId);
 		}
-		return { ok: true };
+		return result;
 	});
 
 export const fetchMultiUserSettings = createServerFn({ method: "GET" }).handler(async () => {

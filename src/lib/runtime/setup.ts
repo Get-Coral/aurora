@@ -20,9 +20,23 @@ import { callRuntime } from "./shared";
 
 interface SetupPayload extends ClientJellyfinSettings {}
 
-const EMPTY_SETUP_STATUS = {
+type ConfigSummary = {
+	configured: boolean;
+	source: string;
+	current: {
+		url: string;
+		apiKey: string;
+		userId: string;
+		username: string;
+		password: string;
+		hasApiKey: boolean;
+		hasPassword: boolean;
+	};
+};
+
+const EMPTY_SETUP_STATUS: ConfigSummary = {
 	configured: false,
-	source: "missing" as const,
+	source: "missing",
 	current: {
 		url: "",
 		apiKey: "",
@@ -46,7 +60,7 @@ function mergeClientSettings(input: Partial<ClientJellyfinSettings>) {
 }
 
 export async function fetchSetupStatusRuntime() {
-	return callRuntime(
+	return callRuntime<ConfigSummary>(
 		() => getClientConfigurationSummary(),
 		async () => (await fetchSetupStatus()) ?? EMPTY_SETUP_STATUS,
 	);
