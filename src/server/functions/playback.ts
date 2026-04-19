@@ -188,7 +188,7 @@ export const reportPlaybackState = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const { syncPlaybackState } = await import("@/lib/jellyfin");
-		return syncPlaybackState({
+		const result = await syncPlaybackState({
 			itemId: data.id,
 			positionTicks: data.positionTicks,
 			playMethod: data.playMethod,
@@ -199,4 +199,5 @@ export const reportPlaybackState = createServerFn({ method: "POST" })
 			isStopped: data.isStopped,
 			played: data.played,
 		});
+		return { id: data.id, ...result };
 	});

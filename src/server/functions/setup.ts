@@ -64,7 +64,7 @@ export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const { saveOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		saveOpenSubtitlesApiKey(data.apiKey);
-		return { ok: true };
+		return { apiKey: data.apiKey };
 	});
 
 export const saveServerConnectionFn = createServerFn({ method: "POST" })
