@@ -1,17 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { Bug, ExternalLink, Github, Heart, Tv, Users } from "lucide-react";
+import { Bug, ExternalLink, Github, Heart, Lock, Tv, Users } from "lucide-react";
 import { useState } from "react";
 import type { Locale } from "../lib/i18n";
 import { supportedLocales, useI18n } from "../lib/i18n";
 import {
 	clearActiveUserRuntime,
+	fetchAuthStatusRuntime,
 	fetchMultiUserSettingsRuntime,
 	fetchOpenSubtitlesKeyRuntime,
 	fetchSetupStatusRuntime,
 	saveOpenSubtitlesKeyRuntime,
 	saveSettingsRuntime,
 	setMultiUserModeRuntime,
+	setRequireLoginRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 
@@ -22,7 +24,8 @@ export const Route = createFileRoute("/settings")({
 			throw redirect({ to: "/setup" });
 		}
 		const multiUser = await fetchMultiUserSettingsRuntime();
-		return { ...setupStatus, multiUser };
+		const auth = await fetchAuthStatusRuntime();
+		return { ...setupStatus, multiUser, auth };
 	},
 	component: SettingsPage,
 });
@@ -38,7 +41,8 @@ function SettingsPage() {
 	const navigate = useNavigate();
 	const loaderData = Route.useLoaderData();
 	const setupStatus = loaderData;
-	const { multiUser } = loaderData;
+	const { multiUser, auth } = loaderData;
+	const [requireLogin, setRequireLoginState] = useState(auth.requireLogin);
 
 	const [url, setUrl] = useState(setupStatus.current.url);
 	const [apiKey, setApiKey] = useState("");
@@ -54,6 +58,16 @@ function SettingsPage() {
 		onSuccess: async (_, enabled) => {
 			if (enabled) await navigate({ to: "/profiles" });
 			else await navigate({ to: "/" });
+		},
+	});
+
+	const requireLoginMutation = useMutation({
+		mutationFn: async (enabled: boolean) => {
+			await setRequireLoginRuntime(enabled);
+			return enabled;
+		},
+		onSuccess: (enabled) => {
+			setRequireLoginState(enabled);
 		},
 	});
 
@@ -224,6 +238,47 @@ function SettingsPage() {
 								{t("settings.userProfiles.manageUsers")} →
 							</Link>
 						</div>
+					) : null}
+				</section>
+
+				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
+					<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+						<p className="eyebrow">{t("settings.securitySection")}</p>
+					</div>
+
+					<div className="settings-toggle-row">
+						<div className="settings-toggle-copy">
+							<div className="settings-toggle-label">
+								<Lock size={16} />
+								{t("settings.security.requireLogin")}
+							</div>
+							<p className="settings-toggle-description">
+								{t("settings.security.requireLoginCopy")}
+							</p>
+						</div>
+						<button
+							type="button"
+							role="switch"
+							aria-checked={requireLogin}
+							className={`toggle-switch${requireLogin ? " toggle-switch-on" : ""}`}
+							disabled={auth.locked || requireLoginMutation.isPending}
+							onClick={() => requireLoginMutation.mutate(!requireLogin)}
+							aria-label={t("settings.security.requireLogin")}
+						>
+							<span className="toggle-switch-thumb" />
+						</button>
+					</div>
+
+					{auth.locked ? (
+						<p className="settings-locked-note">{t("settings.security.lockedNote")}</p>
+					) : null}
+
+					{requireLoginMutation.error ? (
+						<p className="detail-empty">
+							{requireLoginMutation.error instanceof Error
+								? requireLoginMutation.error.message
+								: t("settings.errorFallback")}
+						</p>
 					) : null}
 				</section>
 

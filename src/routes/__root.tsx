@@ -24,10 +24,19 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 
 const TV_MODE_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('aurora-tv-mode');var ua=(navigator.userAgent||'').toLowerCase();var touch=navigator.maxTouchPoints||0;var isIos=/iphone|ipad|ipod/.test(ua)||(ua.indexOf('macintosh')!==-1&&touch>1);var isTv=/(android tv|googletv|google tv|afts|aftt|aftm|bravia|smarttv|hbbtv)/.test(ua);var enabled=stored==='1'||(stored!=='0'&&isTv&&!isIos);var platform=isIos?'ios':(isTv?'android-tv':(/android/.test(ua)?'android':'other'));document.documentElement.dataset.platform=platform;if(enabled){document.documentElement.classList.add('tv-mode');}}catch(e){}})();`;
 
-const SKIP_PROFILE_GUARD = ["/setup", "/profiles"];
+const SKIP_AUTH_GUARD = ["/setup", "/login"];
+const SKIP_PROFILE_GUARD = ["/setup", "/profiles", "/login"];
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
 	beforeLoad: async ({ location }) => {
+		if (!SKIP_AUTH_GUARD.some((p) => location.pathname.startsWith(p))) {
+			const { fetchAuthStatusRuntime } = await import("../lib/runtime-functions");
+			const auth = await fetchAuthStatusRuntime();
+			if (auth.required && !auth.authenticated) {
+				throw redirect({ to: "/login" });
+			}
+		}
+
 		if (SKIP_PROFILE_GUARD.some((p) => location.pathname.startsWith(p))) return;
 
 		const { fetchMultiUserSettingsRuntime, fetchSetupStatusRuntime } = await import(
@@ -105,7 +114,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const pathname = useRouterState({ select: (state) => state.location.pathname });
-	const hideHeader = pathname === "/setup" || pathname === "/profiles";
+	const hideHeader = pathname === "/setup" || pathname === "/profiles" || pathname === "/login";
 
 	return (
 		<html lang="en" suppressHydrationWarning>

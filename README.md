@@ -98,6 +98,14 @@ Aurora uses Jellyfin as the system of record.
 - `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
 - If you use the onboarding flow, Aurora stores these values in local SQLite instead of requiring env vars
 
+## Requiring Sign-In
+
+By default anyone who can reach your Aurora instance can browse and stream the connected library. If your instance is reachable from the internet (or any network you do not fully trust), enable **Require sign-in** in Settings → Security. Everyone then has to sign in with their own Jellyfin username and password before Aurora serves anything.
+
+- Sessions are stored server-side in the local SQLite database and last 30 days
+- Sign-in is validated directly against your Jellyfin server, so Jellyfin account lockout policies apply
+- To force it on (so it cannot be disabled from the UI), set `AURORA_REQUIRE_LOGIN=true` in the environment
+
 ## Translations
 
 Translations live in dedicated locale files so contributors can add languages without touching the runtime logic.

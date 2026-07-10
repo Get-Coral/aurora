@@ -48,6 +48,10 @@ function getDatabase() {
 	return database;
 }
 
+export function getAppDatabase() {
+	return getDatabase();
+}
+
 function getSetting(key: string) {
 	const statement = getDatabase().prepare("SELECT value FROM app_settings WHERE key = ?");
 	const row = statement.get(key) as { value?: string } | undefined;
@@ -132,6 +136,19 @@ export function getMultiUserMode(): boolean {
 
 export function isMultiUserModeLocked(): boolean {
 	return process.env.AURORA_MULTI_USER === "true";
+}
+
+export function getRequireLogin(): boolean {
+	if (process.env.AURORA_REQUIRE_LOGIN === "true") return true;
+	return getSetting("aurora.requireLogin") === "true";
+}
+
+export function isRequireLoginLocked(): boolean {
+	return process.env.AURORA_REQUIRE_LOGIN === "true";
+}
+
+export function setRequireLogin(enabled: boolean): void {
+	setSetting("aurora.requireLogin", enabled ? "true" : "false");
 }
 
 export function getActiveUserId(): string | null {

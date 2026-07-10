@@ -34,6 +34,11 @@ export const Route = createFileRoute("/api/jellyfin-image")({
 	server: {
 		handlers: {
 			GET: async ({ request }) => {
+				const { isRequestAuthorized } = await import("../../lib/auth-store");
+				if (!isRequestAuthorized(request)) {
+					return new Response("Unauthorized.", { status: 401 });
+				}
+
 				const { getEffectiveJellyfinSettings } = await import("../../lib/config-store");
 				const settings = getEffectiveJellyfinSettings();
 

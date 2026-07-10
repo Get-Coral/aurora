@@ -51,6 +51,11 @@ function copyHeaderIfPresent(target: Headers, source: Headers, key: string) {
 }
 
 async function proxyJellyfinStreamRequest(request: Request) {
+	const { isRequestAuthorized } = await import("../../lib/auth-store");
+	if (!isRequestAuthorized(request)) {
+		return new Response("Unauthorized.", { status: 401 });
+	}
+
 	const { getEffectiveJellyfinSettings } = await import("../../lib/config-store");
 	const settings = getEffectiveJellyfinSettings();
 

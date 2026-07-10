@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { authRequiredMiddleware } from "../auth-middleware";
 
 const LANGUAGE_NAMES: Record<string, string> = {
 	en: "English",
@@ -55,6 +56,7 @@ function srtToVtt(srt: string): string {
 }
 
 export const searchOnlineSubtitles = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator(
 		(input: { title: string; year?: number; season?: number; episode?: number }) => input,
 	)
@@ -114,6 +116,7 @@ export const searchOnlineSubtitles = createServerFn({ method: "GET" })
 	});
 
 export const fetchOnlineSubtitle = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator((input: { fileId: number }) => input)
 	.handler(async ({ data }) => {
 		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
@@ -142,6 +145,7 @@ export const fetchOnlineSubtitle = createServerFn({ method: "POST" })
 	});
 
 export const beginPlaybackSession = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator(
 		(input: {
 			id: string;
@@ -173,6 +177,7 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 	});
 
 export const reportPlaybackState = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator(
 		(input: {
 			id: string;

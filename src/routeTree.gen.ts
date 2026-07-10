@@ -15,6 +15,7 @@ import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as MyListRouteImport } from './routes/my-list'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -55,6 +56,11 @@ const OfflineRoute = OfflineRouteImport.update({
 const MyListRoute = MyListRouteImport.update({
   id: '/my-list',
   path: '/my-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/login'
     | '/my-list'
     | '/offline'
     | '/profile'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/login'
     | '/my-list'
     | '/offline'
     | '/profile'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/login'
     | '/my-list'
     | '/offline'
     | '/profile'
@@ -233,6 +245,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   HistoryRoute: typeof HistoryRoute
+  LoginRoute: typeof LoginRoute
   MyListRoute: typeof MyListRoute
   OfflineRoute: typeof OfflineRoute
   ProfileRoute: typeof ProfileRoute
@@ -289,6 +302,13 @@ declare module '@tanstack/react-router' {
       path: '/my-list'
       fullPath: '/my-list'
       preLoaderRoute: typeof MyListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -389,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   HistoryRoute: HistoryRoute,
+  LoginRoute: LoginRoute,
   MyListRoute: MyListRoute,
   OfflineRoute: OfflineRoute,
   ProfileRoute: ProfileRoute,
