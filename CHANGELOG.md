@@ -25,6 +25,13 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.10.0](https://github.com/Get-Coral/aurora/compare/v1.9.0...v1.10.0) (2026-07-10)
+
+
+### Features
+
+* restrict admin functions to Jellyfin administrators ([4a3f45f](https://github.com/Get-Coral/aurora/commit/4a3f45f6c374edb75b1a84eb957510397db2fd29))
+
 ## [1.9.0](https://github.com/Get-Coral/aurora/compare/v1.8.2...v1.9.0) (2026-07-10)
 
 
