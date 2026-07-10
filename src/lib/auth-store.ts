@@ -25,6 +25,10 @@ const CREATE_SESSIONS_TABLE_SQL = [
 	"  created_at INTEGER NOT NULL,",
 	"  expires_at INTEGER NOT NULL",
 	");",
+	"CREATE TABLE IF NOT EXISTS user_logins (",
+	"  user_id TEXT PRIMARY KEY,",
+	"  last_login_at INTEGER NOT NULL",
+	");",
 ].join("\n");
 
 let sessionsTableReady = false;
@@ -142,6 +146,30 @@ export function deleteSessionByToken(token: string | undefined | null): void {
 	getSessionsDatabase()
 		.prepare("DELETE FROM auth_sessions WHERE token_hash = ?")
 		.run(hashToken(token));
+}
+
+/**
+ * Track successful Aurora sign-ins per Jellyfin user. Jellyfin does write
+ * LastLoginDate on AuthenticateByName, but (as of 10.11) serves user info
+ * from an in-memory cache that misses that write, so the admin dashboard
+ * merges this in to show accurate last-login times.
+ */
+export function recordUserLogin(userId: string): void {
+	getSessionsDatabase()
+		.prepare(
+			"INSERT INTO user_logins (user_id, last_login_at) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET last_login_at = excluded.last_login_at",
+		)
+		.run(userId, nowSeconds());
+}
+
+export function getLastUserLogins(): Map<string, string> {
+	const rows = getSessionsDatabase()
+		.prepare("SELECT user_id, last_login_at FROM user_logins")
+		.all() as unknown as Array<{ user_id: string; last_login_at: number }>;
+
+	return new Map(
+		rows.map((row) => [row.user_id, new Date(row.last_login_at * 1000).toISOString()]),
+	);
 }
 
 export function getSessionTokenFromCookieHeader(cookieHeader: string | null): string | null {

@@ -6,7 +6,19 @@ export const fetchAdminUsers = createServerFn({ method: "GET" })
 	.handler(async () => {
 		const { getUsers } = await import("@/lib/jellyfin");
 		const { jellyfinImageProxyUrl } = await import("@/lib/jellyfin-image-proxy");
+		const { getLastUserLogins } = await import("@/lib/auth-store");
 		const users = await getUsers();
+
+		// Jellyfin (as of 10.11) serves LastLoginDate from a cache that misses
+		// sign-in writes, so merge in the sign-ins Aurora has seen itself.
+		const auroraLogins = getLastUserLogins();
+		const lastLogin = (user: (typeof users)[number]) => {
+			const jellyfin = user.LastLoginDate ?? null;
+			const aurora = auroraLogins.get(user.Id) ?? null;
+			if (!jellyfin || !aurora) return jellyfin ?? aurora;
+			return aurora > jellyfin ? aurora : jellyfin;
+		};
+
 		return users.map((user) => ({
 			id: user.Id,
 			name: user.Name,
@@ -18,7 +30,7 @@ export const fetchAdminUsers = createServerFn({ method: "GET" })
 				: undefined,
 			isAdmin: user.Policy?.IsAdministrator ?? false,
 			isDisabled: user.Policy?.IsDisabled ?? false,
-			lastLoginDate: user.LastLoginDate ?? null,
+			lastLoginDate: lastLogin(user),
 			hasPolicy: user.Policy != null,
 		}));
 	});
