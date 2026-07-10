@@ -217,7 +217,7 @@ function SettingsPage() {
 							role="switch"
 							aria-checked={multiUser.multiUserMode}
 							className={`toggle-switch${multiUser.multiUserMode ? " toggle-switch-on" : ""}`}
-							disabled={multiUser.locked || multiUserMutation.isPending}
+							disabled={multiUser.locked || !auth.isAdmin || multiUserMutation.isPending}
 							onClick={() => multiUserMutation.mutate(!multiUser.multiUserMode)}
 							aria-label={t("settings.userProfiles.toggle")}
 						>
@@ -234,9 +234,11 @@ function SettingsPage() {
 							<Link to="/profiles" className="settings-multi-user-link">
 								{t("settings.userProfiles.switchProfile")} →
 							</Link>
-							<Link to="/admin" className="settings-multi-user-link">
-								{t("settings.userProfiles.manageUsers")} →
-							</Link>
+							{auth.isAdmin ? (
+								<Link to="/admin" className="settings-multi-user-link">
+									{t("settings.userProfiles.manageUsers")} →
+								</Link>
+							) : null}
 						</div>
 					) : null}
 				</section>
@@ -261,7 +263,7 @@ function SettingsPage() {
 							role="switch"
 							aria-checked={requireLogin}
 							className={`toggle-switch${requireLogin ? " toggle-switch-on" : ""}`}
-							disabled={auth.locked || requireLoginMutation.isPending}
+							disabled={auth.locked || !auth.isAdmin || requireLoginMutation.isPending}
 							onClick={() => requireLoginMutation.mutate(!requireLogin)}
 							aria-label={t("settings.security.requireLogin")}
 						>

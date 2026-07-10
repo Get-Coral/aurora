@@ -34,6 +34,8 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 		authenticated: !required || session != null,
 		userId: session?.userId ?? null,
 		username: session?.username ?? null,
+		// On an open instance everyone can administer, matching pre-login behavior.
+		isAdmin: required ? (session?.isAdmin ?? false) : true,
 	};
 });
 

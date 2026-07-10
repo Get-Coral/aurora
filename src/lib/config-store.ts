@@ -217,16 +217,19 @@ export function isAuroraConfigured() {
 export function getConfigurationSummary() {
 	const stored = normalizeSettings(getStoredJellyfinSettings());
 	const effective = getEffectiveJellyfinSettings();
+	const configured = isAuroraConfigured();
 
 	return {
-		configured: isAuroraConfigured(),
+		configured,
 		source: getJellyfinSettingsSource(),
 		current: {
 			url: stored.url ?? effective?.url ?? "",
-			apiKey: stored.apiKey ?? effective?.apiKey ?? "",
+			// Only expose credentials while unconfigured (the /setup prefill);
+			// once configured the summary is readable by any signed-in user.
+			apiKey: configured ? "" : (stored.apiKey ?? effective?.apiKey ?? ""),
 			userId: stored.userId ?? effective?.userId ?? "",
 			username: stored.username ?? effective?.username ?? "",
-			password: stored.password ?? effective?.password ?? "",
+			password: configured ? "" : (stored.password ?? effective?.password ?? ""),
 			hasApiKey: Boolean(stored.apiKey ?? effective?.apiKey),
 			hasPassword: Boolean(stored.password ?? effective?.password),
 		},

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authRequiredMiddleware } from "../auth-middleware";
+import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
 
 export const fetchAdminUsers = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
@@ -24,7 +24,7 @@ export const fetchAdminUsers = createServerFn({ method: "GET" })
 	});
 
 export const toggleAdminUser = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { userId: string; disabled: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { patchUserPolicy } = await import("@/lib/jellyfin");
@@ -33,7 +33,7 @@ export const toggleAdminUser = createServerFn({ method: "POST" })
 	});
 
 export const deleteAdminUser = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { userId: string }) => input)
 	.handler(async ({ data }) => {
 		const { deleteJellyfinUser } = await import("@/lib/jellyfin");
@@ -42,7 +42,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
 	});
 
 export const createAdminUser = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { name: string; password: string }) => input)
 	.handler(async ({ data }) => {
 		const { createJellyfinUser } = await import("@/lib/jellyfin");
@@ -58,7 +58,7 @@ export const createAdminUser = createServerFn({ method: "POST" })
 	});
 
 export const fetchAdminLibraries = createServerFn({ method: "GET" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
 		const { getVirtualFolders } = await import("@/lib/jellyfin");
 		const folders = await getVirtualFolders();
@@ -71,7 +71,7 @@ export const fetchAdminLibraries = createServerFn({ method: "GET" })
 	});
 
 export const scanAllAdminLibraries = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
 		const { scanAllLibraries } = await import("@/lib/jellyfin");
 		await scanAllLibraries();
@@ -79,7 +79,7 @@ export const scanAllAdminLibraries = createServerFn({ method: "POST" })
 	});
 
 export const scanAdminLibrary = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { itemId: string }) => input)
 	.handler(async ({ data }) => {
 		const { scanLibrary } = await import("@/lib/jellyfin");
@@ -88,7 +88,7 @@ export const scanAdminLibrary = createServerFn({ method: "POST" })
 	});
 
 export const fetchAdminOverview = createServerFn({ method: "GET" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
 		const { getSystemInfo, getItemCounts } = await import("@/lib/jellyfin");
 		const { getEffectiveJellyfinSettings } = await import("@/lib/config-store");
@@ -103,7 +103,7 @@ export const fetchAdminOverview = createServerFn({ method: "GET" })
 	});
 
 export const fetchAdminSessions = createServerFn({ method: "GET" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
 		const { getActiveSessions } = await import("@/lib/jellyfin");
 		const { jellyfinImageProxyUrl } = await import("@/lib/jellyfin-image-proxy");

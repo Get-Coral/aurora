@@ -13,6 +13,7 @@ export interface AuthStatus {
 	authenticated: boolean;
 	userId: string | null;
 	username: string | null;
+	isAdmin: boolean;
 }
 
 // The native (Capacitor) shell talks to Jellyfin directly with credentials
@@ -24,6 +25,7 @@ const CLIENT_AUTH_STATUS: AuthStatus = {
 	authenticated: true,
 	userId: null,
 	username: null,
+	isAdmin: true,
 };
 
 export async function fetchAuthStatusRuntime(): Promise<AuthStatus> {

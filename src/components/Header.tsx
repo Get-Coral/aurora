@@ -44,6 +44,7 @@ export default function Header() {
 		queryFn: () => fetchAuthStatusRuntime(),
 	});
 	const loginRequired = authStatus?.required ?? false;
+	const canAdminister = authStatus?.isAdmin ?? true;
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [navOpen, setNavOpen] = useState(false);
 	const [profileOpen, setProfileOpen] = useState(false);
@@ -234,15 +235,17 @@ export default function Header() {
 											<Settings size={15} />
 											{t("nav.settings")}
 										</Link>
-										<Link
-											to="/admin"
-											className="header-profile-link"
-											aria-label={t("header.dashboard")}
-											data-tv-focusable="true"
-										>
-											<LayoutDashboard size={15} />
-											{t("header.dashboard")}
-										</Link>
+										{canAdminister ? (
+											<Link
+												to="/admin"
+												className="header-profile-link"
+												aria-label={t("header.dashboard")}
+												data-tv-focusable="true"
+											>
+												<LayoutDashboard size={15} />
+												{t("header.dashboard")}
+											</Link>
+										) : null}
 										{multiUser.multiUserMode ? (
 											<Link
 												to="/profiles"
