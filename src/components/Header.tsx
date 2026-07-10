@@ -17,9 +17,11 @@ import type { MediaItem } from "../lib/media";
 import { useMultiUserMode } from "../lib/multi-user-mode";
 import {
 	clearActiveUserRuntime,
+	fetchAuthStatusRuntime,
 	fetchCurrentProfileRuntime,
 	fetchSearchRuntime,
 	fetchUsernameRuntime,
+	logoutRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 
@@ -37,6 +39,11 @@ export default function Header() {
 		queryKey: ["current-user", multiUser.activeUserId],
 		queryFn: () => fetchUsernameRuntime(),
 	});
+	const { data: authStatus } = useQuery({
+		queryKey: ["auth-status"],
+		queryFn: () => fetchAuthStatusRuntime(),
+	});
+	const loginRequired = authStatus?.required ?? false;
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [navOpen, setNavOpen] = useState(false);
 	const [profileOpen, setProfileOpen] = useState(false);
@@ -128,12 +135,13 @@ export default function Header() {
 	}
 
 	async function handleLogout() {
-		if (!multiUser.multiUserMode) return;
+		if (!multiUser.multiUserMode && !loginRequired) return;
 		setLoggingOut(true);
 		try {
-			await clearActiveUserRuntime();
+			if (loginRequired) await logoutRuntime();
+			if (multiUser.multiUserMode) await clearActiveUserRuntime();
 			setProfileOpen(false);
-			window.location.assign("/profiles");
+			window.location.assign(loginRequired ? "/login" : "/profiles");
 		} finally {
 			setLoggingOut(false);
 		}
@@ -246,7 +254,7 @@ export default function Header() {
 												{t("profiles.switchProfile")}
 											</Link>
 										) : null}
-										{multiUser.multiUserMode ? (
+										{multiUser.multiUserMode || loginRequired ? (
 											<button
 												type="button"
 												className="header-profile-link header-profile-link-danger"

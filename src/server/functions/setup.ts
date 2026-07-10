@@ -1,11 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
+import { authRequiredMiddleware } from "../auth-middleware";
 
-export const fetchSetupStatus = createServerFn({ method: "GET" }).handler(async () => {
-	const { getConfigurationSummary } = await import("@/lib/config-store");
-	return getConfigurationSummary();
-});
+export const fetchSetupStatus = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => {
+		const { getConfigurationSummary } = await import("@/lib/config-store");
+		return getConfigurationSummary();
+	});
 
 export const saveSetupConfiguration = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
 			input,
@@ -30,6 +34,7 @@ export const saveSetupConfiguration = createServerFn({ method: "POST" })
 	});
 
 export const saveSettings = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
 			input,
@@ -54,12 +59,15 @@ export const saveSettings = createServerFn({ method: "POST" })
 		return { configured: isAuroraConfigured() };
 	});
 
-export const fetchOpenSubtitlesKey = createServerFn({ method: "GET" }).handler(async () => {
-	const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
-	return getOpenSubtitlesApiKey();
-});
+export const fetchOpenSubtitlesKey = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => {
+		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
+		return getOpenSubtitlesApiKey();
+	});
 
 export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator((input: { apiKey: string }) => input)
 	.handler(async ({ data }) => {
 		const { saveOpenSubtitlesApiKey } = await import("@/lib/config-store");
@@ -68,6 +76,7 @@ export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 	});
 
 export const saveServerConnectionFn = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
 	.inputValidator((input: { url: string; apiKey: string }) => input)
 	.handler(async ({ data }) => {
 		const { saveServerConnection } = await import("@/lib/config-store");
