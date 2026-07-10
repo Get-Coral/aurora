@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authRequiredMiddleware } from "../auth-middleware";
+import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
 
 export const fetchSetupStatus = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
@@ -9,7 +9,7 @@ export const fetchSetupStatus = createServerFn({ method: "GET" })
 	});
 
 export const saveSetupConfiguration = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
 			input,
@@ -34,7 +34,7 @@ export const saveSetupConfiguration = createServerFn({ method: "POST" })
 	});
 
 export const saveSettings = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
 			input,
@@ -60,14 +60,14 @@ export const saveSettings = createServerFn({ method: "POST" })
 	});
 
 export const fetchOpenSubtitlesKey = createServerFn({ method: "GET" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
 		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		return getOpenSubtitlesApiKey();
 	});
 
 export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { apiKey: string }) => input)
 	.handler(async ({ data }) => {
 		const { saveOpenSubtitlesApiKey } = await import("@/lib/config-store");
@@ -76,7 +76,7 @@ export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 	});
 
 export const saveServerConnectionFn = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { url: string; apiKey: string }) => input)
 	.handler(async ({ data }) => {
 		const { saveServerConnection } = await import("@/lib/config-store");
