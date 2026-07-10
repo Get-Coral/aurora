@@ -76,6 +76,7 @@ function SettingsPage() {
 	const { data: existingOsKey } = useQuery({
 		queryKey: ["opensubtitles-key"],
 		queryFn: () => fetchOpenSubtitlesKeyRuntime(),
+		enabled: auth.isAdmin,
 	});
 	const [osApiKey, setOsApiKey] = useState("");
 
@@ -109,224 +110,244 @@ function SettingsPage() {
 					marginInline: "auto",
 				}}
 			>
-				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
-					<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-						<p className="eyebrow">{t("settings.jellyfinSection")}</p>
-						<p
-							style={{ margin: 0, color: "var(--ink-muted)", fontSize: "0.9rem", lineHeight: 1.6 }}
+				{auth.isAdmin ? (
+					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+							<p className="eyebrow">{t("settings.jellyfinSection")}</p>
+							<p
+								style={{
+									margin: 0,
+									color: "var(--ink-muted)",
+									fontSize: "0.9rem",
+									lineHeight: 1.6,
+								}}
+							>
+								{t("settings.jellyfinCopy")}
+							</p>
+						</div>
+
+						<form
+							style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+							onSubmit={(e) => {
+								e.preventDefault();
+								saveMutation.mutate();
+							}}
 						>
-							{t("settings.jellyfinCopy")}
-						</p>
-					</div>
+							<label className="library-select-shell">
+								<span>{t("setup.serverUrl")}</span>
+								<input
+									className="library-select"
+									style={{ width: "100%" }}
+									value={url}
+									onChange={(e) => setUrl(e.target.value)}
+									placeholder="http://localhost:8096"
+								/>
+							</label>
 
-					<form
-						style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-						onSubmit={(e) => {
-							e.preventDefault();
-							saveMutation.mutate();
-						}}
-					>
-						<label className="library-select-shell">
-							<span>{t("setup.serverUrl")}</span>
-							<input
-								className="library-select"
-								style={{ width: "100%" }}
-								value={url}
-								onChange={(e) => setUrl(e.target.value)}
-								placeholder="http://localhost:8096"
-							/>
-						</label>
+							<label className="library-select-shell">
+								<span>{t("setup.apiKey")}</span>
+								<input
+									className="library-select"
+									style={{ width: "100%" }}
+									value={apiKey}
+									onChange={(e) => setApiKey(e.target.value)}
+									placeholder={t("settings.apiKeyPlaceholder")}
+								/>
+							</label>
 
-						<label className="library-select-shell">
-							<span>{t("setup.apiKey")}</span>
-							<input
-								className="library-select"
-								style={{ width: "100%" }}
-								value={apiKey}
-								onChange={(e) => setApiKey(e.target.value)}
-								placeholder={t("settings.apiKeyPlaceholder")}
-							/>
-						</label>
+							<label className="library-select-shell">
+								<span>{t("setup.userId")}</span>
+								<input
+									className="library-select"
+									style={{ width: "100%" }}
+									value={userId}
+									onChange={(e) => setUserId(e.target.value)}
+								/>
+							</label>
 
-						<label className="library-select-shell">
-							<span>{t("setup.userId")}</span>
-							<input
-								className="library-select"
-								style={{ width: "100%" }}
-								value={userId}
-								onChange={(e) => setUserId(e.target.value)}
-							/>
-						</label>
+							<label className="library-select-shell">
+								<span>{t("setup.username")}</span>
+								<input
+									className="library-select"
+									style={{ width: "100%" }}
+									value={username}
+									onChange={(e) => setUsername(e.target.value)}
+								/>
+							</label>
 
-						<label className="library-select-shell">
-							<span>{t("setup.username")}</span>
-							<input
-								className="library-select"
-								style={{ width: "100%" }}
-								value={username}
-								onChange={(e) => setUsername(e.target.value)}
-							/>
-						</label>
+							<label className="library-select-shell">
+								<span>{t("setup.password")}</span>
+								<input
+									type="password"
+									className="library-select"
+									style={{ width: "100%" }}
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									placeholder={t("settings.passwordPlaceholder")}
+								/>
+							</label>
 
-						<label className="library-select-shell">
-							<span>{t("setup.password")}</span>
-							<input
-								type="password"
-								className="library-select"
-								style={{ width: "100%" }}
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								placeholder={t("settings.passwordPlaceholder")}
-							/>
-						</label>
+							{saveMutation.error ? (
+								<p className="detail-empty">
+									{saveMutation.error instanceof Error
+										? saveMutation.error.message
+										: t("settings.errorFallback")}
+								</p>
+							) : null}
 
-						{saveMutation.error ? (
+							{saveMutation.isSuccess ? (
+								<p className="eyebrow" style={{ opacity: 0.7 }}>
+									{t("settings.saved")}
+								</p>
+							) : null}
+
+							<button type="submit" className="primary-action" disabled={saveMutation.isPending}>
+								{saveMutation.isPending ? t("settings.saving") : t("settings.save")}
+							</button>
+						</form>
+					</section>
+				) : null}
+
+				{auth.isAdmin || multiUser.multiUserMode ? (
+					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+							<p className="eyebrow">{t("settings.userProfilesSection")}</p>
+						</div>
+
+						{auth.isAdmin ? (
+							<div className="settings-toggle-row">
+								<div className="settings-toggle-copy">
+									<div className="settings-toggle-label">
+										<Users size={16} />
+										{t("settings.userProfiles.toggle")}
+									</div>
+								</div>
+								<button
+									type="button"
+									role="switch"
+									aria-checked={multiUser.multiUserMode}
+									className={`toggle-switch${multiUser.multiUserMode ? " toggle-switch-on" : ""}`}
+									disabled={multiUser.locked || multiUserMutation.isPending}
+									onClick={() => multiUserMutation.mutate(!multiUser.multiUserMode)}
+									aria-label={t("settings.userProfiles.toggle")}
+								>
+									<span className="toggle-switch-thumb" />
+								</button>
+							</div>
+						) : null}
+
+						{auth.isAdmin && multiUser.locked ? (
+							<p className="settings-locked-note">{t("settings.userProfiles.lockedNote")}</p>
+						) : null}
+
+						{multiUser.multiUserMode ? (
+							<div className="settings-multi-user-links">
+								<Link to="/profiles" className="settings-multi-user-link">
+									{t("settings.userProfiles.switchProfile")} →
+								</Link>
+								{auth.isAdmin ? (
+									<Link to="/admin" className="settings-multi-user-link">
+										{t("settings.userProfiles.manageUsers")} →
+									</Link>
+								) : null}
+							</div>
+						) : null}
+					</section>
+				) : null}
+
+				{auth.isAdmin ? (
+					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+							<p className="eyebrow">{t("settings.securitySection")}</p>
+						</div>
+
+						<div className="settings-toggle-row">
+							<div className="settings-toggle-copy">
+								<div className="settings-toggle-label">
+									<Lock size={16} />
+									{t("settings.security.requireLogin")}
+								</div>
+								<p className="settings-toggle-description">
+									{t("settings.security.requireLoginCopy")}
+								</p>
+							</div>
+							<button
+								type="button"
+								role="switch"
+								aria-checked={requireLogin}
+								className={`toggle-switch${requireLogin ? " toggle-switch-on" : ""}`}
+								disabled={auth.locked || requireLoginMutation.isPending}
+								onClick={() => requireLoginMutation.mutate(!requireLogin)}
+								aria-label={t("settings.security.requireLogin")}
+							>
+								<span className="toggle-switch-thumb" />
+							</button>
+						</div>
+
+						{auth.locked ? (
+							<p className="settings-locked-note">{t("settings.security.lockedNote")}</p>
+						) : null}
+
+						{requireLoginMutation.error ? (
 							<p className="detail-empty">
-								{saveMutation.error instanceof Error
-									? saveMutation.error.message
+								{requireLoginMutation.error instanceof Error
+									? requireLoginMutation.error.message
 									: t("settings.errorFallback")}
 							</p>
 						) : null}
+					</section>
+				) : null}
 
-						{saveMutation.isSuccess ? (
-							<p className="eyebrow" style={{ opacity: 0.7 }}>
-								{t("settings.saved")}
+				{auth.isAdmin ? (
+					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+							<p className="eyebrow">{t("settings.openSubtitlesSection")}</p>
+							<p
+								style={{
+									margin: 0,
+									color: "var(--ink-muted)",
+									fontSize: "0.9rem",
+									lineHeight: 1.6,
+								}}
+							>
+								{t("settings.openSubtitlesCopy")}
 							</p>
-						) : null}
-
-						<button type="submit" className="primary-action" disabled={saveMutation.isPending}>
-							{saveMutation.isPending ? t("settings.saving") : t("settings.save")}
-						</button>
-					</form>
-				</section>
-
-				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
-					<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-						<p className="eyebrow">{t("settings.userProfilesSection")}</p>
-					</div>
-
-					<div className="settings-toggle-row">
-						<div className="settings-toggle-copy">
-							<div className="settings-toggle-label">
-								<Users size={16} />
-								{t("settings.userProfiles.toggle")}
-							</div>
 						</div>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={multiUser.multiUserMode}
-							className={`toggle-switch${multiUser.multiUserMode ? " toggle-switch-on" : ""}`}
-							disabled={multiUser.locked || !auth.isAdmin || multiUserMutation.isPending}
-							onClick={() => multiUserMutation.mutate(!multiUser.multiUserMode)}
-							aria-label={t("settings.userProfiles.toggle")}
+
+						<form
+							style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+							onSubmit={(e) => {
+								e.preventDefault();
+								saveOsMutation.mutate();
+							}}
 						>
-							<span className="toggle-switch-thumb" />
-						</button>
-					</div>
+							<label className="library-select-shell">
+								<span>{t("settings.openSubtitlesApiKey")}</span>
+								<input
+									className="library-select"
+									style={{ width: "100%" }}
+									value={osApiKey}
+									onChange={(e) => setOsApiKey(e.target.value)}
+									placeholder={existingOsKey ? t("settings.apiKeyPlaceholder") : "your-api-key"}
+								/>
+							</label>
 
-					{multiUser.locked ? (
-						<p className="settings-locked-note">{t("settings.userProfiles.lockedNote")}</p>
-					) : null}
-
-					{multiUser.multiUserMode ? (
-						<div className="settings-multi-user-links">
-							<Link to="/profiles" className="settings-multi-user-link">
-								{t("settings.userProfiles.switchProfile")} →
-							</Link>
-							{auth.isAdmin ? (
-								<Link to="/admin" className="settings-multi-user-link">
-									{t("settings.userProfiles.manageUsers")} →
-								</Link>
+							{saveOsMutation.isSuccess ? (
+								<p className="eyebrow" style={{ opacity: 0.7 }}>
+									{t("settings.saved")}
+								</p>
 							) : null}
-						</div>
-					) : null}
-				</section>
 
-				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
-					<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-						<p className="eyebrow">{t("settings.securitySection")}</p>
-					</div>
-
-					<div className="settings-toggle-row">
-						<div className="settings-toggle-copy">
-							<div className="settings-toggle-label">
-								<Lock size={16} />
-								{t("settings.security.requireLogin")}
-							</div>
-							<p className="settings-toggle-description">
-								{t("settings.security.requireLoginCopy")}
-							</p>
-						</div>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={requireLogin}
-							className={`toggle-switch${requireLogin ? " toggle-switch-on" : ""}`}
-							disabled={auth.locked || !auth.isAdmin || requireLoginMutation.isPending}
-							onClick={() => requireLoginMutation.mutate(!requireLogin)}
-							aria-label={t("settings.security.requireLogin")}
-						>
-							<span className="toggle-switch-thumb" />
-						</button>
-					</div>
-
-					{auth.locked ? (
-						<p className="settings-locked-note">{t("settings.security.lockedNote")}</p>
-					) : null}
-
-					{requireLoginMutation.error ? (
-						<p className="detail-empty">
-							{requireLoginMutation.error instanceof Error
-								? requireLoginMutation.error.message
-								: t("settings.errorFallback")}
-						</p>
-					) : null}
-				</section>
-
-				<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
-					<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-						<p className="eyebrow">{t("settings.openSubtitlesSection")}</p>
-						<p
-							style={{ margin: 0, color: "var(--ink-muted)", fontSize: "0.9rem", lineHeight: 1.6 }}
-						>
-							{t("settings.openSubtitlesCopy")}
-						</p>
-					</div>
-
-					<form
-						style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-						onSubmit={(e) => {
-							e.preventDefault();
-							saveOsMutation.mutate();
-						}}
-					>
-						<label className="library-select-shell">
-							<span>{t("settings.openSubtitlesApiKey")}</span>
-							<input
-								className="library-select"
-								style={{ width: "100%" }}
-								value={osApiKey}
-								onChange={(e) => setOsApiKey(e.target.value)}
-								placeholder={existingOsKey ? t("settings.apiKeyPlaceholder") : "your-api-key"}
-							/>
-						</label>
-
-						{saveOsMutation.isSuccess ? (
-							<p className="eyebrow" style={{ opacity: 0.7 }}>
-								{t("settings.saved")}
-							</p>
-						) : null}
-
-						<button
-							type="submit"
-							className="primary-action"
-							disabled={saveOsMutation.isPending || !osApiKey}
-						>
-							{saveOsMutation.isPending ? t("settings.saving") : t("settings.save")}
-						</button>
-					</form>
-				</section>
+							<button
+								type="submit"
+								className="primary-action"
+								disabled={saveOsMutation.isPending || !osApiKey}
+							>
+								{saveOsMutation.isPending ? t("settings.saving") : t("settings.save")}
+							</button>
+						</form>
+					</section>
+				) : null}
 
 				<section className="settings-about-card">
 					<div className="settings-about-head">
