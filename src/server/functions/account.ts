@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authRequiredMiddleware } from "../auth-middleware";
+import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
 
 export const fetchUsername = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
@@ -58,7 +58,7 @@ export const fetchMultiUserSettings = createServerFn({ method: "GET" })
 	});
 
 export const setMultiUserModeServerFn = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { enabled: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { setMultiUserMode } = await import("@/lib/config-store");
@@ -99,7 +99,7 @@ export const clearActiveUserServerFn = createServerFn({ method: "POST" })
 	});
 
 export const fetchUserPolicy = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator((input: { userId: string }) => input)
 	.handler(async ({ data }) => {
 		const { getUserById } = await import("@/lib/jellyfin");
@@ -116,7 +116,7 @@ export const fetchUserPolicy = createServerFn({ method: "POST" })
 	});
 
 export const updateUserParentalPolicy = createServerFn({ method: "POST" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.inputValidator(
 		(input: {
 			userId: string;

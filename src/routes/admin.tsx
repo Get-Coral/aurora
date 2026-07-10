@@ -31,6 +31,7 @@ import {
 	fetchAdminOverviewRuntime,
 	fetchAdminSessionsRuntime,
 	fetchAdminUsersRuntime,
+	fetchAuthStatusRuntime,
 	fetchSetupStatusRuntime,
 	fetchUserPolicyRuntime,
 	scanAdminLibraryRuntime,
@@ -46,6 +47,12 @@ export const Route = createFileRoute("/admin")({
 		if (!setupStatus?.configured) {
 			throw redirect({ to: "/setup" });
 		}
+
+		const auth = await fetchAuthStatusRuntime();
+		if (!auth.isAdmin) {
+			throw redirect({ to: "/" });
+		}
+
 		return setupStatus;
 	},
 	component: AdminPage,
