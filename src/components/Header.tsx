@@ -7,7 +7,6 @@ import {
 	Menu,
 	Search,
 	Settings,
-	Sparkles,
 	Users,
 	X,
 } from "lucide-react";
@@ -24,6 +23,7 @@ import {
 	logoutRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
+import { AuroraMark } from "./AuroraMark";
 
 export default function Header() {
 	const { t } = useI18n();
@@ -154,7 +154,7 @@ export default function Header() {
 				<div className="header-top-row">
 					<Link to="/" className="brand-mark" data-tv-focusable="true">
 						<span className="brand-glyph">
-							<Sparkles size={15} />
+							<AuroraMark width={30} height={22} />
 						</span>
 						<span>
 							{t("brand.wordmark")} <em>{t("brand.forJellyfin")}</em>

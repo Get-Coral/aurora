@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
 import { useI18n } from "../lib/i18n";
+import { AuroraMark } from "./AuroraMark";
 
 interface ErrorPageProps {
 	variant?: "not-found" | "error";
@@ -23,7 +23,7 @@ export function ErrorPage({ variant = "error", error: _error, onRetry }: ErrorPa
 
 			<div className="error-content">
 				<div className="error-glyph">
-					<Sparkles size={28} />
+					<AuroraMark width={52} height={38} />
 				</div>
 
 				<p className="eyebrow">{eyebrow}</p>
