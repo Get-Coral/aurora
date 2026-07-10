@@ -54,6 +54,13 @@ import {
 	updateUserPassword as updateUserPasswordBase,
 	updateUserPolicy as updateUserPolicyBase,
 } from "@get-coral/jellyfin";
+import { getCookie } from "@tanstack/react-start/server";
+import {
+	type AuthSession,
+	getSessionByToken,
+	isLoginEnforced,
+	SESSION_COOKIE_NAME,
+} from "./auth-store";
 import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
 import type { UserProfileSummary } from "./media";
@@ -79,7 +86,40 @@ export type {
 
 export type JellyfinPlaybackSyncInput = PlaybackSyncInput;
 
+/**
+ * The signed-in user's session for the current request, when the login
+ * requirement is active. Null outside a request context (e.g. prerender).
+ */
+function getRequestSession(): AuthSession | null {
+	try {
+		if (!isLoginEnforced()) return null;
+		return getSessionByToken(getCookie(SESSION_COOKIE_NAME));
+	} catch {
+		return null;
+	}
+}
+
 function getJellyfinClient() {
+	// When someone is signed in, act as them: browsing uses their user id and
+	// playback runs under their own Jellyfin token, so progress and sessions
+	// are attributed to the right account.
+	const session = getRequestSession();
+	if (session?.jellyfinToken) {
+		const connection = getEffectiveServerConnectionSettings();
+		if (connection) {
+			return createClient({
+				url: connection.url,
+				apiKey: connection.apiKey,
+				userId: session.userId,
+				accessToken: session.jellyfinToken,
+				clientName: AURORA_CLIENT_NAME,
+				deviceName: AURORA_DEVICE_NAME,
+				deviceId: session.deviceId ?? AURORA_DEVICE_ID,
+				version: AURORA_VERSION,
+			});
+		}
+	}
+
 	const settings = getEffectiveJellyfinSettings();
 
 	if (!settings) {
@@ -310,13 +350,13 @@ export async function scanLibrary(itemId: string): Promise<void> {
 }
 
 export async function getCurrentUserProfile(): Promise<UserProfileSummary> {
-	const settings = getEffectiveJellyfinSettings();
+	const userId = getRequestSession()?.userId ?? getEffectiveJellyfinSettings()?.userId;
 
-	if (!settings) {
+	if (!userId) {
 		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
 	}
 
-	const user = await getUserByIdBase(getAdminJellyfinClient(), settings.userId);
+	const user = await getUserByIdBase(getAdminJellyfinClient(), userId);
 	return {
 		id: user.Id,
 		name: user.Name,
@@ -330,18 +370,13 @@ export async function getCurrentUserProfile(): Promise<UserProfileSummary> {
 	};
 }
 export async function updateCurrentUserPassword(currentPassword: string, newPassword: string) {
-	const settings = getEffectiveJellyfinSettings();
+	const userId = getRequestSession()?.userId ?? getEffectiveJellyfinSettings()?.userId;
 
-	if (!settings) {
+	if (!userId) {
 		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
 	}
 
-	await updateUserPasswordBase(
-		getAdminJellyfinClient(),
-		settings.userId,
-		currentPassword,
-		newPassword,
-	);
+	await updateUserPasswordBase(getAdminJellyfinClient(), userId, currentPassword, newPassword);
 
-	return { userId: settings.userId };
+	return { userId };
 }
