@@ -25,6 +25,19 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.9.0](https://github.com/Get-Coral/aurora/compare/v1.8.2...v1.9.0) (2026-07-10)
+
+
+### Features
+
+* require sign-in with Jellyfin credentials ([f5952bf](https://github.com/Get-Coral/aurora/commit/f5952bf3acf8fc8f5b2225f8450188f004c32f21))
+* require sign-in with Jellyfin credentials ([041be66](https://github.com/Get-Coral/aurora/commit/041be6649b67b583d46f180a0ff9a00900d20520))
+
+
+### Bug Fixes
+
+* include pnpm-workspace.yaml in Docker install stages ([54d5117](https://github.com/Get-Coral/aurora/commit/54d5117270c6f3af3714f597a4360abdcc41c2cc))
+
 ## [1.8.2](https://github.com/Get-Coral/aurora/compare/v1.8.1...v1.8.2) (2026-04-19)
 
 
