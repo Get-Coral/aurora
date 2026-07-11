@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 64" width="88" height="64">
+  
+  <defs>
+    <clipPath id="cutTopS"><rect x="0" y="0" width="88" height="27.5"></rect></clipPath>
+    <clipPath id="cutBottomS"><rect x="0" y="36.5" width="88" height="27.5"></rect></clipPath>
+    <linearGradient id="fillTopS" gradientUnits="userSpaceOnUse" x1="15" y1="0" x2="73" y2="0">
+      <stop offset="0" stop-color="#ffffff"></stop><stop offset="1" stop-color="#f9a8d4"></stop>
+    </linearGradient>
+    <linearGradient id="beamS" gradientUnits="userSpaceOnUse" x1="6" y1="32" x2="82" y2="32">
+      <stop offset="0" stop-color="#f472b6" stop-opacity="0"></stop>
+      <stop offset="0.3" stop-color="#f472b6"></stop>
+      <stop offset="0.7" stop-color="#38bdf8"></stop>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+  <path d="M44 3 C46 22 54 30 73 32 C54 34 46 42 44 61 C42 42 34 34 15 32 C34 30 42 22 44 3 Z" fill="url(#fillTopS)" clip-path="url(#cutTopS)"></path>
+  <path d="M44 3 C46 22 54 30 73 32 C54 34 46 42 44 61 C42 42 34 34 15 32 C34 30 42 22 44 3 Z" fill="#7c6df2" clip-path="url(#cutBottomS)" opacity="0.85"></path>
+  <line x1="6" y1="32" x2="82" y2="32" stroke="url(#beamS)" stroke-width="4.5" stroke-linecap="round"></line>
+</svg>

@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Globe, Key, User, Users } from "lucide-react";
 import { useState } from "react";
+import { AuroraMark } from "../components/AuroraMark";
 import { useI18n } from "../lib/i18n";
 import {
 	fetchMultiUserSettingsRuntime,
@@ -161,7 +162,10 @@ function SetupPage() {
 
 	return (
 		<div className="setup-shell">
-			<div className="setup-wordmark">aurora</div>
+			<div className="setup-wordmark">
+				<AuroraMark width={34} height={25} />
+				aurora
+			</div>
 
 			<div className="setup-flow">
 				<div className="setup-progress-meta">

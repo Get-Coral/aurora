@@ -1,4 +1,8 @@
-# Aurora UI
+<p align="center">
+  <img src="public/aurora-app-icon.svg" width="128" alt="Aurora logo — a four-point star split by a glowing light beam" />
+</p>
+
+<h1 align="center">Aurora UI</h1>
 
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-ElianCodes-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ElianCodes)
 [![Discord](https://img.shields.io/discord/1495441903297237043?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/M3wzFpGbzp)

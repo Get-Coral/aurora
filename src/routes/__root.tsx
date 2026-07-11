@@ -65,6 +65,39 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 					"Aurora brings a TV-friendly Jellyfin experience to the web, mobile, and living room screens.",
 			},
 			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				property: "og:site_name",
+				content: "Aurora",
+			},
+			{
+				property: "og:title",
+				content: "Aurora for Jellyfin",
+			},
+			{
+				property: "og:description",
+				content:
+					"Aurora brings a TV-friendly Jellyfin experience to the web, mobile, and living room screens.",
+			},
+			{
+				property: "og:image",
+				content: "/og-image.png",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:title",
+				content: "Aurora for Jellyfin",
+			},
+			{
+				name: "twitter:image",
+				content: "/og-image.png",
+			},
+			{
 				name: "theme-color",
 				content: "#050816",
 			},

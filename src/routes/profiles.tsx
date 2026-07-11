@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { AuroraMark } from "../components/AuroraMark";
 import { useI18n } from "../lib/i18n";
 import {
 	fetchAdminUsersRuntime,
@@ -113,7 +114,10 @@ function ProfilesPage() {
 
 	return (
 		<div className="profiles-shell">
-			<div className="profiles-wordmark">aurora</div>
+			<div className="profiles-wordmark">
+				<AuroraMark width={34} height={25} />
+				aurora
+			</div>
 
 			<div className="profiles-content">
 				<h1 className="profiles-title">{t("profiles.title")}</h1>
