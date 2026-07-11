@@ -42,7 +42,9 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 export const loginServerFn = createServerFn({ method: "POST" })
 	.inputValidator((input: { username: string; password: string }) => input)
 	.handler(async ({ data }) => {
-		const { authenticateJellyfinCredentials, createAuthSession } = await import("@/lib/auth-store");
+		const { authenticateJellyfinCredentials, createAuthSession, recordUserLogin } = await import(
+			"@/lib/auth-store"
+		);
 
 		const username = data.username.trim();
 		if (!username) {
@@ -51,13 +53,15 @@ export const loginServerFn = createServerFn({ method: "POST" })
 
 		const session = await authenticateJellyfinCredentials(username, data.password);
 
-		// Replace any existing session instead of leaving it valid until expiry.
-		const { deleteSessionByToken, SESSION_COOKIE_NAME } = await import("@/lib/auth-store");
+		// Replace any existing session (and revoke its Jellyfin token) instead
+		// of leaving it valid until expiry.
+		const { destroySessionByToken, SESSION_COOKIE_NAME } = await import("@/lib/auth-store");
 		const { getCookie } = await import("@tanstack/react-start/server");
-		deleteSessionByToken(getCookie(SESSION_COOKIE_NAME));
+		await destroySessionByToken(getCookie(SESSION_COOKIE_NAME));
 
 		const token = createAuthSession(session);
 		await setSessionCookie(token);
+		recordUserLogin(session.userId);
 
 		// In multi-user mode a successful sign-in also selects that user's
 		// profile, so switching profiles is the same as signing in as them.
@@ -70,10 +74,10 @@ export const loginServerFn = createServerFn({ method: "POST" })
 	});
 
 export const logoutServerFn = createServerFn({ method: "POST" }).handler(async () => {
-	const { deleteSessionByToken, SESSION_COOKIE_NAME } = await import("@/lib/auth-store");
+	const { destroySessionByToken, SESSION_COOKIE_NAME } = await import("@/lib/auth-store");
 	const { getCookie, deleteCookie } = await import("@tanstack/react-start/server");
 
-	deleteSessionByToken(getCookie(SESSION_COOKIE_NAME));
+	await destroySessionByToken(getCookie(SESSION_COOKIE_NAME));
 	deleteCookie(SESSION_COOKIE_NAME, { path: "/" });
 
 	return { ok: true };
@@ -121,6 +125,10 @@ export const setRequireLoginServerFn = createServerFn({ method: "POST" })
 					userId: settings.userId,
 					username: settings.username,
 					isAdmin,
+					// No credential exchange happened here, so playback falls back
+					// to the configured account until this visitor signs in.
+					jellyfinToken: null,
+					deviceId: null,
 				});
 				await setSessionCookie(token);
 			}

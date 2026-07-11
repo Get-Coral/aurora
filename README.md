@@ -108,6 +108,7 @@ By default anyone who can reach your Aurora instance can browse and stream the c
 
 - Sessions are stored server-side in the local SQLite database and last 30 days
 - Sign-in is validated directly against your Jellyfin server, so Jellyfin account lockout policies apply
+- Each sign-in gets its own Jellyfin access token, so playback and watch progress are attributed to the signed-in user (not the configured account), and signing out revokes the token on the Jellyfin side
 - To force it on (so it cannot be disabled from the UI), set `AURORA_REQUIRE_LOGIN=true` in the environment
 
 ## Translations

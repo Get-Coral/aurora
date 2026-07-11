@@ -4,6 +4,17 @@ import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middlew
 export const fetchUsername = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => {
+		// A signed-in visitor sees their own name, even when someone else has
+		// since selected another profile on a different device.
+		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } = await import(
+			"@/lib/auth-store"
+		);
+		if (isLoginEnforced()) {
+			const { getCookie } = await import("@tanstack/react-start/server");
+			const session = getSessionByToken(getCookie(SESSION_COOKIE_NAME));
+			if (session) return session.username;
+		}
+
 		const { getEffectiveJellyfinSettings, getMultiUserMode, getActiveUserId } = await import(
 			"@/lib/config-store"
 		);
