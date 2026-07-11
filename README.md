@@ -16,6 +16,9 @@ Aurora UI is a premium Jellyfin frontend built with TanStack Start and React. It
 - Rich title detail views with cast, related titles, and series episode context
 - Movie and series library pages with genre browsing, sorting, and pagination
 - `My List` / favorites workflow backed by Jellyfin favorites
+- Multi-user profiles with a Netflix-style profile picker for shared households
+- Optional required sign-in with per-user Jellyfin sessions, so playback and watch progress are attributed to the right account
+- Admin dashboard for managing users, parental controls, libraries, and active sessions
 - Translation-ready UI with locale files contributors can extend
 - Local-first onboarding backed by SQLite so self-hosting does not require an external database
 
@@ -98,9 +101,17 @@ This keeps Aurora simple to deploy on a VM or home server because there is no ex
 Aurora uses Jellyfin as the system of record.
 
 - API key access is enough for browsing, favorites, and most library features
-- Username/password are used to create a real Jellyfin playback session so Aurora can sync progress and watched state more reliably
+- Username/password are used to create a real Jellyfin playback session so Aurora can sync progress and watched state more reliably; with required sign-in enabled, each signed-in user's own session is used instead and the configured credentials are only the fallback
 - `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
 - If you use the onboarding flow, Aurora stores these values in local SQLite instead of requiring env vars
+
+## User Profiles
+
+Aurora supports multiple profiles for shared households: everyone picks their own Jellyfin user on a profile screen when opening Aurora.
+
+- Enable it in Settings → User profiles, or force it on with `AURORA_MULTI_USER=true` in the environment
+- Administrators manage users (create, disable, delete, parental controls) from the dashboard at `/admin`
+- When required sign-in is enabled, switching to another profile asks for that profile's password
 
 ## Requiring Sign-In
 
