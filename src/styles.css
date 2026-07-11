@@ -4131,6 +4131,9 @@ html.tv-mode .player-autoplay-cancel {
 }
 
 .setup-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-family: var(--font-display);
   font-size: 1.6rem;
   letter-spacing: -0.03em;
@@ -5179,6 +5182,9 @@ html.tv-mode .player-autoplay-cancel {
 }
 
 .profiles-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-family: var(--font-display);
   font-size: 1.6rem;
   letter-spacing: -0.03em;
