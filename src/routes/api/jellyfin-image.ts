@@ -34,7 +34,7 @@ export const Route = createFileRoute("/api/jellyfin-image")({
 	server: {
 		handlers: {
 			GET: async ({ request }) => {
-				const { isRequestAuthorized } = await import("../../lib/auth-store");
+				const { isRequestAuthorized, getSessionFromRequest } = await import("../../lib/auth-store");
 				if (!isRequestAuthorized(request)) {
 					return new Response("Unauthorized.", { status: 401 });
 				}
@@ -45,6 +45,10 @@ export const Route = createFileRoute("/api/jellyfin-image")({
 				if (!settings) {
 					return new Response("Aurora is not configured.", { status: 503 });
 				}
+
+				// Fetch as the signed-in user when possible, so Jellyfin enforces
+				// their own permissions; the admin API key is only the fallback.
+				const upstreamToken = getSessionFromRequest(request)?.jellyfinToken ?? settings.apiKey;
 
 				const requestUrl = new URL(request.url);
 				const itemId = requestUrl.searchParams.get("itemId")?.trim();
@@ -69,7 +73,7 @@ export const Route = createFileRoute("/api/jellyfin-image")({
 						? `/Users/${encodeURIComponent(itemId)}/Images/${encodeURIComponent(type)}`
 						: `/Items/${encodeURIComponent(itemId)}/Images/${encodeURIComponent(type)}`;
 				const upstream = new URL(`${settings.url.replace(/\/+$/, "")}${upstreamPath}`);
-				upstream.searchParams.set("api_key", settings.apiKey);
+				upstream.searchParams.set("api_key", upstreamToken);
 
 				if (width != null) {
 					upstream.searchParams.set("maxWidth", String(width));

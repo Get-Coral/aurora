@@ -51,7 +51,7 @@ function copyHeaderIfPresent(target: Headers, source: Headers, key: string) {
 }
 
 async function proxyJellyfinStreamRequest(request: Request) {
-	const { isRequestAuthorized } = await import("../../lib/auth-store");
+	const { isRequestAuthorized, getSessionFromRequest } = await import("../../lib/auth-store");
 	if (!isRequestAuthorized(request)) {
 		return new Response("Unauthorized.", { status: 401 });
 	}
@@ -62,6 +62,11 @@ async function proxyJellyfinStreamRequest(request: Request) {
 	if (!settings) {
 		return new Response("Aurora is not configured.", { status: 503 });
 	}
+
+	// Stream as the signed-in user when possible, so Jellyfin enforces their
+	// own permissions (library access, parental controls). The admin API key
+	// is only the fallback for open instances and token-less sessions.
+	const upstreamToken = getSessionFromRequest(request)?.jellyfinToken ?? settings.apiKey;
 
 	const requestUrl = new URL(request.url);
 	const rawPath = requestUrl.searchParams.get("path");
@@ -82,10 +87,10 @@ async function proxyJellyfinStreamRequest(request: Request) {
 		return new Response("Path not allowed.", { status: 400 });
 	}
 
-	// Strip any existing Jellyfin API key parameter casing; inject from server config.
+	// Strip any existing Jellyfin API key parameter casing; inject server-side.
 	parsedPath.searchParams.delete("ApiKey");
 	parsedPath.searchParams.delete("api_key");
-	parsedPath.searchParams.set("api_key", settings.apiKey);
+	parsedPath.searchParams.set("api_key", upstreamToken);
 
 	const upstream = `${settings.url.replace(/\/+$/, "")}${parsedPath.pathname}${parsedPath.search}`;
 
