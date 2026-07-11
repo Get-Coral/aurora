@@ -42,7 +42,9 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 export const loginServerFn = createServerFn({ method: "POST" })
 	.inputValidator((input: { username: string; password: string }) => input)
 	.handler(async ({ data }) => {
-		const { authenticateJellyfinCredentials, createAuthSession } = await import("@/lib/auth-store");
+		const { authenticateJellyfinCredentials, createAuthSession, recordUserLogin } = await import(
+			"@/lib/auth-store"
+		);
 
 		const username = data.username.trim();
 		if (!username) {
@@ -58,6 +60,7 @@ export const loginServerFn = createServerFn({ method: "POST" })
 
 		const token = createAuthSession(session);
 		await setSessionCookie(token);
+		recordUserLogin(session.userId);
 
 		// In multi-user mode a successful sign-in also selects that user's
 		// profile, so switching profiles is the same as signing in as them.
