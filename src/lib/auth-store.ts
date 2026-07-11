@@ -1,5 +1,10 @@
 import crypto from "node:crypto";
-import { authenticateUserByName, createClient, JellyfinError } from "@get-coral/jellyfin";
+import {
+	authenticateUserByName,
+	createClient,
+	JellyfinError,
+	logoutUserSession,
+} from "@get-coral/jellyfin";
 import {
 	getAppDatabase,
 	getEffectiveServerConnectionSettings,
@@ -14,6 +19,15 @@ export interface AuthSession {
 	userId: string;
 	username: string;
 	isAdmin: boolean;
+	/**
+	 * The Jellyfin access token issued at sign-in. Playback and progress sync
+	 * run under this token so they are attributed to the signed-in user. Null
+	 * for sessions that never exchanged credentials (e.g. the bootstrap
+	 * session created when the login requirement is first enabled).
+	 */
+	jellyfinToken: string | null;
+	/** Unique per-session Jellyfin device id the token was issued for. */
+	deviceId: string | null;
 }
 
 const CREATE_SESSIONS_TABLE_SQL = [
@@ -31,12 +45,24 @@ const CREATE_SESSIONS_TABLE_SQL = [
 	");",
 ].join("\n");
 
+const SESSIONS_TABLE_MIGRATIONS = [
+	"ALTER TABLE auth_sessions ADD COLUMN jellyfin_token TEXT",
+	"ALTER TABLE auth_sessions ADD COLUMN device_id TEXT",
+];
+
 let sessionsTableReady = false;
 
 function getSessionsDatabase() {
 	const database = getAppDatabase();
 	if (!sessionsTableReady) {
 		database.exec(CREATE_SESSIONS_TABLE_SQL);
+		for (const migration of SESSIONS_TABLE_MIGRATIONS) {
+			try {
+				database.exec(migration);
+			} catch {
+				// Column already exists.
+			}
+		}
 		sessionsTableReady = true;
 	}
 	return database;
@@ -64,13 +90,18 @@ export async function authenticateJellyfinCredentials(
 		throw new Error("Aurora is not connected to a Jellyfin server yet.");
 	}
 
+	// Jellyfin revokes the previous token when the same user re-authenticates
+	// with the same device id, so every Aurora session gets its own id — two
+	// browsers signed in as the same user must not kill each other's session.
+	const deviceId = `aurora-web-${crypto.randomBytes(4).toString("hex")}`;
+
 	const client = createClient({
 		url: connection.url,
 		apiKey: connection.apiKey,
 		userId: "",
 		clientName: "Aurora",
 		deviceName: "Aurora Web",
-		deviceId: "aurora-ui-web",
+		deviceId,
 		version: "1.0.0",
 	});
 
@@ -80,6 +111,8 @@ export async function authenticateJellyfinCredentials(
 			userId: result.user.Id,
 			username: result.user.Name ?? username,
 			isAdmin: result.user.Policy?.IsAdministrator === true,
+			jellyfinToken: result.accessToken,
+			deviceId,
 		};
 	} catch (error) {
 		if (error instanceof JellyfinError) {
@@ -99,7 +132,7 @@ export function createAuthSession(session: AuthSession): string {
 
 	database
 		.prepare(
-			"INSERT INTO auth_sessions (token_hash, user_id, username, is_admin, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+			"INSERT INTO auth_sessions (token_hash, user_id, username, is_admin, created_at, expires_at, jellyfin_token, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		)
 		.run(
 			hashToken(token),
@@ -108,6 +141,8 @@ export function createAuthSession(session: AuthSession): string {
 			session.isAdmin ? 1 : 0,
 			createdAt,
 			createdAt + SESSION_MAX_AGE_SECONDS,
+			session.jellyfinToken,
+			session.deviceId,
 		);
 
 	database.prepare("DELETE FROM auth_sessions WHERE expires_at < ?").run(createdAt);
@@ -121,10 +156,17 @@ export function getSessionByToken(token: string | undefined | null): AuthSession
 	const database = getSessionsDatabase();
 	const row = database
 		.prepare(
-			"SELECT user_id, username, is_admin, expires_at FROM auth_sessions WHERE token_hash = ?",
+			"SELECT user_id, username, is_admin, expires_at, jellyfin_token, device_id FROM auth_sessions WHERE token_hash = ?",
 		)
 		.get(hashToken(token)) as
-		| { user_id: string; username: string; is_admin: number; expires_at: number }
+		| {
+				user_id: string;
+				username: string;
+				is_admin: number;
+				expires_at: number;
+				jellyfin_token: string | null;
+				device_id: string | null;
+		  }
 		| undefined;
 
 	if (!row) return null;
@@ -138,6 +180,8 @@ export function getSessionByToken(token: string | undefined | null): AuthSession
 		userId: row.user_id,
 		username: row.username,
 		isAdmin: row.is_admin === 1,
+		jellyfinToken: row.jellyfin_token,
+		deviceId: row.device_id,
 	};
 }
 
@@ -146,6 +190,35 @@ export function deleteSessionByToken(token: string | undefined | null): void {
 	getSessionsDatabase()
 		.prepare("DELETE FROM auth_sessions WHERE token_hash = ?")
 		.run(hashToken(token));
+}
+
+/**
+ * Delete a session and revoke its Jellyfin access token (best effort), so
+ * signing out of Aurora also ends the session on the Jellyfin side.
+ */
+export async function destroySessionByToken(token: string | undefined | null): Promise<void> {
+	if (!token) return;
+
+	const session = getSessionByToken(token);
+	if (session?.jellyfinToken) {
+		const connection = getEffectiveServerConnectionSettings();
+		if (connection) {
+			const client = createClient({
+				url: connection.url,
+				apiKey: connection.apiKey,
+				userId: session.userId,
+				clientName: "Aurora",
+				deviceName: "Aurora Web",
+				deviceId: session.deviceId ?? "aurora-ui-web",
+				version: "1.0.0",
+			});
+			await logoutUserSession(client, session.jellyfinToken).catch(() => {
+				// Jellyfin unreachable — the token idles out on its own.
+			});
+		}
+	}
+
+	deleteSessionByToken(token);
 }
 
 /**
