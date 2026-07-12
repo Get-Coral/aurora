@@ -150,7 +150,13 @@ export default function Header() {
 
 	return (
 		<header ref={headerRef} className="app-header">
-			<nav className="page-wrap header-bar">
+			<nav
+				className={
+					searchOpen || navOpen
+						? "page-wrap header-bar header-bar-expanded"
+						: "page-wrap header-bar"
+				}
+			>
 				<div className="header-top-row">
 					<Link to="/" className="brand-mark" data-tv-focusable="true">
 						<span className="brand-glyph">

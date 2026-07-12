@@ -81,6 +81,16 @@ button { font: inherit; }
   background: linear-gradient(180deg, rgba(11, 16, 32, 0.78), rgba(11, 16, 32, 0.58));
   backdrop-filter: blur(24px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  /* Smoothly morph between the single-row stadium and the expanded panel. */
+  transition: border-radius 220ms ease, padding 220ms ease;
+}
+
+/* When a second row appears (search or the mobile nav), the full 999px stadium
+   radius turns into huge quarter-circles that collide with the wide inner
+   content. Soften to a panel radius and give the extra row breathing room. */
+.header-bar-expanded {
+  border-radius: 1.85rem;
+  padding-bottom: 0.8rem;
 }
 
 /* On desktop the top-row wrapper dissolves: brand-mark and header-actions
