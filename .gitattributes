@@ -1,0 +1,10 @@
+# Normalize line endings so Windows checkouts stop showing phantom CRLF diffs.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.ico binary
+*.webp binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
