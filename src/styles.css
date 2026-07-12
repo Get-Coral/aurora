@@ -81,6 +81,16 @@ button { font: inherit; }
   background: linear-gradient(180deg, rgba(11, 16, 32, 0.78), rgba(11, 16, 32, 0.58));
   backdrop-filter: blur(24px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  /* Smoothly morph between the single-row stadium and the expanded panel. */
+  transition: border-radius 220ms ease, padding 220ms ease;
+}
+
+/* When a second row appears (search or the mobile nav), the full 999px stadium
+   radius turns into huge quarter-circles that collide with the wide inner
+   content. Soften to a panel radius and give the extra row breathing room. */
+.header-bar-expanded {
+  border-radius: 1.85rem;
+  padding-bottom: 0.8rem;
 }
 
 /* On desktop the top-row wrapper dissolves: brand-mark and header-actions
@@ -3165,6 +3175,71 @@ html.tv-mode .hero-copy-in {
   .media-card-feature .card-action-label,
   .media-card-feature .card-action-label-wide {
     display: inline-block;
+  }
+}
+
+/* Header collapses to the stacked mobile layout well before true-mobile so the
+   desktop nav never gets cramped between the brand and the action buttons, and
+   search opens as a tidy full-width row instead of a wide, empty desktop field.
+   Content grids stay at their own (smaller) breakpoints below. */
+@media (max-width: 1024px) {
+  :root {
+    --header-h: 114px;
+  }
+
+  .header-top-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    order: 0;
+  }
+
+  .brand-mark,
+  .header-nav,
+  .header-actions,
+  .header-search-row {
+    order: 0;
+  }
+
+  .brand-mark {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-flex !important;
+  }
+
+  .header-nav {
+    display: none;
+    width: 100%;
+    gap: 0.55rem;
+    overflow-x: auto;
+    padding: 0.2rem 0 0.1rem;
+    scrollbar-width: none;
+  }
+
+  .header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-nav-open {
+    display: flex;
+  }
+
+  .header-search-row {
+    display: none;
+    width: 100%;
+    padding: 0;
+  }
+
+  .header-search-row-open {
+    display: block;
+  }
+
+  .search-shell {
+    width: 100%;
   }
 }
 
