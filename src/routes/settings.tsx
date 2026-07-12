@@ -357,7 +357,7 @@ function SettingsPage() {
 					<p className="settings-about-copy">{t("settings.aboutCopy")}</p>
 					<div className="settings-about-links">
 						<a
-							href="https://github.com/ElianCodes/aurora-ui/issues/new?template=bug_report.md"
+							href="https://github.com/Get-Coral/aurora/issues/new?template=bug_report.md"
 							target="_blank"
 							rel="noreferrer"
 							className="settings-about-link settings-about-link-bug"
@@ -367,7 +367,7 @@ function SettingsPage() {
 							<ExternalLink size={12} className="settings-about-link-ext" />
 						</a>
 						<a
-							href="https://github.com/ElianCodes/aurora-ui"
+							href="https://github.com/Get-Coral/aurora"
 							target="_blank"
 							rel="noreferrer"
 							className="settings-about-link"

@@ -17,7 +17,7 @@ export default function Footer() {
 				<div className="site-footer-links">
 					<a
 						className="site-footer-bug-link"
-						href="https://github.com/ElianCodes/aurora-ui/issues/new?template=bug_report.md"
+						href="https://github.com/Get-Coral/aurora/issues/new?template=bug_report.md"
 						target="_blank"
 						rel="noreferrer"
 						title={t("footer.reportBug")}
@@ -28,7 +28,7 @@ export default function Footer() {
 
 					<a
 						className="site-footer-link"
-						href="https://github.com/ElianCodes/aurora-ui"
+						href="https://github.com/Get-Coral/aurora"
 						target="_blank"
 						rel="noreferrer"
 					>
