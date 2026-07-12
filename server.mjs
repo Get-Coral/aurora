@@ -160,7 +160,20 @@ const nodeServer = http.createServer(async (request, response) => {
       return;
     }
 
-    Readable.fromWeb(webResponse.body).pipe(response);
+    // Pipe the SSR/web-response stream, handling errors on the source. The
+    // router's SSR transform errors this stream if it exceeds its lifetime
+    // (default 120s); without a handler that surfaces as an unhandled 'error'
+    // event and crashes the whole process. Instead, log it and tear down just
+    // this response.
+    const bodyStream = Readable.fromWeb(webResponse.body);
+    bodyStream.on('error', (streamError) => {
+      console.error('Aurora response stream error:', streamError);
+      if (!response.headersSent) response.statusCode = 500;
+      response.destroy();
+    });
+    // If the client disconnects, stop pulling from the source.
+    response.on('close', () => bodyStream.destroy());
+    bodyStream.pipe(response);
   } catch (error) {
     console.error(error);
     response.statusCode = 500;
@@ -179,6 +192,16 @@ nodeServer.on('connection', (socket) => {
 nodeServer.on('error', (error) => {
   console.error(error);
   process.exit(1);
+});
+
+// Last-resort safety net: a single request's stray async/stream error must not
+// take the whole container down. These are per-request faults (e.g. an SSR
+// stream aborting), not global state corruption, so log and keep serving.
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception (kept server alive):', error);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection (kept server alive):', reason);
 });
 
 let shuttingDown = false;
