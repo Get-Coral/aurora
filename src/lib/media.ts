@@ -56,6 +56,24 @@ export interface UserProfileSummary {
 	hasPassword: boolean;
 }
 
+export interface AvatarPosterCandidate {
+	itemId: string;
+	name: string;
+	imageUrl: string;
+}
+
+export interface AvatarPersonCandidate {
+	personId: string;
+	name: string;
+	role?: string;
+	imageUrl: string;
+}
+
+export interface AvatarCandidates {
+	posters: AvatarPosterCandidate[];
+	people: AvatarPersonCandidate[];
+}
+
 export function isResumable(
 	item: Pick<MediaItem, "progress" | "playbackPositionTicks" | "played">,
 ) {

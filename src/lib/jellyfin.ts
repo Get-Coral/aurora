@@ -6,6 +6,7 @@ import {
 	createUser as createUserBase,
 	deleteItem as deleteItemBase,
 	deleteUser as deleteUserBase,
+	deleteUserPrimaryImage as deleteUserPrimaryImageBase,
 	type GetLibraryItemsOptions,
 	getActiveSessions as getActiveSessionsBase,
 	getCollectionItems as getCollectionItemsBase,
@@ -53,6 +54,7 @@ import {
 	updateItemName as updateItemNameBase,
 	updateUserPassword as updateUserPasswordBase,
 	updateUserPolicy as updateUserPolicyBase,
+	uploadUserPrimaryImage as uploadUserPrimaryImageBase,
 } from "@get-coral/jellyfin";
 import { getCookie } from "@tanstack/react-start/server";
 import {
@@ -63,7 +65,7 @@ import {
 } from "./auth-store";
 import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
-import type { UserProfileSummary } from "./media";
+import type { AvatarCandidates, UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
 const AURORA_CLIENT_NAME = "Aurora";
@@ -379,4 +381,98 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
 	await updateUserPasswordBase(getAdminJellyfinClient(), userId, currentPassword, newPassword);
 
 	return { userId };
+}
+
+function getCurrentUserId(): string {
+	const settings = getEffectiveJellyfinSettings();
+
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	return settings.userId;
+}
+
+export async function uploadCurrentUserAvatar(
+	imageBuffer: ArrayBuffer,
+	contentType: string,
+): Promise<{ userId: string }> {
+	const userId = getCurrentUserId();
+	await uploadUserPrimaryImageBase(getJellyfinClient(), userId, imageBuffer, contentType);
+	return { userId };
+}
+
+export async function removeCurrentUserAvatar(): Promise<{ userId: string }> {
+	const userId = getCurrentUserId();
+	await deleteUserPrimaryImageBase(getJellyfinClient(), userId);
+	return { userId };
+}
+
+export async function setCurrentUserAvatarFromImage(
+	_sourceType: "item" | "person",
+	sourceId: string,
+): Promise<{ userId: string }> {
+	const userId = getCurrentUserId();
+	const client = getJellyfinClient();
+
+	// Both library items and persons resolve their primary artwork through the
+	// same Jellyfin endpoint, so a single request covers posters and headshots.
+	const response = await client.fetchRaw(`/Items/${sourceId}/Images/Primary`, { method: "GET" });
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch source image (status ${response.status}).`);
+	}
+
+	const contentType = response.headers.get("content-type") ?? "image/jpeg";
+	const imageBuffer = await response.arrayBuffer();
+
+	await uploadUserPrimaryImageBase(client, userId, imageBuffer, contentType);
+	return { userId };
+}
+
+export async function getAvatarCandidates(limit = 24): Promise<AvatarCandidates> {
+	const history = await getWatchHistoryBase(getJellyfinClient(), { limit, includePeople: true });
+
+	const posters = history.Items.filter((item) => item.ImageTags?.Primary).map((item) => ({
+		itemId: item.Id,
+		name: item.Name,
+		imageUrl: jellyfinImageProxyUrl(item.Id, "Primary", 300, {
+			tag: item.ImageTags?.Primary,
+		}),
+	}));
+
+	const peopleById = new Map<
+		string,
+		{ personId: string; name: string; role?: string; type?: string; tag: string }
+	>();
+	for (const item of history.Items) {
+		for (const person of item.People ?? []) {
+			if (!person.PrimaryImageTag || peopleById.has(person.Id)) continue;
+			peopleById.set(person.Id, {
+				personId: person.Id,
+				name: person.Name,
+				role: person.Role,
+				type: person.Type,
+				tag: person.PrimaryImageTag,
+			});
+		}
+	}
+
+	const people = Array.from(peopleById.values())
+		.sort((a, b) => {
+			const aActor = a.type === "Actor" ? 0 : 1;
+			const bActor = b.type === "Actor" ? 0 : 1;
+			return aActor - bActor;
+		})
+		.slice(0, 40)
+		.map((person) => ({
+			personId: person.personId,
+			name: person.name,
+			role: person.role,
+			imageUrl: jellyfinImageProxyUrl(person.personId, "Primary", 300, {
+				tag: person.tag,
+			}),
+		}));
+
+	return { posters, people };
 }

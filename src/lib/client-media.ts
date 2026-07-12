@@ -6,6 +6,7 @@ import {
 	createUser,
 	deleteItem,
 	deleteUser,
+	deleteUserPrimaryImage,
 	getActiveSessions,
 	getCollectionItems,
 	getCollections,
@@ -45,6 +46,7 @@ import {
 	updateItemName,
 	updateUserPassword,
 	updateUserPolicy,
+	uploadUserPrimaryImage,
 } from "@get-coral/jellyfin";
 import {
 	getClientOpenSubtitlesApiKey,
@@ -54,6 +56,7 @@ import {
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
 import { setTranscodeQuality } from "./jellyfin-stream-proxy";
 import type {
+	AvatarCandidates,
 	DetailedMediaItem,
 	MediaItem,
 	SeriesDetailPayload,
@@ -573,6 +576,98 @@ export async function updateClientCurrentUserPassword(
 	await updateUserPassword(getClientAdminJellyfin(), settings.userId, currentPassword, newPassword);
 
 	return { userId: settings.userId };
+}
+
+export async function uploadClientAvatar(imageBuffer: ArrayBuffer, contentType: string) {
+	const settings = getEffectiveClientJellyfinSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await uploadUserPrimaryImage(getClientJellyfin(), settings.userId, imageBuffer, contentType);
+	return { userId: settings.userId };
+}
+
+export async function removeClientAvatar() {
+	const settings = getEffectiveClientJellyfinSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	await deleteUserPrimaryImage(getClientJellyfin(), settings.userId);
+	return { userId: settings.userId };
+}
+
+export async function setClientAvatarFromLibrary(input: {
+	sourceType: "item" | "person";
+	sourceId: string;
+}) {
+	const settings = getEffectiveClientJellyfinSettings();
+	if (!settings) {
+		throw new Error("Aurora is not configured yet. Visit /setup to connect Jellyfin.");
+	}
+
+	const client = getClientJellyfin();
+	const response = await client.fetchRaw(`/Items/${input.sourceId}/Images/Primary`, {
+		method: "GET",
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch source image (status ${response.status}).`);
+	}
+
+	const contentType = response.headers.get("content-type") ?? "image/jpeg";
+	const imageBuffer = await response.arrayBuffer();
+
+	await uploadUserPrimaryImage(client, settings.userId, imageBuffer, contentType);
+	return { userId: settings.userId };
+}
+
+export async function fetchClientAvatarCandidates(limit = 24): Promise<AvatarCandidates> {
+	const history = await getWatchHistory(getClientJellyfin(), { limit, includePeople: true });
+
+	const posters = history.Items.filter((item) => item.ImageTags?.Primary).map((item) => ({
+		itemId: item.Id,
+		name: item.Name,
+		imageUrl: jellyfinImageProxyUrl(item.Id, "Primary", 300, {
+			tag: item.ImageTags?.Primary,
+		}),
+	}));
+
+	const peopleById = new Map<
+		string,
+		{ personId: string; name: string; role?: string; type?: string; tag: string }
+	>();
+	for (const item of history.Items) {
+		for (const person of item.People ?? []) {
+			if (!person.PrimaryImageTag || peopleById.has(person.Id)) continue;
+			peopleById.set(person.Id, {
+				personId: person.Id,
+				name: person.Name,
+				role: person.Role,
+				type: person.Type,
+				tag: person.PrimaryImageTag,
+			});
+		}
+	}
+
+	const people = Array.from(peopleById.values())
+		.sort((a, b) => {
+			const aActor = a.type === "Actor" ? 0 : 1;
+			const bActor = b.type === "Actor" ? 0 : 1;
+			return aActor - bActor;
+		})
+		.slice(0, 40)
+		.map((person) => ({
+			personId: person.personId,
+			name: person.name,
+			role: person.role,
+			imageUrl: jellyfinImageProxyUrl(person.personId, "Primary", 300, {
+				tag: person.tag,
+			}),
+		}));
+
+	return { posters, people };
 }
 
 export async function updateClientUserParentalPolicy(
