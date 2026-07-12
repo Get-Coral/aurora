@@ -57,9 +57,7 @@ function srtToVtt(srt: string): string {
 
 export const searchOnlineSubtitles = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator(
-		(input: { title: string; year?: number; season?: number; episode?: number }) => input,
-	)
+	.validator((input: { title: string; year?: number; season?: number; episode?: number }) => input)
 	.handler(async ({ data }): Promise<OpenSubtitleResult[]> => {
 		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		const apiKey = getOpenSubtitlesApiKey();
@@ -117,7 +115,7 @@ export const searchOnlineSubtitles = createServerFn({ method: "GET" })
 
 export const fetchOnlineSubtitle = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { fileId: number }) => input)
+	.validator((input: { fileId: number }) => input)
 	.handler(async ({ data }) => {
 		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		const apiKey = getOpenSubtitlesApiKey();
@@ -146,7 +144,7 @@ export const fetchOnlineSubtitle = createServerFn({ method: "POST" })
 
 export const beginPlaybackSession = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator(
+	.validator(
 		(input: {
 			id: string;
 			client?: {
@@ -178,7 +176,7 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 
 export const reportPlaybackState = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator(
+	.validator(
 		(input: {
 			id: string;
 			positionTicks: number;

@@ -37,7 +37,7 @@ export const fetchAdminUsers = createServerFn({ method: "GET" })
 
 export const toggleAdminUser = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { userId: string; disabled: boolean }) => input)
+	.validator((input: { userId: string; disabled: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { patchUserPolicy } = await import("@/lib/jellyfin");
 		await patchUserPolicy(data.userId, { IsDisabled: data.disabled });
@@ -46,7 +46,7 @@ export const toggleAdminUser = createServerFn({ method: "POST" })
 
 export const deleteAdminUser = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { userId: string }) => input)
+	.validator((input: { userId: string }) => input)
 	.handler(async ({ data }) => {
 		const { deleteJellyfinUser } = await import("@/lib/jellyfin");
 		await deleteJellyfinUser(data.userId);
@@ -55,7 +55,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
 
 export const createAdminUser = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { name: string; password: string }) => input)
+	.validator((input: { name: string; password: string }) => input)
 	.handler(async ({ data }) => {
 		const { createJellyfinUser } = await import("@/lib/jellyfin");
 		const user = await createJellyfinUser(data.name, data.password);
@@ -92,7 +92,7 @@ export const scanAllAdminLibraries = createServerFn({ method: "POST" })
 
 export const scanAdminLibrary = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { itemId: string }) => input)
+	.validator((input: { itemId: string }) => input)
 	.handler(async ({ data }) => {
 		const { scanLibrary } = await import("@/lib/jellyfin");
 		await scanLibrary(data.itemId);

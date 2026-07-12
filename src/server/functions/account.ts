@@ -41,7 +41,7 @@ export const fetchCurrentProfile = createServerFn({ method: "GET" })
 
 export const updateCurrentProfilePassword = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { currentPassword: string; newPassword: string }) => input)
+	.validator((input: { currentPassword: string; newPassword: string }) => input)
 	.handler(async ({ data }) => {
 		const { updateCurrentUserPassword } = await import("@/lib/jellyfin");
 		const { updateStoredJellyfinPasswordForUser, clearStoredJellyfinPasswordForUser } =
@@ -70,7 +70,7 @@ export const fetchMultiUserSettings = createServerFn({ method: "GET" })
 
 export const setMultiUserModeServerFn = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { enabled: boolean }) => input)
+	.validator((input: { enabled: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { setMultiUserMode } = await import("@/lib/config-store");
 		setMultiUserMode(data.enabled);
@@ -79,7 +79,7 @@ export const setMultiUserModeServerFn = createServerFn({ method: "POST" })
 
 export const setActiveUserServerFn = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { userId: string }) => input)
+	.validator((input: { userId: string }) => input)
 	.handler(async ({ data }) => {
 		const { setActiveUserId } = await import("@/lib/config-store");
 
@@ -111,7 +111,7 @@ export const clearActiveUserServerFn = createServerFn({ method: "POST" })
 
 export const fetchUserPolicy = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { userId: string }) => input)
+	.validator((input: { userId: string }) => input)
 	.handler(async ({ data }) => {
 		const { getUserById } = await import("@/lib/jellyfin");
 		const user = await getUserById(data.userId);
@@ -128,7 +128,7 @@ export const fetchUserPolicy = createServerFn({ method: "POST" })
 
 export const updateUserParentalPolicy = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator(
+	.validator(
 		(input: {
 			userId: string;
 			policy: {
