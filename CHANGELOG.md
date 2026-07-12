@@ -25,6 +25,23 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.11.0](https://github.com/Get-Coral/aurora/compare/v1.10.0...v1.11.0) (2026-07-12)
+
+
+### Features
+
+* adopt the Horizon Beam logo ([331065f](https://github.com/Get-Coral/aurora/commit/331065f90749f58bcc649642efa1cc324bd3a42a))
+* adopt the Horizon Beam logo ([e85049e](https://github.com/Get-Coral/aurora/commit/e85049e099ae97e4bbc2160e980cf0b21f42dbda))
+* extend Horizon Beam branding to splash, OG, and shell pages ([9087823](https://github.com/Get-Coral/aurora/commit/9087823628d17ec2338839975d9297f86cffa54a))
+* hide server-level settings from non-admin users ([2a9dddf](https://github.com/Get-Coral/aurora/commit/2a9dddfb05f3d57802b570950af33efbb8da9156))
+* hide server-level settings from non-admin users ([947af9b](https://github.com/Get-Coral/aurora/commit/947af9bd27bbf6d34f34e14163eb49e461183d93))
+* run playback and identity under each user's own Jellyfin session ([8a522c0](https://github.com/Get-Coral/aurora/commit/8a522c00b2828efc53eb5fea7968321b1888c036))
+* run playback and identity under each user's own Jellyfin session ([f038269](https://github.com/Get-Coral/aurora/commit/f038269b8e98c3f437d7b40b26db6b7ecec91e1a))
+* stream and image proxies act as the signed-in user ([843affb](https://github.com/Get-Coral/aurora/commit/843affbbeb4580b472464be158d5fb1574bff574))
+* stream and image proxies act as the signed-in user ([47315e6](https://github.com/Get-Coral/aurora/commit/47315e6550f0f7947615d18a8f1eef4b86c0c7e8))
+* track Aurora sign-ins for accurate last-login times ([51fda43](https://github.com/Get-Coral/aurora/commit/51fda43cd48716e4a6ed2fb584e1b46d440b3b33))
+* track Aurora sign-ins for accurate last-login times ([d3a53b0](https://github.com/Get-Coral/aurora/commit/d3a53b030f62a665ffe6662373e8482580b5e11e))
+
 ## [1.10.0](https://github.com/Get-Coral/aurora/compare/v1.9.0...v1.10.0) (2026-07-10)
 
 
