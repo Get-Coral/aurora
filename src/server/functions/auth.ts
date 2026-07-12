@@ -42,16 +42,37 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 export const loginServerFn = createServerFn({ method: "POST" })
 	.inputValidator((input: { username: string; password: string }) => input)
 	.handler(async ({ data }) => {
-		const { authenticateJellyfinCredentials, createAuthSession, recordUserLogin } = await import(
-			"@/lib/auth-store"
-		);
+		const {
+			authenticateJellyfinCredentials,
+			createAuthSession,
+			recordUserLogin,
+			assertLoginAllowed,
+			recordLoginFailure,
+			clearLoginFailures,
+			sweepExpiredSessions,
+		} = await import("@/lib/auth-store");
+		const { getRequestIP } = await import("@tanstack/react-start/server");
 
 		const username = data.username.trim();
 		if (!username) {
 			throw new Error("Username is required.");
 		}
 
-		const session = await authenticateJellyfinCredentials(username, data.password);
+		const ip = getRequestIP({ xForwardedFor: true }) ?? null;
+		assertLoginAllowed(ip);
+
+		let session: Awaited<ReturnType<typeof authenticateJellyfinCredentials>>;
+		try {
+			session = await authenticateJellyfinCredentials(username, data.password);
+		} catch (error) {
+			recordLoginFailure(ip);
+			throw error;
+		}
+		clearLoginFailures(ip);
+
+		await sweepExpiredSessions().catch(() => {
+			// Best effort — never block a sign-in on cleanup.
+		});
 
 		// Replace any existing session (and revoke its Jellyfin token) instead
 		// of leaving it valid until expiry.

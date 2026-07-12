@@ -145,9 +145,42 @@ export function createAuthSession(session: AuthSession): string {
 			session.deviceId,
 		);
 
-	database.prepare("DELETE FROM auth_sessions WHERE expires_at < ?").run(createdAt);
-
 	return token;
+}
+
+/**
+ * Delete expired sessions and revoke their Jellyfin tokens (best effort),
+ * so tokens don't linger on the Jellyfin side after the Aurora session dies.
+ */
+export async function sweepExpiredSessions(): Promise<void> {
+	const database = getSessionsDatabase();
+	const now = nowSeconds();
+	const expired = database
+		.prepare("SELECT jellyfin_token, device_id FROM auth_sessions WHERE expires_at < ?")
+		.all(now) as unknown as Array<{ jellyfin_token: string | null; device_id: string | null }>;
+
+	if (expired.length === 0) return;
+
+	const connection = getEffectiveServerConnectionSettings();
+	if (connection) {
+		for (const row of expired) {
+			if (!row.jellyfin_token) continue;
+			const client = createClient({
+				url: connection.url,
+				apiKey: connection.apiKey,
+				userId: "",
+				clientName: "Aurora",
+				deviceName: "Aurora Web",
+				deviceId: row.device_id ?? "aurora-ui-web",
+				version: "1.0.0",
+			});
+			await logoutUserSession(client, row.jellyfin_token).catch(() => {
+				// Jellyfin unreachable — the token idles out on its own.
+			});
+		}
+	}
+
+	database.prepare("DELETE FROM auth_sessions WHERE expires_at < ?").run(now);
 }
 
 export function getSessionByToken(token: string | undefined | null): AuthSession | null {
@@ -260,9 +293,61 @@ export function getSessionTokenFromCookieHeader(cookieHeader: string | null): st
 	return null;
 }
 
+/**
+ * The signed-in session behind a plain Request (API routes), when the login
+ * requirement is active.
+ */
+export function getSessionFromRequest(request: Request): AuthSession | null {
+	if (!isLoginEnforced()) return null;
+
+	const token = getSessionTokenFromCookieHeader(request.headers.get("cookie"));
+	return getSessionByToken(token);
+}
+
 export function isRequestAuthorized(request: Request): boolean {
 	if (!isLoginEnforced()) return true;
 
-	const token = getSessionTokenFromCookieHeader(request.headers.get("cookie"));
-	return getSessionByToken(token) != null;
+	return getSessionFromRequest(request) != null;
+}
+
+// ── Login throttling ──────────────────────────────────────────────────────────
+// A small in-memory guard on top of Jellyfin's own lockout policy. Resets on
+// restart, which is fine — it only needs to blunt rapid guessing.
+
+const LOGIN_ATTEMPT_WINDOW_SECONDS = 15 * 60;
+const LOGIN_ATTEMPT_LIMIT = 10;
+
+const loginFailures = new Map<string, { count: number; resetAt: number }>();
+
+export function assertLoginAllowed(ip: string | null | undefined): void {
+	if (!ip) return;
+
+	const entry = loginFailures.get(ip);
+	if (!entry) return;
+
+	if (entry.resetAt <= nowSeconds()) {
+		loginFailures.delete(ip);
+		return;
+	}
+
+	if (entry.count >= LOGIN_ATTEMPT_LIMIT) {
+		throw new Error("Too many failed sign-in attempts. Try again later.");
+	}
+}
+
+export function recordLoginFailure(ip: string | null | undefined): void {
+	if (!ip) return;
+
+	const now = nowSeconds();
+	const entry = loginFailures.get(ip);
+	if (!entry || entry.resetAt <= now) {
+		loginFailures.set(ip, { count: 1, resetAt: now + LOGIN_ATTEMPT_WINDOW_SECONDS });
+		return;
+	}
+	entry.count++;
+}
+
+export function clearLoginFailures(ip: string | null | undefined): void {
+	if (!ip) return;
+	loginFailures.delete(ip);
 }
