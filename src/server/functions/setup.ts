@@ -10,7 +10,7 @@ export const fetchSetupStatus = createServerFn({ method: "GET" })
 
 export const saveSetupConfiguration = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator(
+	.validator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
 			input,
 	)
@@ -35,7 +35,7 @@ export const saveSetupConfiguration = createServerFn({ method: "POST" })
 
 export const saveSettings = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator(
+	.validator(
 		(input: { url: string; apiKey: string; userId: string; username: string; password: string }) =>
 			input,
 	)
@@ -68,7 +68,7 @@ export const fetchOpenSubtitlesKey = createServerFn({ method: "GET" })
 
 export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { apiKey: string }) => input)
+	.validator((input: { apiKey: string }) => input)
 	.handler(async ({ data }) => {
 		const { saveOpenSubtitlesApiKey } = await import("@/lib/config-store");
 		saveOpenSubtitlesApiKey(data.apiKey);
@@ -77,7 +77,7 @@ export const saveOpenSubtitlesKey = createServerFn({ method: "POST" })
 
 export const saveServerConnectionFn = createServerFn({ method: "POST" })
 	.middleware([adminRequiredMiddleware])
-	.inputValidator((input: { url: string; apiKey: string }) => input)
+	.validator((input: { url: string; apiKey: string }) => input)
 	.handler(async ({ data }) => {
 		const { saveServerConnection } = await import("@/lib/config-store");
 		return saveServerConnection(data.url, data.apiKey);

@@ -82,7 +82,7 @@ export const fetchMyList = createServerFn({ method: "GET" })
 
 export const fetchRecommendedFromItem = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string }) => input)
+	.validator((input: { id: string }) => input)
 	.handler(async ({ data }) => {
 		const [{ getSimilarItems }, { fromJellyfin }] = await Promise.all([
 			import("@/lib/jellyfin"),
@@ -94,7 +94,7 @@ export const fetchRecommendedFromItem = createServerFn({ method: "GET" })
 
 export const fetchLibrary = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator(
+	.validator(
 		(input: {
 			type: "Movie" | "Series";
 			page?: number;
@@ -137,7 +137,7 @@ export const fetchLibrary = createServerFn({ method: "GET" })
 
 export const fetchWatchHistory = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { page?: number }) => input)
+	.validator((input: { page?: number }) => input)
 	.handler(async ({ data }) => {
 		const [{ getWatchHistory }, { fromJellyfin }] = await Promise.all([
 			import("@/lib/jellyfin"),
@@ -165,7 +165,7 @@ export const fetchCollections = createServerFn({ method: "GET" })
 
 export const fetchCollectionItems = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string }) => input)
+	.validator((input: { id: string }) => input)
 	.handler(async ({ data }) => {
 		const [{ getCollectionItems, getItem }, { fromJellyfin }] = await Promise.all([
 			import("@/lib/jellyfin"),
@@ -180,7 +180,7 @@ export const fetchCollectionItems = createServerFn({ method: "GET" })
 
 export const createCollection = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { name: string }) => input)
+	.validator((input: { name: string }) => input)
 	.handler(async ({ data }) => {
 		const { createCollection: apiCreate } = await import("@/lib/jellyfin");
 		return apiCreate(data.name);
@@ -188,7 +188,7 @@ export const createCollection = createServerFn({ method: "POST" })
 
 export const deleteCollection = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string }) => input)
+	.validator((input: { id: string }) => input)
 	.handler(async ({ data }) => {
 		const { deleteItem } = await import("@/lib/jellyfin");
 		await deleteItem(data.id);
@@ -196,7 +196,7 @@ export const deleteCollection = createServerFn({ method: "POST" })
 
 export const renameCollection = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string; name: string }) => input)
+	.validator((input: { id: string; name: string }) => input)
 	.handler(async ({ data }) => {
 		const { updateItemName } = await import("@/lib/jellyfin");
 		await updateItemName(data.id, data.name);
@@ -204,7 +204,7 @@ export const renameCollection = createServerFn({ method: "POST" })
 
 export const addToCollection = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { collectionId: string; itemIds: string[] }) => input)
+	.validator((input: { collectionId: string; itemIds: string[] }) => input)
 	.handler(async ({ data }) => {
 		const { addItemsToCollection } = await import("@/lib/jellyfin");
 		await addItemsToCollection(data.collectionId, data.itemIds);
@@ -212,7 +212,7 @@ export const addToCollection = createServerFn({ method: "POST" })
 
 export const removeFromCollection = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { collectionId: string; itemId: string }) => input)
+	.validator((input: { collectionId: string; itemId: string }) => input)
 	.handler(async ({ data }) => {
 		const { removeItemsFromCollection } = await import("@/lib/jellyfin");
 		await removeItemsFromCollection(data.collectionId, [data.itemId]);
@@ -231,7 +231,7 @@ export const fetchMostPlayed = createServerFn({ method: "GET" })
 
 export const fetchItem = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string }) => input)
+	.validator((input: { id: string }) => input)
 	.handler(async ({ data }) => {
 		const [{ getItem }, { fromJellyfin }] = await Promise.all([
 			import("@/lib/jellyfin"),
@@ -243,7 +243,7 @@ export const fetchItem = createServerFn({ method: "GET" })
 
 export const fetchItemDetails = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string }) => input)
+	.validator((input: { id: string }) => input)
 	.handler(async ({ data }) => {
 		const [{ getItem, getSimilarItems }, { fromJellyfin, fromJellyfinDetailed }] =
 			await Promise.all([import("@/lib/jellyfin"), import("@/lib/media-server")]);
@@ -257,7 +257,7 @@ export const fetchItemDetails = createServerFn({ method: "GET" })
 
 export const fetchSeriesDetails = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string }) => input)
+	.validator((input: { id: string }) => input)
 	.handler(async ({ data }) => {
 		const [
 			{ getItem, getEpisodesForSeries, getNextUpForSeries, getSimilarItems },
@@ -280,7 +280,7 @@ export const fetchSeriesDetails = createServerFn({ method: "GET" })
 
 export const fetchSearch = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { query: string }) => input)
+	.validator((input: { query: string }) => input)
 	.handler(async ({ data }) => {
 		if (!data.query.trim()) return [];
 		const [{ searchItems }, { fromJellyfin }] = await Promise.all([
@@ -293,7 +293,7 @@ export const fetchSearch = createServerFn({ method: "GET" })
 
 export const markPlayed = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string; played: boolean }) => input)
+	.validator((input: { id: string; played: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { setPlayed } = await import("@/lib/jellyfin");
 		const result = await setPlayed(data.id, data.played);
@@ -302,7 +302,7 @@ export const markPlayed = createServerFn({ method: "POST" })
 
 export const toggleFavorite = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.inputValidator((input: { id: string; isFavorite: boolean }) => input)
+	.validator((input: { id: string; isFavorite: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { setFavorite } = await import("@/lib/jellyfin");
 		const result = await setFavorite(data.id, data.isFavorite);

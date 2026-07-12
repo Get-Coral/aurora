@@ -40,7 +40,7 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 });
 
 export const loginServerFn = createServerFn({ method: "POST" })
-	.inputValidator((input: { username: string; password: string }) => input)
+	.validator((input: { username: string; password: string }) => input)
 	.handler(async ({ data }) => {
 		const {
 			authenticateJellyfinCredentials,
@@ -105,7 +105,7 @@ export const logoutServerFn = createServerFn({ method: "POST" }).handler(async (
 });
 
 export const setRequireLoginServerFn = createServerFn({ method: "POST" })
-	.inputValidator((input: { enabled: boolean }) => input)
+	.validator((input: { enabled: boolean }) => input)
 	.handler(async ({ data }) => {
 		const { isLoginEnforced, getSessionByToken, createAuthSession, SESSION_COOKIE_NAME } =
 			await import("@/lib/auth-store");
