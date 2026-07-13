@@ -25,6 +25,20 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.12.0](https://github.com/Get-Coral/aurora/compare/v1.11.0...v1.12.0) (2026-07-13)
+
+
+### Features
+
+* let users set their profile picture ([#58](https://github.com/Get-Coral/aurora/issues/58)) ([4ba2150](https://github.com/Get-Coral/aurora/commit/4ba2150551f855804f6b055059c86a22ab84516f))
+
+
+### Bug Fixes
+
+* header + search polish on smaller screens ([#53](https://github.com/Get-Coral/aurora/issues/53)) ([0381259](https://github.com/Get-Coral/aurora/commit/0381259749a33b12b1ab5e88cc1307c46fda9060))
+* suppress body hydration warning and drop deprecated inputValidator ([#54](https://github.com/Get-Coral/aurora/issues/54)) ([41e3bd3](https://github.com/Get-Coral/aurora/commit/41e3bd3b82ee8f64400ace151a64e0df30f752e8))
+* survive SSR stream errors and point links to Get-Coral/aurora ([#56](https://github.com/Get-Coral/aurora/issues/56)) ([9c3faa1](https://github.com/Get-Coral/aurora/commit/9c3faa104083d3a333c51242fd793af8bd17b7f7))
+
 ## [1.11.0](https://github.com/Get-Coral/aurora/compare/v1.10.0...v1.11.0) (2026-07-12)
 
 
