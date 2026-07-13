@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
 
+const ALLOWED_AVATAR_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_AVATAR_BASE64_LENGTH = 8 * 1024 * 1024 * 2;
+
 export const fetchUsername = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => {
@@ -53,6 +56,60 @@ export const updateCurrentProfilePassword = createServerFn({ method: "POST" })
 			clearStoredJellyfinPasswordForUser(result.userId);
 		}
 		return result;
+	});
+
+export const uploadAvatarServerFn = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { dataBase64: string; contentType: string }) => {
+		if (!input || typeof input.dataBase64 !== "string" || !input.dataBase64.trim()) {
+			throw new Error("Image data is required.");
+		}
+		if (!ALLOWED_AVATAR_CONTENT_TYPES.includes(input.contentType)) {
+			throw new Error("Unsupported image type.");
+		}
+		if (input.dataBase64.length > MAX_AVATAR_BASE64_LENGTH) {
+			throw new Error("Image is too large.");
+		}
+		return input;
+	})
+	.handler(async ({ data }) => {
+		const { uploadCurrentUserAvatar } = await import("@/lib/jellyfin");
+		const buffer = Buffer.from(data.dataBase64, "base64");
+		const imageBuffer = buffer.buffer.slice(
+			buffer.byteOffset,
+			buffer.byteOffset + buffer.byteLength,
+		);
+		return uploadCurrentUserAvatar(imageBuffer, data.contentType);
+	});
+
+export const setAvatarFromLibraryServerFn = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { sourceType: "item" | "person"; sourceId: string }) => {
+		if (input?.sourceType !== "item" && input?.sourceType !== "person") {
+			throw new Error("Invalid source type.");
+		}
+		if (typeof input.sourceId !== "string" || !input.sourceId.trim()) {
+			throw new Error("A source id is required.");
+		}
+		return input;
+	})
+	.handler(async ({ data }) => {
+		const { setCurrentUserAvatarFromImage } = await import("@/lib/jellyfin");
+		return setCurrentUserAvatarFromImage(data.sourceType, data.sourceId);
+	});
+
+export const removeAvatarServerFn = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => {
+		const { removeCurrentUserAvatar } = await import("@/lib/jellyfin");
+		return removeCurrentUserAvatar();
+	});
+
+export const fetchAvatarCandidatesServerFn = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => {
+		const { getAvatarCandidates } = await import("@/lib/jellyfin");
+		return getAvatarCandidates();
 	});
 
 export const fetchMultiUserSettings = createServerFn({ method: "GET" })
