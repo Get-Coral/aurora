@@ -80,6 +80,7 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           SHORT_DESCRIPTION: "A TV-friendly alternative Jellyfin UI for web, mobile and the living room."
+          CATEGORIES: '[{"name": "Content management system", "slug": "content-management-system"}, {"name": "Web servers", "slug": "web-servers"}]'
           IMAGE: aurora
         run: |
           set -euo pipefail
@@ -94,7 +95,8 @@ jobs:
           fi
 
           payload=$(jq -n --arg d "$SHORT_DESCRIPTION" --rawfile f README.md \
-                       '{description:$d, full_description:$f}')
+                       --argjson c "$CATEGORIES" \
+                       '{description:$d, full_description:$f, categories:$c}')
 
           code=$(curl -sS -o /tmp/dh.json -w '%{http_code}' -X PATCH \
             -H "Authorization: Bearer $jwt" \
