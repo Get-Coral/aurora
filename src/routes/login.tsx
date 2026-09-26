@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AuroraMark } from "../components/AuroraMark";
 import { useI18n } from "../lib/i18n";
 import { fetchAuthStatusRuntime, loginRuntime } from "../lib/runtime-functions";
+import { shouldUseClientRuntime } from "../lib/runtime-mode";
 
 const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 
@@ -12,8 +13,14 @@ export const Route = createFileRoute("/login")({
 	loader: async () => {
 		if (IS_PRERENDER_BUILD) return;
 
+		// The native shell authenticates against Jellyfin directly, so there is
+		// no server session to establish here.
+		if (shouldUseClientRuntime()) {
+			throw redirect({ to: "/" });
+		}
+
 		const auth = await fetchAuthStatusRuntime();
-		if (!auth.required || auth.authenticated) {
+		if (auth.userId) {
 			throw redirect({ to: "/" });
 		}
 	},

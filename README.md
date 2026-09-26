@@ -122,6 +122,13 @@ By default anyone who can reach your Aurora instance can browse and stream the c
 - Each sign-in gets its own Jellyfin access token, so playback and watch progress are attributed to the signed-in user (not the configured account), and signing out revokes the token on the Jellyfin side
 - To force it on (so it cannot be disabled from the UI), set `AURORA_REQUIRE_LOGIN=true` in the environment
 
+Administration is gated separately and always requires signing in. Even on an open
+instance, the admin dashboard and the settings that change your Jellyfin connection,
+users, or security options are only available to a signed-in Jellyfin administrator —
+"Require sign-in" controls who can browse and stream, not who can administer. The one
+exception is a brand-new install that is not connected to Jellyfin yet, since there is
+no account to sign in with until setup completes.
+
 ## Translations
 
 Translations live in dedicated locale files so contributors can add languages without touching the runtime logic.

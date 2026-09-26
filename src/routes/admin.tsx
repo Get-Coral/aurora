@@ -50,7 +50,7 @@ export const Route = createFileRoute("/admin")({
 
 		const auth = await fetchAuthStatusRuntime();
 		if (!auth.isAdmin) {
-			throw redirect({ to: "/" });
+			throw redirect({ to: auth.userId ? "/" : "/login" });
 		}
 
 		return setupStatus;

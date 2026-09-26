@@ -389,7 +389,6 @@ type ClientAdminOverview = {
 		MusicVideoCount?: number;
 	};
 	serverUrl: string;
-	apiKey: string;
 };
 
 type ClientAdminSession = {
@@ -440,7 +439,6 @@ export async function fetchClientAdminOverview(): Promise<ClientAdminOverview> {
 		systemInfo: systemInfo as JellyfinSystemInfo,
 		counts: counts as JellyfinItemCounts,
 		serverUrl: settings.url,
-		apiKey: settings.apiKey,
 	};
 }
 
