@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/aurora-app-icon.svg" width="128" alt="Aurora logo — a four-point star split by a glowing light beam" />
+  <img src="https://raw.githubusercontent.com/Get-Coral/aurora/main/public/aurora-app-icon.svg" width="128" alt="Aurora logo — a four-point star split by a glowing light beam" />
 </p>
 
 <h1 align="center">Aurora UI</h1>
