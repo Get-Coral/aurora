@@ -44,7 +44,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
     "@capacitor/android": "^8.3.0",
-    "@capacitor/cli": "^8.3.0",
+    "@capacitor/cli": "^8.5.2",
     "@capacitor/ios": "^8.3.0",
     "@get-coral/biome-config": "^0.2.0",
     "@get-coral/tsconfig": "^0.2.0",
