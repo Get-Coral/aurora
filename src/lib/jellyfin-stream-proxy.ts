@@ -84,3 +84,21 @@ export function prepareSeekReloadUrl(streamUrl: string, ticks: number): string {
 		url.searchParams.set("_ts", String(Date.now()));
 	});
 }
+
+/**
+ * Attaches a signed stream token so an AirPlay or Cast receiver can fetch the
+ * media itself, without Aurora's session cookie.
+ *
+ * `st` lives on the outer proxy URL, not the inner Jellyfin path, so it rides
+ * through `setStreamStartTicks`, `setTranscodeQuality` and
+ * `prepareSeekReloadUrl` untouched -- they only rewrite the inner `path`.
+ * Direct Jellyfin URLs (the Capacitor shell) already carry an api_key and
+ * never hit the proxy, so they are left alone.
+ */
+export function withStreamToken(streamUrl: string, token: string | null | undefined): string {
+	if (!token || !streamUrl.startsWith("/api/jellyfin-stream")) return streamUrl;
+
+	const outer = new URL(streamUrl, "http://x");
+	outer.searchParams.set("st", token);
+	return outer.pathname + outer.search;
+}

@@ -21,11 +21,13 @@ import {
 	prepareSeekReloadUrl,
 	setStreamStartTicks,
 	setTranscodeQuality,
+	withStreamToken,
 } from "../lib/jellyfin-stream-proxy";
 import type { MediaItem } from "../lib/media";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
 	beginPlaybackSessionRuntime,
+	createStreamTokenRuntime,
 	fetchOnlineSubtitleRuntime,
 	fetchOpenSubtitlesKeyRuntime,
 	reportPlaybackStateRuntime,
@@ -225,6 +227,10 @@ export function MediaPlayerDialog({
 			url: string;
 		}[];
 	} | null>(null);
+	// Signed token that lets an AirPlay/Cast receiver fetch the stream without
+	// Aurora's session cookie. Null when login isn't enforced (the proxy is
+	// open anyway) or inside the native shell (direct Jellyfin URLs).
+	const [streamToken, setStreamToken] = useState<string | null>(null);
 	const lastReportedSecondRef = useRef(0);
 	const stopReportedRef = useRef(false);
 	// Tracks how many seconds into the movie the current stream segment starts.
@@ -294,8 +300,14 @@ export function MediaPlayerDialog({
 		staleTime: 0,
 	});
 
-	const streamUrl =
+	const baseStreamUrl =
 		playbackSession?.streamUrl ?? (playbackClient.prefersSafeVideo ? null : item?.streamUrl);
+	// Carry the signed token on every stream URL, not just while casting: a
+	// receiver is handed `video.currentSrc` as it stands the moment the user
+	// picks a device, so swapping it in afterwards is already too late. The
+	// token is item-scoped and dies with the session, so it grants nothing the
+	// page's own cookie doesn't.
+	const streamUrl = baseStreamUrl ? withStreamToken(baseStreamUrl, streamToken) : baseStreamUrl;
 	const isNativeHlsPlayback =
 		playbackSession?.playMethod === "Transcode" && streamUrl?.includes(".m3u8");
 	const canSelectQuality = playbackSession?.playMethod === "Transcode";
@@ -368,6 +380,7 @@ export function MediaPlayerDialog({
 		pendingSeekTargetRef.current = null;
 		setIsBuffering(true);
 		setPlaybackSession(null);
+		setStreamToken(null);
 		setCurrentTime(0);
 		setDuration((item?.runtimeMinutes ?? 0) * 60);
 		setIsPlaying(false);
@@ -395,9 +408,17 @@ export function MediaPlayerDialog({
 			client,
 		});
 
-		void beginPlaybackSessionRuntime({ data: { id: item.id, client } })
-			.then((session) => {
+		void Promise.all([
+			beginPlaybackSessionRuntime({ data: { id: item.id, client } }),
+			// Best effort: without a token the player still works in the
+			// browser, it just can't hand the stream to a TV.
+			createStreamTokenRuntime({ data: { id: item.id } }).catch(() => ({
+				token: null as string | null,
+			})),
+		])
+			.then(([session, minted]) => {
 				if (cancelled) return;
+				setStreamToken(minted.token);
 				logPlayback("session:resolved", {
 					sessionPlayMethod: session.playMethod,
 					sessionStreamUrl: session.streamUrl,
