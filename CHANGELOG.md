@@ -25,6 +25,13 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.14.0](https://github.com/Get-Coral/aurora/compare/v1.13.1...v1.14.0) (2026-09-26)
+
+
+### Features
+
+* play on a TV with AirPlay and Cast ([cdbf500](https://github.com/Get-Coral/aurora/commit/cdbf500df4e1add52580139b915907ad05dd5483))
+
 ## [1.13.1](https://github.com/Get-Coral/aurora/compare/v1.13.0...v1.13.1) (2026-09-26)
 
 
