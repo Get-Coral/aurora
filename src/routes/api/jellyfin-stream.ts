@@ -24,6 +24,14 @@ function rewriteHlsUri(uri: string, playlistUrl: URL) {
 	if (resolvedUri.origin !== playlistUrl.origin) return uri;
 	if (!isAllowedMediaPath(resolvedUri.pathname)) return uri;
 
+	// Jellyfin writes its own key into every URI of the manifest it hands us.
+	// Passing those through would publish the access token -- the signed-in
+	// user's, when login is enforced -- to anything that can read the playlist,
+	// which is the exact thing this proxy exists to prevent. The proxy injects
+	// it again server-side on the way back out.
+	resolvedUri.searchParams.delete("ApiKey");
+	resolvedUri.searchParams.delete("api_key");
+
 	return buildProxyPath(resolvedUri.pathname + resolvedUri.search);
 }
 
@@ -88,9 +96,15 @@ async function proxyJellyfinStreamRequest(request: Request) {
 	}
 
 	// Strip any existing Jellyfin API key parameter casing; inject server-side.
+	//
+	// It goes back as `ApiKey`, not `api_key`. Jellyfin 12 still takes the
+	// lowercase spelling on /Videos/{id}/stream but rejects it outright on
+	// /videos/{id}/master.m3u8, so sending lowercase 401s every HLS transcode --
+	// which is what Safari and iOS play. `ApiKey` is accepted on both, and is
+	// the spelling Jellyfin itself emits in the TranscodingUrl it hands us.
 	parsedPath.searchParams.delete("ApiKey");
 	parsedPath.searchParams.delete("api_key");
-	parsedPath.searchParams.set("api_key", upstreamToken);
+	parsedPath.searchParams.set("ApiKey", upstreamToken);
 
 	const upstream = `${settings.url.replace(/\/+$/, "")}${parsedPath.pathname}${parsedPath.search}`;
 
