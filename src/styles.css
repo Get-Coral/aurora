@@ -1653,6 +1653,13 @@ html.tv-mode .hero-copy-in {
   bottom: calc(100% + 0.75rem);
   right: 0;
   min-width: 14rem;
+  /* Bottom-anchored above the controls bar (~4.9rem). The ladder is short
+     enough to fit as-is, so this only guards against short viewports — no
+     fixed clamp, or it would scroll on a normal screen.
+     dvh, not vh — iOS vh is the large viewport and over-reports height. */
+  max-height: calc(100dvh - 8rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.5rem;
   border: 1px solid var(--line);
   border-radius: 1.1rem;
@@ -1718,6 +1725,16 @@ html.tv-mode .hero-copy-in {
   bottom: calc(100% + 0.75rem);
   right: 0;
   min-width: 12rem;
+  /* Jellyfin DisplayTitles ("SDH SRT - Italian - Hearing Impaired - SUBRIP")
+     otherwise wrap to three lines, tripling the list height. The picker is
+     absolutely positioned inside a ~22px wrapper, so it shrink-to-fits to
+     min-width and max-width alone can't widen it — max-content sizes it to the
+     longest label, and max-width caps that. */
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 4rem));
+  /* Cap the picker, not the inner list: the search field, the pinned Off row
+     and the sync hint all live outside the scroll area. */
+  max-height: min(24rem, calc(100dvh - 8rem));
   padding: 0.5rem;
   border: 1px solid var(--line);
   border-radius: 1.1rem;
@@ -1727,6 +1744,69 @@ html.tv-mode .hero-copy-in {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.player-subtitle-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  margin-bottom: 0.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface-soft);
+  color: var(--ink-faint);
+}
+
+.player-subtitle-search input {
+  /* min-width: 0 — a bare input carries an intrinsic width from its default
+     size=20, which would otherwise widen the whole picker. */
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.player-subtitle-search input::placeholder {
+  color: var(--ink-faint);
+}
+
+.player-subtitle-list {
+  /* min-height: 0 is load-bearing — flex items default to min-height: auto and
+     refuse to shrink below content height, defeating the picker's max-height. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-right: 0.25rem;
+}
+
+.player-subtitle-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.player-subtitle-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.player-subtitle-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+/* Rows must not be crushed once the column overflows. */
+.player-subtitle-search,
+.player-subtitle-option,
+.player-subtitle-section,
+.player-subtitle-searching {
+  flex: 0 0 auto;
 }
 
 .player-subtitle-option {
@@ -4069,6 +4149,16 @@ html.tv-mode .player-controls-overlay button {
   min-height: 3.5rem;
   min-width: 3.5rem;
   font-size: 1.1rem;
+}
+
+/* Those 3.5rem rows leave only ~5 entries visible at the default cap, and the
+   taller control row pushes each picker's anchor further up. */
+html.tv-mode .player-subtitle-picker {
+  max-height: min(34rem, calc(100dvh - 10rem));
+}
+
+html.tv-mode .player-quality-picker {
+  max-height: calc(100dvh - 10rem);
 }
 
 /* Library / filter controls */
