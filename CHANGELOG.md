@@ -25,6 +25,21 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.13.0](https://github.com/Get-Coral/aurora/compare/v1.12.0...v1.13.0) (2026-09-26)
+
+
+### Features
+
+* answer the Coral discovery manifest ([#80](https://github.com/Get-Coral/aurora/issues/80)) ([60e2fef](https://github.com/Get-Coral/aurora/commit/60e2fef4db75e918248d404523da45d6880ffe7d))
+* set the Docker Hub categories alongside the description ([#77](https://github.com/Get-Coral/aurora/issues/77)) ([69bb49c](https://github.com/Get-Coral/aurora/commit/69bb49cc5aeaf57d7c3c2ab34ef1b9e1d17f19c4))
+
+
+### Bug Fixes
+
+* drop the Docker Hub categories payload, which the API ignores ([#78](https://github.com/Get-Coral/aurora/issues/78)) ([ddde69c](https://github.com/Get-Coral/aurora/commit/ddde69cc9077bb0fdfec3d293e718d89d2b0f509))
+* require an admin sign-in to administer an open instance ([#79](https://github.com/Get-Coral/aurora/issues/79)) ([8f77c70](https://github.com/Get-Coral/aurora/commit/8f77c7028e72e4e8d951ea94467cbf94b3a7b45d))
+* use the namespace route so the Docker Hub sync works with an access token ([#75](https://github.com/Get-Coral/aurora/issues/75)) ([72f8eaa](https://github.com/Get-Coral/aurora/commit/72f8eaa1abaa8b76f24e4bccfef4182757130835))
+
 ## [1.12.0](https://github.com/Get-Coral/aurora/compare/v1.11.0...v1.12.0) (2026-09-26)
 
 
