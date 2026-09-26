@@ -166,7 +166,7 @@ Aurora ships with a production Dockerfile and can be deployed to a VM with Docke
 Build locally:
 
 ```bash
-docker build -t aurora-ui .
+docker build -t aurora .
 ```
 
 Run locally with the onboarding flow:
@@ -174,7 +174,7 @@ Run locally with the onboarding flow:
 ```bash
 docker run --rm -p 3000:3000 \
   -v aurora-data:/data \
-  ghcr.io/eliancodes/aurora-ui:latest
+  getcoral/aurora:latest
 ```
 
 Then open [http://localhost:3000](http://localhost:3000) and complete the Jellyfin onboarding form once. Aurora will persist the connection in `/data/aurora.sqlite`.
@@ -189,7 +189,7 @@ docker run --rm -p 3000:3000 \
   -e JELLYFIN_USER_ID=your_user_id \
   -e JELLYFIN_USERNAME=your_username \
   -e JELLYFIN_PASSWORD=your_password \
-  ghcr.io/eliancodes/aurora-ui:latest
+  getcoral/aurora:latest
 ```
 
 The container listens on port `3000` and stores local config in `/data`.
@@ -279,13 +279,9 @@ AURORA_APP_URL=https://your-aurora-domain.example pnpm cap:sync
 - `pnpm cap:run:android` resolves `JAVA_HOME` automatically on macOS and prefers the Homebrew JDK 21 path when present, then falls back to system JDK 21 or 17.
 - CI validates the native Android path with `pnpm cap:sync` and `pnpm android:assemble:debug`.
 
-Published images go to:
+Published images go to Docker Hub:
 
-- `ghcr.io/<owner>/<repo>`
-
-For this repository, that will be:
-
-- `ghcr.io/eliancodes/aurora-ui`
+- [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora)
 
 ## Contributing
 
