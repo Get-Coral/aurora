@@ -281,8 +281,8 @@ AURORA_APP_URL=https://your-aurora-domain.example pnpm cap:sync
 
 Published images go to:
 
-- [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora) on Docker Hub, which is the public image to pull
-- `ghcr.io/get-coral/aurora`, which is currently private
+- [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora) on Docker Hub
+- [`ghcr.io/get-coral/aurora`](https://github.com/Get-Coral/aurora/pkgs/container/aurora) on GHCR
 
 ## Contributing
 
