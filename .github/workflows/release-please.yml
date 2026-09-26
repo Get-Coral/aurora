@@ -24,7 +24,7 @@ jobs:
 
       - name: Assign release PRs
         if: ${{ steps.release.outputs.prs_created == 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           RELEASE_PRS: ${{ steps.release.outputs.prs }}
           ASSIGNEE: ElianCodes
