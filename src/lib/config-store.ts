@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -74,6 +75,29 @@ function setSetting(key: string, value: string) {
 function clearSetting(key: string) {
 	const statement = getDatabase().prepare("DELETE FROM app_settings WHERE key = ?");
 	statement.run(key);
+}
+
+const STREAM_TOKEN_SECRET_KEY = "aurora.streamTokenSecret";
+
+/**
+ * The HMAC secret behind signed stream URLs (see `stream-token.ts`). Generated
+ * on first use and persisted, so self-hosters get working AirPlay/Cast without
+ * any configuration. `AURORA_STREAM_TOKEN_SECRET` overrides it, which matters
+ * when Aurora runs as several replicas behind a load balancer — they must all
+ * verify each other's tokens.
+ *
+ * Rotating the secret invalidates every outstanding stream URL.
+ */
+export function getStreamTokenSecret(): string {
+	const fromEnv = process.env.AURORA_STREAM_TOKEN_SECRET?.trim();
+	if (fromEnv) return fromEnv;
+
+	const stored = getSetting(STREAM_TOKEN_SECRET_KEY)?.trim();
+	if (stored) return stored;
+
+	const generated = crypto.randomBytes(32).toString("hex");
+	setSetting(STREAM_TOKEN_SECRET_KEY, generated);
+	return generated;
 }
 
 function readEnvSettings(): Partial<JellyfinSettings> {

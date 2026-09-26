@@ -1,57 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-const ALLOWED_PATH_PREFIXES = ["/videos/", "/audio/"];
-
-function isAllowedMediaPath(pathname: string) {
-	return ALLOWED_PATH_PREFIXES.some((prefix) => pathname.toLowerCase().startsWith(prefix));
-}
-
-function buildProxyPath(path: string) {
-	return `/api/jellyfin-stream?path=${encodeURIComponent(path)}`;
-}
-
-function rewriteHlsUri(uri: string, playlistUrl: URL) {
-	const trimmedUri = uri.trim();
-	if (!trimmedUri || trimmedUri.startsWith("data:")) return uri;
-
-	let resolvedUri: URL;
-	try {
-		resolvedUri = new URL(trimmedUri, playlistUrl);
-	} catch {
-		return uri;
-	}
-
-	if (resolvedUri.origin !== playlistUrl.origin) return uri;
-	if (!isAllowedMediaPath(resolvedUri.pathname)) return uri;
-
-	// Jellyfin writes its own key into every URI of the manifest it hands us.
-	// Passing those through would publish the access token -- the signed-in
-	// user's, when login is enforced -- to anything that can read the playlist,
-	// which is the exact thing this proxy exists to prevent. The proxy injects
-	// it again server-side on the way back out.
-	resolvedUri.searchParams.delete("ApiKey");
-	resolvedUri.searchParams.delete("api_key");
-
-	return buildProxyPath(resolvedUri.pathname + resolvedUri.search);
-}
-
-function rewriteHlsManifest(manifest: string, playlistUrl: URL) {
-	return manifest
-		.split("\n")
-		.map((line) => {
-			const trimmedLine = line.trim();
-			if (!trimmedLine) return line;
-
-			if (!trimmedLine.startsWith("#")) {
-				return rewriteHlsUri(line, playlistUrl);
-			}
-
-			return line.replace(/URI="([^"]+)"/g, (_match, uri: string) => {
-				return `URI="${rewriteHlsUri(uri, playlistUrl)}"`;
-			});
-		})
-		.join("\n");
-}
+import { isAllowedMediaPath, rewriteHlsManifest } from "../../lib/hls-rewrite";
 
 function copyHeaderIfPresent(target: Headers, source: Headers, key: string) {
 	const value = source.get(key);
