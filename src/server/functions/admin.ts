@@ -110,7 +110,6 @@ export const fetchAdminOverview = createServerFn({ method: "GET" })
 			systemInfo,
 			counts,
 			serverUrl: settings?.url ?? "",
-			apiKey: settings?.apiKey ?? "",
 		};
 	});
 
