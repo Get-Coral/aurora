@@ -25,6 +25,16 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.13.1](https://github.com/Get-Coral/aurora/compare/v1.13.0...v1.13.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* keep HLS playback working on Jellyfin 12 and stop leaking the token ([6f8221d](https://github.com/Get-Coral/aurora/commit/6f8221d28c81cc1009751f645178c92e11940825))
+* keep HLS playback working on Jellyfin 12 and stop leaking the token ([3b7dea1](https://github.com/Get-Coral/aurora/commit/3b7dea16e90e4f37027cf3bfd99f5942cd7a9e47))
+* make the player's subtitle picker scrollable and filterable ([a95e0bd](https://github.com/Get-Coral/aurora/commit/a95e0bddcdd9c8859771c03297268f991790ba57))
+* make the player's subtitle picker scrollable and filterable ([ca686e0](https://github.com/Get-Coral/aurora/commit/ca686e0de24f4eff428ed6517c6bce869996ad59))
+
 ## [1.13.0](https://github.com/Get-Coral/aurora/compare/v1.12.0...v1.13.0) (2026-09-26)
 
 
