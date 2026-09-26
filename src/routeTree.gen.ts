@@ -26,6 +26,7 @@ import { Route as CollectionsIdRouteImport } from './routes/collections/$id'
 import { Route as ApiJellyfinStreamRouteImport } from './routes/api/jellyfin-stream'
 import { Route as ApiJellyfinImageRouteImport } from './routes/api/jellyfin-image'
 import { Route as LibraryMoviesIndexRouteImport } from './routes/library/movies/index'
+import { Route as ApiCoralManifestRouteImport } from './routes/api/coral/manifest'
 import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/movies/genre/$genre'
 
 const SetupRoute = SetupRouteImport.update({
@@ -113,6 +114,11 @@ const LibraryMoviesIndexRoute = LibraryMoviesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LibraryMoviesRoute,
 } as any)
+const ApiCoralManifestRoute = ApiCoralManifestRouteImport.update({
+  id: '/api/coral/manifest',
+  path: '/api/coral/manifest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryMoviesGenreGenreRoute = LibraryMoviesGenreGenreRouteImport.update({
   id: '/genre/$genre',
   path: '/genre/$genre',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
   '/collections/': typeof CollectionsIndexRoute
+  '/api/coral/manifest': typeof ApiCoralManifestRoute
   '/library/movies/': typeof LibraryMoviesIndexRoute
   '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
 }
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/collections/$id': typeof CollectionsIdRoute
   '/library/series': typeof LibrarySeriesRoute
   '/collections': typeof CollectionsIndexRoute
+  '/api/coral/manifest': typeof ApiCoralManifestRoute
   '/library/movies': typeof LibraryMoviesIndexRoute
   '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
 }
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/library/movies': typeof LibraryMoviesRouteWithChildren
   '/library/series': typeof LibrarySeriesRoute
   '/collections/': typeof CollectionsIndexRoute
+  '/api/coral/manifest': typeof ApiCoralManifestRoute
   '/library/movies/': typeof LibraryMoviesIndexRoute
   '/library/movies/genre/$genre': typeof LibraryMoviesGenreGenreRoute
 }
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/library/movies'
     | '/library/series'
     | '/collections/'
+    | '/api/coral/manifest'
     | '/library/movies/'
     | '/library/movies/genre/$genre'
   fileRoutesByTo: FileRoutesByTo
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/collections/$id'
     | '/library/series'
     | '/collections'
+    | '/api/coral/manifest'
     | '/library/movies'
     | '/library/movies/genre/$genre'
   id:
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/library/movies'
     | '/library/series'
     | '/collections/'
+    | '/api/coral/manifest'
     | '/library/movies/'
     | '/library/movies/genre/$genre'
   fileRoutesById: FileRoutesById
@@ -258,6 +270,7 @@ export interface RootRouteChildren {
   LibraryMoviesRoute: typeof LibraryMoviesRouteWithChildren
   LibrarySeriesRoute: typeof LibrarySeriesRoute
   CollectionsIndexRoute: typeof CollectionsIndexRoute
+  ApiCoralManifestRoute: typeof ApiCoralManifestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LibraryMoviesIndexRouteImport
       parentRoute: typeof LibraryMoviesRoute
     }
+    '/api/coral/manifest': {
+      id: '/api/coral/manifest'
+      path: '/api/coral/manifest'
+      fullPath: '/api/coral/manifest'
+      preLoaderRoute: typeof ApiCoralManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library/movies/genre/$genre': {
       id: '/library/movies/genre/$genre'
       path: '/genre/$genre'
@@ -422,6 +442,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryMoviesRoute: LibraryMoviesRouteWithChildren,
   LibrarySeriesRoute: LibrarySeriesRoute,
   CollectionsIndexRoute: CollectionsIndexRoute,
+  ApiCoralManifestRoute: ApiCoralManifestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
