@@ -8,6 +8,7 @@ import {
 	Play,
 	RotateCcw,
 	RotateCw,
+	Search,
 	SkipForward,
 	SlidersHorizontal,
 	Volume2,
@@ -103,6 +104,14 @@ function isNativeHlsStreamUrl(streamUrl: string) {
 	const url = readTranscodeUrl(streamUrl);
 	if (!url) return false;
 	return url.pathname.endsWith(".m3u8") || url.searchParams.get("SegmentContainer") === "ts";
+}
+
+// The player binds its shortcuts on window, so anything typed into the subtitle
+// filter would otherwise pause, seek or mute the video.
+function isEditableTarget(target: EventTarget | null) {
+	if (!(target instanceof HTMLElement)) return false;
+	const tag = target.tagName.toLowerCase();
+	return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
 }
 
 function parseVttTime(s: string): number {
@@ -249,6 +258,7 @@ export function MediaPlayerDialog({
 	const [controlsVisible, setControlsVisible] = useState(true);
 	const [qualityPickerOpen, setQualityPickerOpen] = useState(false);
 	const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false);
+	const [subtitleFilter, setSubtitleFilter] = useState("");
 	const [activeSubtitle, setActiveSubtitle] = useState<number | null>(null);
 	const [manualQualityIndex, setManualQualityIndex] = useState<number | null>(null);
 	const [onlineCues, setOnlineCues] = useState<VttCue[]>([]);
@@ -257,6 +267,7 @@ export function MediaPlayerDialog({
 	const [autoplayCountdown, setAutoplayCountdown] = useState<number | null>(null);
 	const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const subtitleDivRef = useRef<HTMLDivElement>(null);
+	const subtitleListRef = useRef<HTMLDivElement>(null);
 	const onlineCuesRef = useRef<VttCue[]>([]);
 	const subtitleOffsetRef = useRef(0);
 	// Keep a ref in sync so the RAF subtitle loop can read cues without capturing stale state
@@ -300,6 +311,35 @@ export function MediaPlayerDialog({
 			? t("player.qualityAuto")
 			: formatQualityLabel(TRANSCODE_QUALITY_LADDER[manualQualityIndex]);
 
+	const nativeSubtitleTracks = playbackSession?.subtitleTracks ?? [];
+	// A handful of tracks fits on screen; only a long list is worth filtering.
+	const showSubtitleFilter = nativeSubtitleTracks.length + onlineSubtitles.length > 8;
+	// onlineSubtitles arrives async, so the threshold can flip false while the
+	// filter still holds text — never filter by a query that isn't on screen.
+	const subtitleQuery = showSubtitleFilter ? subtitleFilter.trim().toLowerCase() : "";
+	const matchesSubtitleQuery = (label: string, language?: string) =>
+		!subtitleQuery ||
+		label.toLowerCase().includes(subtitleQuery) ||
+		(language?.toLowerCase().includes(subtitleQuery) ?? false);
+	// Filter the rendered buttons only: track.index is the position in
+	// subtitleTracks that selectSubtitle feeds to video.textTracks.
+	const visibleSubtitleTracks = nativeSubtitleTracks.filter((track) =>
+		matchesSubtitleQuery(track.label, track.language),
+	);
+	const visibleOnlineSubtitles = onlineSubtitles.filter((sub) =>
+		matchesSubtitleQuery(sub.label, sub.language),
+	);
+	const showOnlineSubtitleSection =
+		!subtitleQuery ||
+		visibleOnlineSubtitles.length > 0 ||
+		searchingSubtitles ||
+		loadingOnlineSubtitle ||
+		onlineSubtitleError;
+	const noSubtitleMatches =
+		Boolean(subtitleQuery) &&
+		visibleSubtitleTracks.length === 0 &&
+		visibleOnlineSubtitles.length === 0;
+
 	function logPlayback(event: string, details?: Record<string, unknown>) {
 		if (!debugPlayback) return;
 		console.info("[aurora-playback]", event, {
@@ -334,6 +374,7 @@ export function MediaPlayerDialog({
 		setQualityPickerOpen(false);
 		setActiveSubtitle(null);
 		setSubtitlePickerOpen(false);
+		setSubtitleFilter("");
 		setManualQualityIndex(null);
 		setAutoplayMuted(false);
 		setOnlineCues([]);
@@ -851,9 +892,10 @@ export function MediaPlayerDialog({
 		};
 	}, [autoplayCountdown]);
 
-	// Auto-hide controls
+	// Auto-hide controls — pinned while a picker is open, otherwise a long
+	// subtitle list fades to opacity 0 mid-scroll.
 	useEffect(() => {
-		if (!isPlaying) {
+		if (!isPlaying || subtitlePickerOpen || qualityPickerOpen) {
 			setControlsVisible(true);
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 			return;
@@ -862,12 +904,33 @@ export function MediaPlayerDialog({
 		return () => {
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 		};
-	}, [isPlaying]);
+	}, [isPlaying, subtitlePickerOpen, qualityPickerOpen]);
+
+	// Reopening a long list should land on the current selection, not the top.
+	useEffect(() => {
+		if (!subtitlePickerOpen) return;
+		subtitleListRef.current
+			?.querySelector(".player-subtitle-option.active")
+			?.scrollIntoView({ block: "nearest" });
+	}, [subtitlePickerOpen]);
 
 	// Keyboard shortcuts
 	useEffect(() => {
 		if (!open) return;
 		function handleKeydown(e: KeyboardEvent) {
+			// Escape first: it has to work from inside the filter field, and it
+			// must not be gated on the <video> element existing.
+			if (e.key === "Escape") {
+				if (subtitlePickerOpen || qualityPickerOpen) {
+					e.preventDefault();
+					closePickers();
+					return;
+				}
+				onClose();
+				return;
+			}
+			if (isEditableTarget(e.target)) return;
+
 			const video = videoRef.current;
 			if (!video) return;
 			if (e.key === " " || e.key === "k") {
@@ -885,18 +948,22 @@ export function MediaPlayerDialog({
 				subtitleOffsetRef.current = Math.round((subtitleOffsetRef.current - 0.1) * 10) / 10;
 			} else if (e.key === "x") {
 				subtitleOffsetRef.current = Math.round((subtitleOffsetRef.current + 0.1) * 10) / 10;
-			} else if (e.key === "Escape") {
-				onClose();
 			}
 		}
 		window.addEventListener("keydown", handleKeydown);
 		return () => window.removeEventListener("keydown", handleKeydown);
-	}, [currentTime, open, onClose]);
+	}, [currentTime, open, onClose, subtitlePickerOpen, qualityPickerOpen]);
+
+	function closePickers() {
+		setSubtitlePickerOpen(false);
+		setQualityPickerOpen(false);
+		setSubtitleFilter("");
+	}
 
 	function revealControls() {
 		setControlsVisible(true);
 		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-		if (isPlaying) {
+		if (isPlaying && !subtitlePickerOpen && !qualityPickerOpen) {
 			hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
 		}
 	}
@@ -909,6 +976,10 @@ export function MediaPlayerDialog({
 
 	function handleVideoClick() {
 		if (Date.now() < ignoreVideoClickUntilRef.current) return;
+		if (subtitlePickerOpen || qualityPickerOpen) {
+			closePickers();
+			return;
+		}
 		togglePlay();
 	}
 
@@ -1000,7 +1071,7 @@ export function MediaPlayerDialog({
 			subtitleOffsetRef.current = 0;
 			setOnlineCues(parseVtt(content));
 			setActiveSubtitle(null);
-			setSubtitlePickerOpen(false);
+			closePickers();
 		} catch {
 			setOnlineSubtitleError(true);
 		} finally {
@@ -1010,14 +1081,13 @@ export function MediaPlayerDialog({
 
 	function selectSubtitle(index: number | null) {
 		setOnlineCues([]);
-		setQualityPickerOpen(false);
 		const video = videoRef.current;
 		if (video) {
 			for (const track of Array.from(video.textTracks)) track.mode = "disabled";
 			if (index !== null && video.textTracks[index]) video.textTracks[index].mode = "showing";
 		}
 		setActiveSubtitle(index);
-		setSubtitlePickerOpen(false);
+		closePickers();
 	}
 
 	function selectQuality(index: number | null) {
@@ -1440,10 +1510,24 @@ export function MediaPlayerDialog({
 											</button>
 										</div>
 									) : null}
-									{(playbackSession?.subtitleTracks?.length ?? 0) > 0 || osApiKey ? (
+									{nativeSubtitleTracks.length > 0 || osApiKey ? (
 										<div className="player-subtitle-wrap">
 											{subtitlePickerOpen ? (
 												<div className="player-subtitle-picker">
+													{showSubtitleFilter ? (
+														<div className="player-subtitle-search">
+															<Search size={14} />
+															<input
+																type="text"
+																value={subtitleFilter}
+																onChange={(e) => setSubtitleFilter(e.target.value)}
+																placeholder={t("player.subtitlesFilter")}
+																aria-label={t("player.subtitlesFilter")}
+															/>
+														</div>
+													) : null}
+													{/* Pinned outside the scroll area: turning subtitles off
+													    must stay one click away at any scroll position. */}
 													<button
 														type="button"
 														className={`player-subtitle-option${activeSubtitle === null && onlineCues.length === 0 ? " active" : ""}`}
@@ -1451,47 +1535,58 @@ export function MediaPlayerDialog({
 													>
 														{t("player.subtitlesOff")}
 													</button>
-													{(playbackSession?.subtitleTracks ?? []).map((track) => (
-														<button
-															key={track.index}
-															type="button"
-															className={`player-subtitle-option${activeSubtitle === track.index ? " active" : ""}`}
-															onClick={() => selectSubtitle(track.index)}
-														>
-															{track.label}
-														</button>
-													))}
-													{osApiKey ? (
-														<>
-															<p className="player-subtitle-section">
-																{t("player.subtitlesOnline")}
+													<div className="player-subtitle-list" ref={subtitleListRef}>
+														{visibleSubtitleTracks.map((track) => (
+															<button
+																key={track.index}
+																type="button"
+																className={`player-subtitle-option${activeSubtitle === track.index ? " active" : ""}`}
+																onClick={() => selectSubtitle(track.index)}
+															>
+																{track.label}
+															</button>
+														))}
+														{osApiKey && showOnlineSubtitleSection ? (
+															<>
+																<p className="player-subtitle-section">
+																	{t("player.subtitlesOnline")}
+																</p>
+																{onlineSubtitleError ? (
+																	<p className="player-subtitle-searching">
+																		{t("player.subtitlesError")}
+																	</p>
+																) : searchingSubtitles || loadingOnlineSubtitle ? (
+																	<p className="player-subtitle-searching">
+																		{t("player.subtitlesSearching")}
+																	</p>
+																) : onlineSubtitles.length === 0 ? (
+																	// Unfiltered on purpose: "OpenSubtitles returned
+																	// nothing" is not "your filter matched nothing".
+																	<p className="player-subtitle-searching">
+																		{t("player.subtitlesNoneFound")}
+																	</p>
+																) : (
+																	visibleOnlineSubtitles.map((sub) => (
+																		<button
+																			key={sub.id}
+																			type="button"
+																			className="player-subtitle-option"
+																			onClick={() => void selectOnlineSubtitle(sub.fileId)}
+																		>
+																			{sub.label}
+																		</button>
+																	))
+																)}
+															</>
+														) : null}
+														{noSubtitleMatches ? (
+															<p className="player-subtitle-searching">
+																{t("player.subtitlesNoMatch")}
 															</p>
-															{onlineSubtitleError ? (
-																<p className="player-subtitle-searching">
-																	{t("player.subtitlesError")}
-																</p>
-															) : searchingSubtitles || loadingOnlineSubtitle ? (
-																<p className="player-subtitle-searching">
-																	{t("player.subtitlesSearching")}
-																</p>
-															) : onlineSubtitles.length === 0 ? (
-																<p className="player-subtitle-searching">
-																	{t("player.subtitlesNoneFound")}
-																</p>
-															) : (
-																onlineSubtitles.map((sub) => (
-																	<button
-																		key={sub.id}
-																		type="button"
-																		className="player-subtitle-option"
-																		onClick={() => void selectOnlineSubtitle(sub.fileId)}
-																	>
-																		{sub.label}
-																	</button>
-																))
-															)}
-														</>
-													) : null}
+														) : null}
+													</div>
+													{/* A standing instruction, so it stays put rather than
+													    scrolling away with the track list. */}
 													{onlineCues.length > 0 ? (
 														<p className="player-subtitle-searching">
 															{t("player.subtitlesOffsetHint")}
@@ -1503,8 +1598,9 @@ export function MediaPlayerDialog({
 												type="button"
 												className={`icon-button${activeSubtitle !== null || onlineCues.length > 0 ? " nav-pill-active" : ""}`}
 												onClick={() => {
-													setSubtitlePickerOpen((o) => !o);
 													setQualityPickerOpen(false);
+													setSubtitleFilter("");
+													setSubtitlePickerOpen((o) => !o);
 												}}
 												aria-label={t("player.subtitles")}
 											>
