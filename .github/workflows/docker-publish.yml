@@ -64,3 +64,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Docker Hub shows nothing but a pull command without this: it keeps the
+      # repository's Overview and one-line description in step with the README.
+      - name: Sync Docker Hub description
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/aurora
+          short-description: "A TV-friendly alternative Jellyfin UI for web, mobile and the living room."
+          readme-filepath: ./README.md
