@@ -105,6 +105,19 @@ function getTranscodeQualityIndex(streamUrl: string) {
 	return nearestIndex;
 }
 
+/** The buffered range covering `time`, in stream time, if there is one. */
+function findBufferedRangeAt(
+	video: HTMLVideoElement,
+	time: number,
+): { start: number; end: number } | null {
+	for (let i = 0; i < video.buffered.length; i++) {
+		const start = video.buffered.start(i);
+		const end = video.buffered.end(i);
+		if (time >= start && time <= end) return { start, end };
+	}
+	return null;
+}
+
 function isNativeHlsStreamUrl(streamUrl: string) {
 	const url = readTranscodeUrl(streamUrl);
 	if (!url) return false;
@@ -1217,11 +1230,16 @@ export function MediaPlayerDialog({
 				}
 			}
 			if ((!buffered || streamTime < 0) && remoteActiveRef.current) {
-				// The reload would remount the <video> and drop the receiver.
-				// Clamp into the buffer instead: a short seek beats silently
-				// ending playback on the TV.
-				const fallback = video.buffered.length > 0 ? video.buffered.end(0) : video.currentTime;
+				// Reloading the stream would remount the <video> and drop the
+				// receiver. Clamp into the range being played instead, so the
+				// seek goes as far as it can in the direction asked for rather
+				// than silently ending playback on the TV.
+				const playing = findBufferedRangeAt(video, video.currentTime);
+				const fallback = playing
+					? Math.max(playing.start, Math.min(playing.end, streamTime))
+					: video.currentTime;
 				setVideoCurrentTime(fallback);
+				setCurrentTime(fallback + startTimeOffsetRef.current);
 				pendingUserSeekRef.current = null;
 				if (options?.resumeIfPlaying) resumePlaybackAfterSeek();
 				return;
