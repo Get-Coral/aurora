@@ -65,14 +65,47 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Docker Hub shows nothing but a pull command without this: it keeps the
-      # repository's Overview and one-line description in step with the README.
+      # Keeps the Docker Hub Overview and one-line description in step with the
+      # README, which otherwise shows nothing but a pull command.
+      #
+      # Deliberately not peter-evans/dockerhub-description: that action PATCHes
+      # the legacy /v2/repositories/{ns}/{repo}/ route, which rejects any JWT
+      # minted from an access token and fails with "Error: Forbidden" no matter
+      # how the token is scoped. Only a real account password works there.
+      # The namespace-scoped route below accepts the access token we already use
+      # to push images, so no password has to be stored.
       - name: Sync Docker Hub description
         if: github.ref == 'refs/heads/main'
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/aurora
-          short-description: "A TV-friendly alternative Jellyfin UI for web, mobile and the living room."
-          readme-filepath: ./README.md
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          SHORT_DESCRIPTION: "A TV-friendly alternative Jellyfin UI for web, mobile and the living room."
+          IMAGE: aurora
+        run: |
+          set -euo pipefail
+
+          jwt=$(curl -sS -X POST https://hub.docker.com/v2/auth/token \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg u "$DOCKERHUB_USERNAME" --arg p "$DOCKERHUB_TOKEN" \
+                     '{identifier:$u, secret:$p}')" | jq -r '.access_token // empty')
+          if [ -z "$jwt" ]; then
+            echo "::error::Could not obtain a Docker Hub token for $DOCKERHUB_USERNAME"
+            exit 1
+          fi
+
+          payload=$(jq -n --arg d "$SHORT_DESCRIPTION" --rawfile f README.md \
+                       '{description:$d, full_description:$f}')
+
+          code=$(curl -sS -o /tmp/dh.json -w '%{http_code}' -X PATCH \
+            -H "Authorization: Bearer $jwt" \
+            -H 'Content-Type: application/json' \
+            -d "$payload" \
+            "https://hub.docker.com/v2/namespaces/$DOCKERHUB_USERNAME/repositories/$IMAGE")
+
+          echo "HTTP $code"
+          cat /tmp/dh.json
+          echo
+          case "$code" in
+            2*) echo "Docker Hub description updated." ;;
+            *)  echo "::error::Docker Hub refused the description update (HTTP $code)"; exit 1 ;;
+          esac
