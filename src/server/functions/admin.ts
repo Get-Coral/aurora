@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
+import { adminRequiredMiddleware } from "../auth-middleware";
 
 export const fetchAdminUsers = createServerFn({ method: "GET" })
-	.middleware([authRequiredMiddleware])
+	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
 		const { getUsers } = await import("@/lib/jellyfin");
 		const { jellyfinImageProxyUrl } = await import("@/lib/jellyfin-image-proxy");

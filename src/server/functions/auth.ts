@@ -21,7 +21,9 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 	const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } = await import(
 		"@/lib/auth-store"
 	);
-	const { getRequireLogin, isRequireLoginLocked } = await import("@/lib/config-store");
+	const { getRequireLogin, isRequireLoginLocked, isAuroraConfigured } = await import(
+		"@/lib/config-store"
+	);
 	const { getCookie } = await import("@tanstack/react-start/server");
 
 	const required = isLoginEnforced();
@@ -34,8 +36,9 @@ export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async (
 		authenticated: !required || session != null,
 		userId: session?.userId ?? null,
 		username: session?.username ?? null,
-		// On an open instance everyone can administer, matching pre-login behavior.
-		isAdmin: required ? (session?.isAdmin ?? false) : true,
+		// Administering always needs a signed-in admin, even on an open instance.
+		// Unconfigured installs pass so first-run setup works.
+		isAdmin: !isAuroraConfigured() || (session?.isAdmin ?? false),
 	};
 });
 
