@@ -6,6 +6,7 @@ import {
 } from "@/lib/client-media";
 import {
 	beginPlaybackSession,
+	createStreamToken,
 	fetchOnlineSubtitle,
 	reportPlaybackState,
 	searchOnlineSubtitles,
@@ -25,6 +26,15 @@ export async function beginPlaybackSessionRuntime(input: {
 	return callRuntime(
 		() => beginClientPlaybackSession(input.data.id, input.data.client),
 		() => beginPlaybackSession(input),
+	);
+}
+
+export async function createStreamTokenRuntime(input: { data: { id: string } }) {
+	return callRuntime(
+		// The native shell talks to Jellyfin directly, with an api_key already
+		// in the URL, so it never goes through the proxy that checks tokens.
+		async () => ({ token: null as string | null, expiresAt: 0 }),
+		() => createStreamToken(input),
 	);
 }
 

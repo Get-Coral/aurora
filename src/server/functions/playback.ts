@@ -174,6 +174,37 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 		};
 	});
 
+/**
+ * Mints a signed stream URL token for one item, so an AirPlay or Cast receiver
+ * can fetch the media directly -- it has no Aurora session cookie of its own.
+ *
+ * Returns null when login isn't enforced: the proxy is already open in that
+ * case, so there is nothing for a token to unlock.
+ */
+export const createStreamToken = createServerFn({ method: "POST" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { id: string }) => input)
+	.handler(async ({ data }): Promise<{ token: string | null; expiresAt: number }> => {
+		const { isLoginEnforced, hashSessionToken, getSessionExpiryByTokenHash, SESSION_COOKIE_NAME } =
+			await import("@/lib/auth-store");
+
+		if (!isLoginEnforced()) return { token: null, expiresAt: 0 };
+
+		const { getCookie } = await import("@tanstack/react-start/server");
+		const sessionToken = getCookie(SESSION_COOKIE_NAME);
+		if (!sessionToken) return { token: null, expiresAt: 0 };
+
+		const sessionRef = hashSessionToken(sessionToken);
+		const { mintStreamToken } = await import("@/lib/stream-token");
+
+		// A stream token must never outlive the session it speaks for.
+		return mintStreamToken({
+			itemId: data.id,
+			sessionRef,
+			maxExpiresAt: getSessionExpiryByTokenHash(sessionRef),
+		});
+	});
+
 export const reportPlaybackState = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
 	.validator(

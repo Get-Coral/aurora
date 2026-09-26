@@ -183,15 +183,25 @@ export async function sweepExpiredSessions(): Promise<void> {
 	database.prepare("DELETE FROM auth_sessions WHERE expires_at < ?").run(now);
 }
 
-export function getSessionByToken(token: string | undefined | null): AuthSession | null {
-	if (!token) return null;
+/**
+ * The stored hash of a session token. Signed stream URLs embed this rather
+ * than the token itself, so a captured URL can't be replayed as a session
+ * cookie — and so the proxy can resolve the session with one primary-key
+ * lookup, which is what makes signing out revoke outstanding stream URLs.
+ */
+export function hashSessionToken(token: string): string {
+	return hashToken(token);
+}
+
+export function getSessionByTokenHash(tokenHash: string | undefined | null): AuthSession | null {
+	if (!tokenHash) return null;
 
 	const database = getSessionsDatabase();
 	const row = database
 		.prepare(
 			"SELECT user_id, username, is_admin, expires_at, jellyfin_token, device_id FROM auth_sessions WHERE token_hash = ?",
 		)
-		.get(hashToken(token)) as
+		.get(tokenHash) as
 		| {
 				user_id: string;
 				username: string;
@@ -205,7 +215,7 @@ export function getSessionByToken(token: string | undefined | null): AuthSession
 	if (!row) return null;
 
 	if (row.expires_at < nowSeconds()) {
-		deleteSessionByToken(token);
+		deleteSessionByTokenHash(tokenHash);
 		return null;
 	}
 
@@ -218,11 +228,27 @@ export function getSessionByToken(token: string | undefined | null): AuthSession
 	};
 }
 
+/** When the session row expires, so does any stream token that referenced it. */
+export function getSessionExpiryByTokenHash(tokenHash: string): number | null {
+	const row = getSessionsDatabase()
+		.prepare("SELECT expires_at FROM auth_sessions WHERE token_hash = ?")
+		.get(tokenHash) as { expires_at: number } | undefined;
+
+	return row?.expires_at ?? null;
+}
+
+export function getSessionByToken(token: string | undefined | null): AuthSession | null {
+	if (!token) return null;
+	return getSessionByTokenHash(hashToken(token));
+}
+
+function deleteSessionByTokenHash(tokenHash: string): void {
+	getSessionsDatabase().prepare("DELETE FROM auth_sessions WHERE token_hash = ?").run(tokenHash);
+}
+
 export function deleteSessionByToken(token: string | undefined | null): void {
 	if (!token) return;
-	getSessionsDatabase()
-		.prepare("DELETE FROM auth_sessions WHERE token_hash = ?")
-		.run(hashToken(token));
+	deleteSessionByTokenHash(hashToken(token));
 }
 
 /**
