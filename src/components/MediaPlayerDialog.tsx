@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+	Airplay,
 	Captions,
+	Cast,
 	Film,
 	Maximize,
 	Minimize,
@@ -34,6 +36,7 @@ import {
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
 import { useLockBodyScroll } from "./useLockBodyScroll";
+import { useRemotePlayback } from "./useRemotePlayback";
 
 interface MediaPlayerDialogProps {
 	item: MediaItem | null;
@@ -308,10 +311,27 @@ export function MediaPlayerDialog({
 	// token is item-scoped and dies with the session, so it grants nothing the
 	// page's own cookie doesn't.
 	const streamUrl = baseStreamUrl ? withStreamToken(baseStreamUrl, streamToken) : baseStreamUrl;
+	const remote = useRemotePlayback(videoRef, {
+		enabled: open && Boolean(streamUrl),
+		srcKey: streamUrl ?? null,
+	});
+	// Ref so the adaptive-quality and seek closures can read this without
+	// re-subscribing every time a receiver connects.
+	const remoteActiveRef = useRef(false);
+	remoteActiveRef.current = remote.active;
+	// AirPlay on Apple platforms, Cast everywhere else. prefersSafeVideo is
+	// already true for exactly iOS and desktop Safari, minus the Android TV
+	// branch which also sets it.
+	const isAirplayPlatform =
+		playbackClient.prefersSafeVideo && playbackClient.platform !== "android-tv";
 	const isNativeHlsPlayback =
 		playbackSession?.playMethod === "Transcode" && streamUrl?.includes(".m3u8");
 	const canSelectQuality = playbackSession?.playMethod === "Transcode";
-	const canAutoAdjustQuality = canSelectQuality && !isNativeHlsPlayback;
+	// A quality change rebuilds the stream URL, which remounts the <video> and
+	// so destroys the element holding the remote session. The local element also
+	// sits in `waiting` for the whole handoff, which would drive the ladder
+	// steadily downwards on its own.
+	const canAutoAdjustQuality = canSelectQuality && !isNativeHlsPlayback && !remote.active;
 	const isPreparingStream =
 		Boolean(item?.streamUrl) && playbackClient.prefersSafeVideo && playbackSession == null;
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -1113,6 +1133,8 @@ export function MediaPlayerDialog({
 
 	function selectQuality(index: number | null) {
 		setQualityPickerOpen(false);
+		// Same reason as canAutoAdjustQuality: switching would end the cast.
+		if (remoteActiveRef.current) return;
 		if (bufferingDowngradeTimerRef.current) {
 			clearTimeout(bufferingDowngradeTimerRef.current);
 			bufferingDowngradeTimerRef.current = null;
@@ -1193,6 +1215,16 @@ export function MediaPlayerDialog({
 						break;
 					}
 				}
+			}
+			if ((!buffered || streamTime < 0) && remoteActiveRef.current) {
+				// The reload would remount the <video> and drop the receiver.
+				// Clamp into the buffer instead: a short seek beats silently
+				// ending playback on the TV.
+				const fallback = video.buffered.length > 0 ? video.buffered.end(0) : video.currentTime;
+				setVideoCurrentTime(fallback);
+				pendingUserSeekRef.current = null;
+				if (options?.resumeIfPlaying) resumePlaybackAfterSeek();
+				return;
 			}
 			if (!buffered || streamTime < 0) {
 				if (seekPendingRef.current) return; // reload already in flight
@@ -1303,8 +1335,8 @@ export function MediaPlayerDialog({
 				<>
 					{(item.backdropUrl ?? item.posterUrl) ? (
 						<div
-							className={`player-poster-layer${isBuffering ? " visible" : ""}`}
-							aria-hidden={!isBuffering}
+							className={`player-poster-layer${isBuffering || remote.active ? " visible" : ""}`}
+							aria-hidden={!(isBuffering || remote.active)}
 						>
 							<img
 								src={item.backdropUrl ?? item.posterUrl}
@@ -1334,7 +1366,9 @@ export function MediaPlayerDialog({
 						))}
 					</video>
 
-					{isBuffering ? (
+					{/* The local element never leaves `waiting` once a receiver has
+					    the stream, so the spinner would run forever. */}
+					{isBuffering && !remote.active ? (
 						<div className="player-buffering-overlay" aria-hidden="true">
 							<div className="player-buffering-spinner" />
 						</div>
@@ -1520,6 +1554,7 @@ export function MediaPlayerDialog({
 											<button
 												type="button"
 												className={`icon-button player-quality-trigger${manualQualityIndex !== null ? " nav-pill-active" : ""}`}
+												disabled={remote.active}
 												onClick={() => {
 													setQualityPickerOpen((open) => !open);
 													setSubtitlePickerOpen(false);
@@ -1535,6 +1570,15 @@ export function MediaPlayerDialog({
 										<div className="player-subtitle-wrap">
 											{subtitlePickerOpen ? (
 												<div className="player-subtitle-picker">
+													{/* Neither mechanism reaches the TV: <track> elements
+													    don't travel with an AirPlay/Cast handoff, and the
+													    OpenSubtitles overlay is DOM drawn over the local
+													    element. Say so rather than appear to do nothing. */}
+													{remote.active ? (
+														<p className="player-subtitle-searching">
+															{t("player.remoteSubtitlesUnsupported")}
+														</p>
+													) : null}
 													{showSubtitleFilter ? (
 														<div className="player-subtitle-search">
 															<Search size={14} />
@@ -1628,6 +1672,17 @@ export function MediaPlayerDialog({
 												<Captions size={20} />
 											</button>
 										</div>
+									) : null}
+									{remote.available ? (
+										<button
+											type="button"
+											className={`icon-button${remote.active ? " nav-pill-active" : ""}`}
+											onClick={remote.prompt}
+											aria-pressed={remote.active}
+											aria-label={remote.active ? t("player.remoteActive") : t("player.remote")}
+										>
+											{isAirplayPlatform ? <Airplay size={20} /> : <Cast size={20} />}
+										</button>
 									) : null}
 									<button
 										type="button"

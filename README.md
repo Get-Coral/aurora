@@ -129,6 +129,19 @@ users, or security options are only available to a signed-in Jellyfin administra
 exception is a brand-new install that is not connected to Jellyfin yet, since there is
 no account to sign in with until setup completes.
 
+## Playing on a TV (AirPlay & Cast)
+
+The player has a "Play on TV" button that opens the browser's own device picker — AirPlay in Safari and on iOS, Cast in Chrome. It only appears once a receiver has been discovered, so give it a second or two on first load.
+
+A TV doesn't play the video through your browser: it's handed the stream URL and fetches it itself. That has a few consequences worth knowing:
+
+- **Aurora has to be reachable from the TV.** `http://localhost:3000` cannot work — serve Aurora on a hostname or IP the receiver can also reach.
+- **Cast needs HTTPS.** Chrome only exposes the picker on a secure origin. AirPlay has no such requirement and works over plain HTTP on a LAN.
+- **Subtitles stay on your device.** The receiver plays the stream as its own player, so neither Aurora's subtitle tracks nor the OpenSubtitles overlay reach the TV.
+- **Quality is fixed for the duration of the cast**, and seeking is limited to what's already buffered — changing either would restart the stream and drop the connection to the TV.
+
+With **Require sign-in** on, stream URLs are signed with a token so the TV can fetch them without your session cookie. Each token covers a single title, expires within six hours, and stops working the moment you sign out. Aurora generates the signing secret on first use; set `AURORA_STREAM_TOKEN_SECRET` only if you run several replicas behind a load balancer.
+
 ## Translations
 
 Translations live in dedicated locale files so contributors can add languages without touching the runtime logic.
