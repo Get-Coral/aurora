@@ -79,7 +79,7 @@ pnpm test
 GitHub Actions workflows are included for:
 
 - CI on pushes and pull requests: install, test, web build, Android Capacitor sync, Android debug assemble, and Docker build validation
-- Docker publish to GitHub Container Registry on `main`, version tags, or manual dispatch
+- Docker publish to Docker Hub and GHCR on `main`, version tags, or manual dispatch
 
 Workflow files:
 
@@ -279,9 +279,10 @@ AURORA_APP_URL=https://your-aurora-domain.example pnpm cap:sync
 - `pnpm cap:run:android` resolves `JAVA_HOME` automatically on macOS and prefers the Homebrew JDK 21 path when present, then falls back to system JDK 21 or 17.
 - CI validates the native Android path with `pnpm cap:sync` and `pnpm android:assemble:debug`.
 
-Published images go to Docker Hub:
+Published images go to:
 
-- [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora)
+- [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora) on Docker Hub, which is the public image to pull
+- `ghcr.io/get-coral/aurora`, which is currently private
 
 ## Contributing
 
