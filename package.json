@@ -25,7 +25,7 @@
     "cap:run:ios": "pnpm build && node scripts/run-capacitor-ios.mjs"
   },
   "dependencies": {
-    "@capacitor/app": "^8.1.0",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.3.0",
     "@get-coral/jellyfin": "^1.11.0",
     "@tailwindcss/vite": "^4.2.2",
