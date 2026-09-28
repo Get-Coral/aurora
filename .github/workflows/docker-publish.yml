@@ -9,6 +9,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: aurora
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -44,8 +47,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: |
-            ghcr.io/get-coral/aurora
-            ${{ secrets.DOCKERHUB_USERNAME }}/aurora
+            ghcr.io/get-coral/${{ env.IMAGE_NAME }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -80,7 +83,7 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           SHORT_DESCRIPTION: "A TV-friendly alternative Jellyfin UI for web, mobile and the living room."
-          IMAGE: aurora
+          IMAGE: ${{ env.IMAGE_NAME }}
         run: |
           set -euo pipefail
 
