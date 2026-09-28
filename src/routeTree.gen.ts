@@ -9,64 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ProfilesRouteImport } from './routes/profiles'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as OfflineRouteImport } from './routes/offline'
-import { Route as MyListRouteImport } from './routes/my-list'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
-import { Route as LibrarySeriesRouteImport } from './routes/library/series'
-import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
-import { Route as CollectionsIdRouteImport } from './routes/collections/$id'
-import { Route as ApiJellyfinStreamRouteImport } from './routes/api/jellyfin-stream'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MyListRouteImport } from './routes/my-list'
+import { Route as OfflineRouteImport } from './routes/offline'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ProfilesRouteImport } from './routes/profiles'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ApiJellyfinImageRouteImport } from './routes/api/jellyfin-image'
-import { Route as LibraryMoviesIndexRouteImport } from './routes/library/movies/index'
+import { Route as ApiJellyfinStreamRouteImport } from './routes/api/jellyfin-stream'
+import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
+import { Route as CollectionsIdRouteImport } from './routes/collections/$id'
+import { Route as LibraryMoviesRouteImport } from './routes/library/movies'
+import { Route as LibrarySeriesRouteImport } from './routes/library/series'
 import { Route as ApiCoralManifestRouteImport } from './routes/api/coral/manifest'
+import { Route as LibraryMoviesIndexRouteImport } from './routes/library/movies/index'
 import { Route as LibraryMoviesGenreGenreRouteImport } from './routes/library/movies/genre/$genre'
 
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfilesRoute = ProfilesRouteImport.update({
-  id: '/profiles',
-  path: '/profiles',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OfflineRoute = OfflineRouteImport.update({
-  id: '/offline',
-  path: '/offline',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyListRoute = MyListRouteImport.update({
-  id: '/my-list',
-  path: '/my-list',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -74,34 +39,44 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
-  id: '/collections/',
-  path: '/collections/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LibrarySeriesRoute = LibrarySeriesRouteImport.update({
-  id: '/library/series',
-  path: '/library/series',
+const MyListRoute = MyListRouteImport.update({
+  id: '/my-list',
+  path: '/my-list',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LibraryMoviesRoute = LibraryMoviesRouteImport.update({
-  id: '/library/movies',
-  path: '/library/movies',
+const OfflineRoute = OfflineRouteImport.update({
+  id: '/offline',
+  path: '/offline',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CollectionsIdRoute = CollectionsIdRouteImport.update({
-  id: '/collections/$id',
-  path: '/collections/$id',
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiJellyfinStreamRoute = ApiJellyfinStreamRouteImport.update({
-  id: '/api/jellyfin-stream',
-  path: '/api/jellyfin-stream',
+const ProfilesRoute = ProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiJellyfinImageRoute = ApiJellyfinImageRouteImport.update({
@@ -109,15 +84,40 @@ const ApiJellyfinImageRoute = ApiJellyfinImageRouteImport.update({
   path: '/api/jellyfin-image',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LibraryMoviesIndexRoute = LibraryMoviesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => LibraryMoviesRoute,
+const ApiJellyfinStreamRoute = ApiJellyfinStreamRouteImport.update({
+  id: '/api/jellyfin-stream',
+  path: '/api/jellyfin-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
+  id: '/collections/',
+  path: '/collections/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionsIdRoute = CollectionsIdRouteImport.update({
+  id: '/collections/$id',
+  path: '/collections/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryMoviesRoute = LibraryMoviesRouteImport.update({
+  id: '/library/movies',
+  path: '/library/movies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibrarySeriesRoute = LibrarySeriesRouteImport.update({
+  id: '/library/series',
+  path: '/library/series',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCoralManifestRoute = ApiCoralManifestRouteImport.update({
   id: '/api/coral/manifest',
   path: '/api/coral/manifest',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryMoviesIndexRoute = LibraryMoviesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LibraryMoviesRoute,
 } as any)
 const LibraryMoviesGenreGenreRoute = LibraryMoviesGenreGenreRouteImport.update({
   id: '/genre/$genre',
@@ -275,60 +275,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profiles': {
-      id: '/profiles'
-      path: '/profiles'
-      fullPath: '/profiles'
-      preLoaderRoute: typeof ProfilesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/offline': {
-      id: '/offline'
-      path: '/offline'
-      fullPath: '/offline'
-      preLoaderRoute: typeof OfflineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-list': {
-      id: '/my-list'
-      path: '/my-list'
-      fullPath: '/my-list'
-      preLoaderRoute: typeof MyListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -338,46 +289,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/collections/': {
-      id: '/collections/'
-      path: '/collections'
-      fullPath: '/collections/'
-      preLoaderRoute: typeof CollectionsIndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/library/series': {
-      id: '/library/series'
-      path: '/library/series'
-      fullPath: '/library/series'
-      preLoaderRoute: typeof LibrarySeriesRouteImport
+    '/my-list': {
+      id: '/my-list'
+      path: '/my-list'
+      fullPath: '/my-list'
+      preLoaderRoute: typeof MyListRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/library/movies': {
-      id: '/library/movies'
-      path: '/library/movies'
-      fullPath: '/library/movies'
-      preLoaderRoute: typeof LibraryMoviesRouteImport
+    '/offline': {
+      id: '/offline'
+      path: '/offline'
+      fullPath: '/offline'
+      preLoaderRoute: typeof OfflineRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/collections/$id': {
-      id: '/collections/$id'
-      path: '/collections/$id'
-      fullPath: '/collections/$id'
-      preLoaderRoute: typeof CollectionsIdRouteImport
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/jellyfin-stream': {
-      id: '/api/jellyfin-stream'
-      path: '/api/jellyfin-stream'
-      fullPath: '/api/jellyfin-stream'
-      preLoaderRoute: typeof ApiJellyfinStreamRouteImport
+    '/profiles': {
+      id: '/profiles'
+      path: '/profiles'
+      fullPath: '/profiles'
+      preLoaderRoute: typeof ProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/jellyfin-image': {
@@ -387,12 +352,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiJellyfinImageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/library/movies/': {
-      id: '/library/movies/'
-      path: '/'
-      fullPath: '/library/movies/'
-      preLoaderRoute: typeof LibraryMoviesIndexRouteImport
-      parentRoute: typeof LibraryMoviesRoute
+    '/api/jellyfin-stream': {
+      id: '/api/jellyfin-stream'
+      path: '/api/jellyfin-stream'
+      fullPath: '/api/jellyfin-stream'
+      preLoaderRoute: typeof ApiJellyfinStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collections/': {
+      id: '/collections/'
+      path: '/collections'
+      fullPath: '/collections/'
+      preLoaderRoute: typeof CollectionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collections/$id': {
+      id: '/collections/$id'
+      path: '/collections/$id'
+      fullPath: '/collections/$id'
+      preLoaderRoute: typeof CollectionsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library/movies': {
+      id: '/library/movies'
+      path: '/library/movies'
+      fullPath: '/library/movies'
+      preLoaderRoute: typeof LibraryMoviesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library/series': {
+      id: '/library/series'
+      path: '/library/series'
+      fullPath: '/library/series'
+      preLoaderRoute: typeof LibrarySeriesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/coral/manifest': {
       id: '/api/coral/manifest'
@@ -400,6 +393,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/coral/manifest'
       preLoaderRoute: typeof ApiCoralManifestRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/library/movies/': {
+      id: '/library/movies/'
+      path: '/'
+      fullPath: '/library/movies/'
+      preLoaderRoute: typeof LibraryMoviesIndexRouteImport
+      parentRoute: typeof LibraryMoviesRoute
     }
     '/library/movies/genre/$genre': {
       id: '/library/movies/genre/$genre'
