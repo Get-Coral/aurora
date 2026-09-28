@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import {
 	createRootRouteWithContext,
 	HeadContent,
@@ -186,7 +187,7 @@ function NotFoundPage() {
 	);
 }
 
-function RootErrorPage({ error, reset }: { error: Error; reset: () => void }) {
+function RootErrorPage({ error, reset }: ErrorComponentProps) {
 	const router = useRouter();
 
 	function handleRetry() {
@@ -196,7 +197,11 @@ function RootErrorPage({ error, reset }: { error: Error; reset: () => void }) {
 
 	return (
 		<I18nProvider>
-			<ErrorPage variant="error" error={error} onRetry={handleRetry} />
+			<ErrorPage
+				variant="error"
+				error={error instanceof Error ? error : new Error(String(error))}
+				onRetry={handleRetry}
+			/>
 		</I18nProvider>
 	);
 }
