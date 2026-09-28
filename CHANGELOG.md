@@ -25,6 +25,15 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.14.1](https://github.com/Get-Coral/aurora/compare/v1.14.0...v1.14.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* point the README pull commands at the image we actually publish ([7d2bacd](https://github.com/Get-Coral/aurora/commit/7d2bacd49497f5cf7b014e4ec27f50de1c9f314f))
+* point the README pull commands at the image we actually publish ([c7963ec](https://github.com/Get-Coral/aurora/commit/c7963ec346efb99982855628d15e6b18d470ed67))
+* type the root error component against ErrorComponentProps ([94f0021](https://github.com/Get-Coral/aurora/commit/94f002189dbd21bfdafeb11f1213f7d090b49d31))
+
 ## [1.14.0](https://github.com/Get-Coral/aurora/compare/v1.13.1...v1.14.0) (2026-09-26)
 
 
