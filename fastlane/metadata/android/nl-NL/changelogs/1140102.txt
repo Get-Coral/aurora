@@ -1,0 +1,1 @@
+Eerste Android-versie van Aurora: blader door, zoek in en speel je Jellyfin-bibliotheek af in een filmische, tv-vriendelijke interface.

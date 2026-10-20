@@ -1,0 +1,24 @@
+Aurora is een mooie, open-source front-end voor je eigen Jellyfin-mediaserver. Jellyfin blijft de bron van alles; Aurora legt er een filmische ervaring bovenop die thuishoort in de woonkamer.
+
+WAT JE KRIJGT
+• Een startscherm om te ontdekken: uitgelichte titels, Verder kijken, favorieten en aanbevelingen
+• Uitgebreide detailpagina's met cast, verwante titels en volledige afleveringslijsten voor series
+• Film- en seriebibliotheken met genres en sorteeropties
+• Mijn lijst, gesynchroniseerd met je Jellyfin-favorieten
+• Snel zoeken in je volledige bibliotheek
+• Ingebouwde speler die je kijkvoortgang terugstuurt naar je server
+• Ondertitels via OpenSubtitles (met je eigen gratis API-sleutel)
+• Meerdere profielen voor gedeelde huishoudens, met optionele aanmelding per gebruiker
+• Een tv-modus met grote, afstandsbedieningvriendelijke bediening
+• Beschikbaar in het Nederlands en het Engels
+
+JOUW SERVER, JOUW GEGEVENS
+Aurora heeft geen accounts, geen advertenties en geen tracking. De app praat alleen met de Jellyfin-server waarmee je verbindt, en je instellingen blijven op je toestel.
+
+VEREISTEN
+Je hebt toegang nodig tot een Jellyfin-server, met een server-URL, een API-sleutel en een gebruikersaccount. Aurora levert zelf geen media-inhoud.
+
+OPEN SOURCE
+Aurora is MIT-gelicentieerd en wordt in de open ontwikkeld. Meld bugs, vraag functies aan of draag bij via github.com/Get-Coral/aurora, of sluit je aan bij de community op Discord.
+
+Aurora is een onafhankelijk project en is niet verbonden aan of goedgekeurd door het Jellyfin-project.
