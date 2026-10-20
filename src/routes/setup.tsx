@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Globe, Key, User, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuroraMark } from "../components/AuroraMark";
 import { useI18n } from "../lib/i18n";
 import {
@@ -11,6 +11,7 @@ import {
 	saveSetupConfigurationRuntime,
 	setMultiUserModeRuntime,
 } from "../lib/runtime-functions";
+import { shouldUseClientRuntime } from "../lib/runtime-mode";
 
 const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 
@@ -78,9 +79,22 @@ const ACCOUNT_STEP = {
 	hint: "Aurora uses your credentials to create a real playback session so watch progress stays in sync with Jellyfin.",
 };
 
-function getSteps(multiUserLocked: boolean) {
+// Shown instead of the default hints when the native app can sign in with a
+// username and password, so an API key is optional.
+const PASSWORD_SIGN_IN_HINTS = {
+	apikey:
+		"Leave this empty to sign in with your Jellyfin username and password instead. To use an API key, open your Jellyfin Dashboard → Administration → API Keys and create one.",
+	account:
+		"Sign in with your Jellyfin account. Leave the password empty if your account doesn't have one.",
+};
+
+function getSteps(multiUserLocked: boolean, signInWithPassword: boolean) {
 	if (multiUserLocked) {
 		return [...BASE_STEPS];
+	}
+	// Profiles list every user on the server, which needs an API key.
+	if (signInWithPassword) {
+		return [...BASE_STEPS, ACCOUNT_STEP];
 	}
 	return [...BASE_STEPS, MULTIUSER_STEP, ACCOUNT_STEP];
 }
@@ -90,11 +104,19 @@ function SetupPage() {
 	const navigate = useNavigate();
 	const { current, multiUserLocked } = Route.useLoaderData();
 
-	const steps = getSteps(multiUserLocked);
-
 	const [step, setStep] = useState(0);
 	const [url, setUrl] = useState(current.url);
 	const [apiKey, setApiKey] = useState(current.apiKey);
+	// Only the native app saves settings on the device, where a password
+	// sign-in can stand in for an API key. Decided after mount so the
+	// prerendered page and the hydrated one match.
+	const [passwordSignInAvailable, setPasswordSignInAvailable] = useState(false);
+	useEffect(() => {
+		setPasswordSignInAvailable(!multiUserLocked && shouldUseClientRuntime());
+	}, [multiUserLocked]);
+	const signInWithPassword = passwordSignInAvailable && apiKey.trim().length === 0;
+
+	const steps = getSteps(multiUserLocked, signInWithPassword);
 	const [multiUserEnabled, setMultiUserEnabled] = useState<boolean | null>(
 		multiUserLocked ? true : null,
 	);
@@ -105,6 +127,12 @@ function SetupPage() {
 	const totalSteps = steps.length;
 	const current_step = steps[step];
 	const Icon = current_step.icon;
+	const hint =
+		current_step.id === "apikey" && passwordSignInAvailable
+			? PASSWORD_SIGN_IN_HINTS.apikey
+			: current_step.id === "account" && signInWithPassword
+				? PASSWORD_SIGN_IN_HINTS.account
+				: current_step.hint;
 	const progress = ((step + 1) / totalSteps) * 100;
 
 	const singleUserSetupMutation = useMutation({
@@ -127,8 +155,9 @@ function SetupPage() {
 
 	function canAdvance() {
 		if (step === 0) return url.trim().length > 0;
-		if (step === 1) return apiKey.trim().length > 0;
+		if (step === 1) return passwordSignInAvailable || apiKey.trim().length > 0;
 		if (current_step.id === "multiuser") return multiUserEnabled !== null;
+		if (signInWithPassword) return username.trim().length > 0;
 		return userId.trim().length > 0 && username.trim().length > 0;
 	}
 
@@ -260,24 +289,29 @@ function SetupPage() {
 									className="setup-input"
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
-								/>
-							</div>
-							<div className="setup-field">
-								<label htmlFor="setup-userid">{t("setup.userId")}</label>
-								<input
-									id="setup-userid"
-									className="setup-input"
-									value={userId}
-									onChange={(e) => setUserId(e.target.value)}
 									onKeyDown={(e) => {
-										if (e.key === "Enter" && canAdvance()) handleNext();
+										if (signInWithPassword && e.key === "Enter" && canAdvance()) handleNext();
 									}}
 								/>
 							</div>
+							{signInWithPassword ? null : (
+								<div className="setup-field">
+									<label htmlFor="setup-userid">{t("setup.userId")}</label>
+									<input
+										id="setup-userid"
+										className="setup-input"
+										value={userId}
+										onChange={(e) => setUserId(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && canAdvance()) handleNext();
+										}}
+									/>
+								</div>
+							)}
 						</>
 					)}
 
-					<p className="setup-hint">{current_step.hint}</p>
+					<p className="setup-hint">{hint}</p>
 
 					{error ? (
 						<p className="setup-error">

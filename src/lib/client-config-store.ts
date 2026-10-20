@@ -1,4 +1,10 @@
-import { createClient, getSystemInfo, getUserById } from "@get-coral/jellyfin";
+import {
+	authenticateUserByName,
+	createClient,
+	getSystemInfo,
+	getUserById,
+	JellyfinError,
+} from "@get-coral/jellyfin";
 
 export interface ClientJellyfinSettings {
 	url: string;
@@ -6,6 +12,12 @@ export interface ClientJellyfinSettings {
 	userId: string;
 	username: string;
 	password: string;
+	/**
+	 * Set when Aurora signed in with username and password instead of an API
+	 * key. `apiKey` then holds this same session token, and playback uses it
+	 * directly, so accounts without a password can still sync progress.
+	 */
+	accessToken?: string;
 }
 
 export interface ClientJellyfinServerConnectionSettings {
@@ -21,6 +33,7 @@ const JELLYFIN_SETTINGS_KEY = "aurora.client.jellyfin-settings";
 const OPEN_SUBTITLES_KEY = "aurora.client.opensubtitles-api-key";
 const MULTI_USER_MODE_KEY = "aurora.client.multiUserMode";
 const ACTIVE_USER_ID_KEY = "aurora.client.activeUserId";
+const DEVICE_ID_KEY = "aurora.client.device-id";
 
 function readJson<T>(key: string): T | null {
 	if (typeof window === "undefined") return null;
@@ -49,15 +62,42 @@ function normalizeSettings(
 		userId: settings.userId?.trim(),
 		username: settings.username?.trim(),
 		password: settings.password?.trim(),
+		...(settings.accessToken?.trim() ? { accessToken: settings.accessToken.trim() } : {}),
 	};
 }
 
 function areSettingsComplete(
 	settings: Partial<ClientJellyfinSettings>,
 ): settings is ClientJellyfinSettings {
+	// A password is only needed for API-key setups, where Aurora signs in
+	// separately for playback. Session sign-ins already hold a token.
 	return Boolean(
-		settings.url && settings.apiKey && settings.userId && settings.username && settings.password,
+		settings.url &&
+			settings.apiKey &&
+			settings.userId &&
+			settings.username &&
+			(settings.password || settings.accessToken),
 	);
+}
+
+/**
+ * Jellyfin ends a user's existing session when the same device ID signs in
+ * again, so every install needs its own ID or two phones on one account would
+ * keep signing each other out.
+ */
+export function getClientDeviceId(): string {
+	const fallback = "aurora-ui-local";
+	if (typeof window === "undefined") return fallback;
+
+	try {
+		const stored = window.localStorage.getItem(DEVICE_ID_KEY);
+		if (stored) return stored;
+		const created = `aurora-${crypto.randomUUID()}`;
+		window.localStorage.setItem(DEVICE_ID_KEY, created);
+		return created;
+	} catch {
+		return fallback;
+	}
 }
 
 export function getClientMultiUserMode(): boolean {
@@ -230,7 +270,7 @@ export async function saveClientServerConnection(url: string, apiKey: string) {
 		password: "",
 		clientName: "Aurora",
 		deviceName: "Aurora Local",
-		deviceId: "aurora-ui-local",
+		deviceId: getClientDeviceId(),
 		version: "1.0.0",
 	});
 
@@ -245,7 +285,50 @@ export async function saveClientServerConnection(url: string, apiKey: string) {
 	return { url: cleanUrl };
 }
 
+/**
+ * Sign in with a Jellyfin username and password (which may be empty) and
+ * return complete settings that use the resulting session token in place of
+ * an API key.
+ */
+export async function signInClientJellyfin(input: {
+	url: string;
+	username: string;
+	password: string;
+}): Promise<ClientJellyfinSettings> {
+	const url = input.url.trim().replace(/\/+$/, "");
+	const username = input.username.trim();
+	const password = input.password.trim();
+
+	if (!url || !username) {
+		throw new Error("Server URL and username are required.");
+	}
+
+	const client = createClient({
+		url,
+		apiKey: "",
+		userId: "",
+		clientName: "Aurora",
+		deviceName: "Aurora Local",
+		deviceId: getClientDeviceId(),
+		version: "1.0.0",
+	});
+
+	try {
+		const { accessToken, user } = await authenticateUserByName(client, username, password);
+		return { url, apiKey: accessToken, accessToken, userId: user.Id, username, password };
+	} catch (error) {
+		if (error instanceof JellyfinError && error.status === 401) {
+			throw new Error("Jellyfin did not accept that username and password.");
+		}
+		throw error;
+	}
+}
+
 export async function validateClientJellyfinSettings(settings: ClientJellyfinSettings) {
+	if (!settings.apiKey?.trim()) {
+		return signInClientJellyfin(settings);
+	}
+
 	const normalized = normalizeSettings(settings);
 
 	if (!areSettingsComplete(normalized)) {
@@ -258,9 +341,10 @@ export async function validateClientJellyfinSettings(settings: ClientJellyfinSet
 		userId: normalized.userId,
 		username: normalized.username,
 		password: normalized.password,
+		...(normalized.accessToken ? { accessToken: normalized.accessToken } : {}),
 		clientName: "Aurora",
 		deviceName: "Aurora Local",
-		deviceId: "aurora-ui-local",
+		deviceId: getClientDeviceId(),
 		version: "1.0.0",
 	});
 
