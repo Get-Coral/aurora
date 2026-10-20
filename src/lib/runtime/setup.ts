@@ -50,12 +50,15 @@ const EMPTY_SETUP_STATUS: ConfigSummary = {
 
 function mergeClientSettings(input: Partial<ClientJellyfinSettings>) {
 	const current = getStoredClientJellyfinSettings();
+	const newApiKey = input.apiKey?.trim();
 	return {
 		url: input.url?.trim() || current.url || "",
-		apiKey: input.apiKey?.trim() || current.apiKey || "",
+		apiKey: newApiKey || current.apiKey || "",
 		userId: input.userId?.trim() || current.userId || "",
 		username: input.username?.trim() || current.username || "",
 		password: input.password?.trim() || current.password || "",
+		// A newly entered API key replaces a session sign-in.
+		...(!newApiKey && current.accessToken ? { accessToken: current.accessToken } : {}),
 	};
 }
 

@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 
 const SETTINGS_BUNDLE_ID = 'com.apple.Preferences'
-const APP_BUNDLE_ID = 'com.eliancodes.aurora'
+const APP_BUNDLE_ID = 'dev.getcoral.aurora'
 const SIMULATOR_READY_RETRIES = 12
 const SIMULATOR_READY_DELAY_MS = 5000
 

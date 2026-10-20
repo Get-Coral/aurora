@@ -8,7 +8,7 @@ Only the latest release receives security fixes.
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-Instead, report them privately via [GitHub's private vulnerability reporting](https://github.com/ElianCodes/aurora-ui/security/advisories/new) or by emailing the maintainer directly.
+Instead, report them privately via [GitHub's private vulnerability reporting](https://github.com/Get-Coral/aurora/security/advisories/new) or by emailing [aurora@getcoral.dev](mailto:aurora@getcoral.dev).
 
 Include as much detail as possible:
 

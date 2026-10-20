@@ -1,0 +1,1 @@
+First Android release of Aurora: browse, search and play your Jellyfin library with a cinematic, TV-friendly interface.

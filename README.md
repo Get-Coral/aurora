@@ -241,8 +241,9 @@ pnpm android:assemble:debug
 On first launch in the native app:
 
 1. Open the `/setup` flow.
-2. Enter the Jellyfin server URL, API key, user ID, username, and password.
-3. Optionally add your OpenSubtitles API key in settings.
+2. Enter the Jellyfin server URL.
+3. Either leave the API key empty and sign in with your Jellyfin username and password (the password may be empty for accounts without one), or enter an API key together with your user ID, username, and password.
+4. Optionally add your OpenSubtitles API key in settings.
 
 Aurora stores that configuration on the device.
 
@@ -270,9 +271,23 @@ Example hosted override:
 AURORA_APP_URL=https://your-aurora-domain.example pnpm cap:sync
 ```
 
+### Android Release Builds
+
+The Play Store bundle is signed with an upload key that never goes in the repo. Copy [`android/keystore.properties.example`](./android/keystore.properties.example) to `android/keystore.properties` and point it at your keystore, or set the `AURORA_UPLOAD_STORE_FILE`, `AURORA_UPLOAD_STORE_PASSWORD`, `AURORA_UPLOAD_KEY_ALIAS` and `AURORA_UPLOAD_KEY_PASSWORD` environment variables. Then build the bundle:
+
+```bash
+pnpm android:bundle:release
+```
+
+The signed bundle is written to `android/app/build/outputs/bundle/release/app-release.aab`. Without a keystore the release build is left unsigned.
+
+The version comes from `package.json`. The versionCode is `major * 1000000 + minor * 10000 + patch * 100 + build`, so 1.14.1 becomes `1140100`. To upload the same version again, raise the build number with `AURORA_BUILD_NUMBER` (0–99), for example `AURORA_BUILD_NUMBER=1 pnpm android:bundle:release`.
+
+Store listing texts, release notes, the icon, the feature graphic and phone screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
+
 ### Packaging Notes
 
-- Android packaging happens from Android Studio after opening the generated project.
+- Android release bundles are built with `pnpm android:bundle:release` (see above). Android Studio is still useful for running and debugging.
 - iOS packaging happens from Xcode after opening the generated project.
 - Google TV should be treated as an Android TV target using the same Capacitor Android project once the TV UX is finalized.
 - Capacitor Android 8 requires JDK 21 for local and CI builds.

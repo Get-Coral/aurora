@@ -1,0 +1,1 @@
+A cinematic, TV-friendly way to browse and watch your Jellyfin library.

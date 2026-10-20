@@ -49,6 +49,7 @@ import {
 	uploadUserPrimaryImage,
 } from "@get-coral/jellyfin";
 import {
+	getClientDeviceId,
 	getClientOpenSubtitlesApiKey,
 	getEffectiveClientJellyfinSettings,
 	getEffectiveClientServerConnectionSettings,
@@ -159,9 +160,10 @@ function getClientJellyfin() {
 		userId: settings.userId,
 		username: settings.username,
 		password: settings.password,
+		...(settings.accessToken ? { accessToken: settings.accessToken } : {}),
 		clientName: "Aurora",
 		deviceName: "Aurora Local",
-		deviceId: "aurora-ui-local",
+		deviceId: getClientDeviceId(),
 		version: "1.0.0",
 	});
 }
@@ -181,7 +183,7 @@ function getClientAdminJellyfin() {
 		password: settings.password,
 		clientName: "Aurora",
 		deviceName: "Aurora Local",
-		deviceId: "aurora-ui-local",
+		deviceId: getClientDeviceId(),
 		version: "1.0.0",
 	});
 }

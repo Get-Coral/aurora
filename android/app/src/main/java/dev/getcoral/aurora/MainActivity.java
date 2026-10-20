@@ -1,4 +1,4 @@
-package com.eliancodes.aurora;
+package dev.getcoral.aurora;
 
 import com.getcapacitor.BridgeActivity;
 
