@@ -25,6 +25,19 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.15.0](https://github.com/Get-Coral/aurora/compare/v1.14.1...v1.15.0) (2026-10-20)
+
+
+### Features
+
+* **android:** prepare signed Play Store release builds ([346261f](https://github.com/Get-Coral/aurora/commit/346261f3e914b8c16be52242cca67effa38716ba))
+* sign in with a Jellyfin username and password in the native app ([1e7dacf](https://github.com/Get-Coral/aurora/commit/1e7dacf4ef22767df09d02fdbdd997a8330f084a))
+
+
+### Bug Fixes
+
+* **android:** make usesCleartextTraffic a real manifest attribute ([75b3c52](https://github.com/Get-Coral/aurora/commit/75b3c52df3e1216f2a9ee4ca25f7bf4c26600463))
+
 ## [1.14.1](https://github.com/Get-Coral/aurora/compare/v1.14.0...v1.14.1) (2026-09-28)
 
 
