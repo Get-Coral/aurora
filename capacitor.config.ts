@@ -7,7 +7,7 @@ const serverUrl = (
 ).process?.env?.['AURORA_APP_URL']?.trim()
 
 const config: CapacitorConfig = {
-  appId: 'com.eliancodes.aurora',
+  appId: 'dev.getcoral.aurora',
   appName: 'Aurora',
   webDir: 'dist/client',
   ios: {

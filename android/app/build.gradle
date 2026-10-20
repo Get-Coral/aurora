@@ -1,14 +1,37 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
 
+// package.json is the single source of truth for the app version (bumped by release-please).
+// versionCode = major * 1000000 + minor * 10000 + patch * 100 + build, e.g. 1.14.1 build 1 -> 1140101.
+// AURORA_BUILD_NUMBER (0-99) allows re-uploading the same version to Play with a higher code.
+def appVersionName = new JsonSlurper().parse(rootProject.file('../package.json')).version
+def appVersionParts = appVersionName.tokenize('.-')
+def appBuildNumber = (System.getenv('AURORA_BUILD_NUMBER') ?: '0').toInteger()
+if (appBuildNumber < 0 || appBuildNumber > 99) {
+    throw new GradleException("AURORA_BUILD_NUMBER must be between 0 and 99, got ${appBuildNumber}")
+}
+def appVersionCode = appVersionParts[0].toInteger() * 1000000 + appVersionParts[1].toInteger() * 10000 + appVersionParts[2].toInteger() * 100 + appBuildNumber
+
+// Upload key for Play App Signing. Read from android/keystore.properties (gitignored) or env vars;
+// when neither is present, release builds stay unsigned so CI and debug builds keep working.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+def signingValue = { String key, String env -> keystoreProperties.getProperty(key) ?: System.getenv(env) }
+def releaseStoreFile = signingValue('storeFile', 'AURORA_UPLOAD_STORE_FILE')
+
 android {
-    namespace = "com.eliancodes.aurora"
+    namespace = "dev.getcoral.aurora"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.eliancodes.aurora"
+        applicationId "dev.getcoral.aurora"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +39,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (releaseStoreFile) {
+            release {
+                storeFile rootProject.file(releaseStoreFile)
+                storePassword signingValue('storePassword', 'AURORA_UPLOAD_STORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'AURORA_UPLOAD_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'AURORA_UPLOAD_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseStoreFile) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
