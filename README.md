@@ -2,12 +2,103 @@
   <img src="https://raw.githubusercontent.com/Get-Coral/aurora/main/public/aurora-app-icon.svg" width="128" alt="Aurora logo — a four-point star split by a glowing light beam" />
 </p>
 
-<h1 align="center">Aurora UI</h1>
+<h1 align="center">Aurora</h1>
 
-[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-ElianCodes-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ElianCodes)
-[![Discord](https://img.shields.io/discord/1495441903297237043?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/M3wzFpGbzp)
+<p align="center">
+  A cinematic, TV-friendly way to browse and watch your Jellyfin library.
+</p>
 
-Aurora UI is a premium Jellyfin frontend built with TanStack Start and React. It keeps Jellyfin as the source of truth while layering on a more cinematic home experience, richer detail views, embedded playback, favorites, genre browsing, and translation-ready UI foundations.
+<p align="center">
+  <a href="https://github.com/sponsors/ElianCodes"><img src="https://img.shields.io/badge/Sponsor-ElianCodes-ea4aaa?logo=githubsponsors&logoColor=white" alt="GitHub Sponsors" /></a>
+  <a href="https://discord.gg/M3wzFpGbzp"><img src="https://img.shields.io/discord/1495441903297237043?label=Discord&logo=discord&logoColor=white&color=5865F2" alt="Discord" /></a>
+</p>
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=dev.getcoral.aurora">
+    <img alt="Get it on Google Play" height="80" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" />
+  </a>
+</p>
+
+Aurora UI is an open-source Jellyfin frontend. It keeps Jellyfin as the source of truth and adds a living-room-ready way to browse and watch: a featured home, richer detail views, embedded playback, favorites, genre browsing, and a translation-ready UI. Self-host it, or install [Aurora for Jellyfin on Google Play](https://play.google.com/store/apps/details?id=dev.getcoral.aurora).
+
+Aurora is an independent project and is not affiliated with or endorsed by the Jellyfin project.
+
+## Why Aurora
+
+Jellyfin's web client is the server console: libraries, metadata, users, and playback in one place. Aurora is a separate frontend built for the people watching.
+
+- **A home screen for discovery.** Featured titles, Continue Watching, favorites, and recommendation rails.
+- **Detail pages for the couch.** Cast, related titles, and series episode lists, with resume-next-up.
+- **Shared households.** A Netflix-style profile picker. With required sign-in, each person gets their own Jellyfin session, so playback and watch progress stay on the right account.
+- **The living room.** TV mode uses larger text and simpler navigation for a remote. The player can hand the stream to a TV over AirPlay or Cast.
+- **Your server, your data.** Aurora has no accounts of its own, no ads, and no tracking. It talks only to the Jellyfin server you connect, and stores that connection in a local SQLite file, so self-hosting does not need another database.
+
+Keep Jellyfin's web client for administering the server. Open Aurora when you want to watch.
+
+## Screenshots
+
+<p align="center">
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/01_home.png" width="200" alt="Aurora home screen featuring Caminandes: Gran Dillama, with Play now and a cinematic mood rail" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/02_rows.png" width="200" alt="Continue watching rail titled Resume your queue, with progress on War of the World" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/03_details.png" width="200" alt="Movie spotlight for Caminandes: Llamigos with backdrop, poster, and Play now" />
+</p>
+<p align="center">
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/04_series.png" width="200" alt="Series episode list with Resume next up for Pioneer One" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/05_library.png" width="200" alt="Movie library with genre chips and sort controls" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/07_player.png" width="200" alt="Now playing Caminandes: Llamigos, with transport controls and a progress bar" />
+</p>
+
+These are the English Google Play phone screenshots shipped in [`fastlane/metadata/android/en-US/images/phoneScreenshots`](./fastlane/metadata/android/en-US/images/phoneScreenshots). Dutch listings are in [`fastlane/metadata/android/nl-NL/images/phoneScreenshots`](./fastlane/metadata/android/nl-NL/images/phoneScreenshots).
+
+## Quick start
+
+Docker Compose, with the in-app Jellyfin setup:
+
+```yaml
+services:
+  aurora:
+    image: getcoral/aurora:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - aurora-data:/data
+    restart: unless-stopped
+
+volumes:
+  aurora-data:
+```
+
+```bash
+docker compose up -d
+```
+
+Open [http://localhost:3000](http://localhost:3000) and complete the Jellyfin onboarding form once. Aurora persists the connection in `/data/aurora.sqlite`.
+
+The Jellyfin URL is requested by the Aurora container, so `localhost` in that form is the container itself. Use a hostname the container can reach: another Compose service name, a LAN address, or `host.docker.internal` on Docker Desktop.
+
+The same stack with onboarding skipped (the container image is also published as [`ghcr.io/get-coral/aurora`](https://github.com/Get-Coral/aurora/pkgs/container/aurora)):
+
+```yaml
+services:
+  aurora:
+    image: getcoral/aurora:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - aurora-data:/data
+    environment:
+      JELLYFIN_URL: http://your-jellyfin:8096
+      JELLYFIN_API_KEY: your_api_key
+      JELLYFIN_USER_ID: your_user_id
+      JELLYFIN_USERNAME: your_username
+      JELLYFIN_PASSWORD: your_password
+    restart: unless-stopped
+
+volumes:
+  aurora-data:
+```
+
+`JELLYFIN_USER_ID` is the Jellyfin user UUID. More on images, the local build, and `docker run` is in [Docker](#docker).
 
 ## Highlights
 
@@ -161,7 +252,7 @@ To add a new language:
 
 ## Docker
 
-Aurora ships with a production Dockerfile and can be deployed to a VM with Docker or Docker Compose.
+Aurora ships with a production Dockerfile and can be deployed to a VM with Docker or Docker Compose. The copy-paste Compose files are in [Quick start](#quick-start).
 
 Build locally:
 
@@ -284,6 +375,8 @@ The signed bundle is written to `android/app/build/outputs/bundle/release/app-re
 The version comes from `package.json`. The versionCode is `major * 1000000 + minor * 10000 + patch * 100 + build`, so 1.14.1 becomes `1140100`. To upload the same version again, raise the build number with `AURORA_BUILD_NUMBER` (0–99), for example `AURORA_BUILD_NUMBER=1 pnpm android:bundle:release`.
 
 Store listing texts, release notes, the icon, the feature graphic and phone screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
+
+The public Android app is [Aurora for Jellyfin](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
 
 ### Packaging Notes
 
