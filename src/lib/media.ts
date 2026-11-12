@@ -8,6 +8,8 @@ export interface MediaItem {
 	title: string;
 	year?: number;
 	runtimeMinutes?: number;
+	/** Exact runtime from RunTimeTicks; runtimeMinutes is rounded for display. */
+	runtimeSeconds?: number;
 	overview?: string;
 	rating?: number;
 	ageRating?: string;
