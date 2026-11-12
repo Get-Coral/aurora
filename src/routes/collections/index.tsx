@@ -193,7 +193,12 @@ function CollectionsPage() {
 					>
 						<div className="coll-dialog-head">
 							<h2>{t("route.collections.newTitle")}</h2>
-							<button type="button" className="icon-button" onClick={() => setDialog(null)}>
+							<button
+								type="button"
+								className="icon-button"
+								onClick={() => setDialog(null)}
+								data-aurora-overlay-close
+							>
 								<X size={16} />
 							</button>
 						</div>
@@ -242,7 +247,12 @@ function CollectionsPage() {
 					>
 						<div className="coll-dialog-head">
 							<h2>{t("route.collections.editTitle")}</h2>
-							<button type="button" className="icon-button" onClick={() => setDialog(null)}>
+							<button
+								type="button"
+								className="icon-button"
+								onClick={() => setDialog(null)}
+								data-aurora-overlay-close
+							>
 								<X size={16} />
 							</button>
 						</div>
@@ -294,7 +304,12 @@ function CollectionsPage() {
 					>
 						<div className="coll-dialog-head">
 							<h2>{t("route.collections.deleteTitle")}</h2>
-							<button type="button" className="icon-button" onClick={() => setDialog(null)}>
+							<button
+								type="button"
+								className="icon-button"
+								onClick={() => setDialog(null)}
+								data-aurora-overlay-close
+							>
 								<X size={16} />
 							</button>
 						</div>
