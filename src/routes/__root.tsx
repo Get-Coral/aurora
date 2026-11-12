@@ -15,6 +15,7 @@ import { GlobalMediaDialogs } from "../components/GlobalMediaDialogs";
 import Header from "../components/Header";
 import { PwaStatusBanner } from "../components/PwaStatusBanner";
 import { I18nProvider } from "../lib/i18n";
+import { NATIVE_TV_STORAGE_KEY, TV_USER_AGENT_PATTERN_SOURCE } from "../lib/tv-detection";
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {
@@ -23,7 +24,9 @@ interface MyRouterContext {
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`;
 
-const TV_MODE_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('aurora-tv-mode');var ua=(navigator.userAgent||'').toLowerCase();var touch=navigator.maxTouchPoints||0;var isIos=/iphone|ipad|ipod/.test(ua)||(ua.indexOf('macintosh')!==-1&&touch>1);var isTv=/(android tv|googletv|google tv|afts|aftt|aftm|bravia|smarttv|hbbtv)/.test(ua);var enabled=stored==='1'||(stored!=='0'&&isTv&&!isIos);var platform=isIos?'ios':(isTv?'android-tv':(/android/.test(ua)?'android':'other'));document.documentElement.dataset.platform=platform;if(enabled){document.documentElement.classList.add('tv-mode');}}catch(e){}})();`;
+// Runs before paint so a TV never flashes the desktop layout. It can't import
+// modules, so the TV pattern and the native flag are interpolated in.
+const TV_MODE_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('aurora-tv-mode');var nativeTv=window.localStorage.getItem(${JSON.stringify(NATIVE_TV_STORAGE_KEY)})==='1';var ua=(navigator.userAgent||'').toLowerCase();var touch=navigator.maxTouchPoints||0;var isIos=/iphone|ipad|ipod/.test(ua)||(ua.indexOf('macintosh')!==-1&&touch>1);var isTv=!isIos&&(nativeTv||new RegExp(${JSON.stringify(TV_USER_AGENT_PATTERN_SOURCE)}).test(ua));var enabled=stored==='1'||(stored!=='0'&&isTv);var platform=isIos?'ios':(isTv?'android-tv':(/android/.test(ua)?'android':'other'));document.documentElement.dataset.platform=platform;if(enabled){document.documentElement.classList.add('tv-mode');}}catch(e){}})();`;
 
 const SKIP_AUTH_GUARD = ["/setup", "/login"];
 const SKIP_PROFILE_GUARD = ["/setup", "/profiles", "/login"];
