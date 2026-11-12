@@ -1,6 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { dispatchAuroraBack, findTopOverlayClose } from "../lib/back-navigation";
 import { getClientPlaybackContext } from "../lib/platform";
+import { setNativeTvDetected } from "../lib/tv-mode";
 import { installTvSpatialNavigation } from "../lib/tv-spatial-navigation";
 
 const IS_DEV = import.meta.env.DEV;
@@ -17,6 +19,25 @@ export function AppBootstrap() {
 	}, []);
 
 	useEffect(() => installTvSpatialNavigation(), []);
+
+	// Inside the Android app, ask the system whether this is a TV: many
+	// Android TV / Google TV WebViews don't say so in their user agent.
+	useEffect(() => {
+		let cancelled = false;
+		async function detectNativeTv() {
+			const { Capacitor, registerPlugin } = await import("@capacitor/core");
+			if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
+			const AuroraTv = registerPlugin<{ isTelevision(): Promise<{ value: boolean }> }>("AuroraTv");
+			const { value } = await AuroraTv.isTelevision();
+			if (!cancelled) setNativeTvDetected(value);
+		}
+		// An app build from before the plugin existed rejects; the user agent
+		// check still applies then.
+		void detectNativeTv().catch(() => undefined);
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	useEffect(() => {
 		const platform = getClientPlaybackContext().platform;
@@ -41,7 +62,11 @@ export function AppBootstrap() {
 					return;
 				}
 
-				const closeTarget = document.querySelector<HTMLElement>("[data-aurora-overlay-close]");
+				// Something inside an overlay (a picker in the player) may want
+				// the press first.
+				if (dispatchAuroraBack()) return;
+
+				const closeTarget = findTopOverlayClose();
 				if (closeTarget) {
 					closeTarget.click();
 					return;

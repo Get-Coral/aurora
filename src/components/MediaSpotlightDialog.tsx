@@ -181,6 +181,7 @@ export function MediaSpotlightDialog({
 								className="primary-action"
 								onClick={playAction}
 								disabled={!onPlay || (activeItem.type === "series" && loadingState)}
+								data-tv-autofocus
 							>
 								<Play size={20} fill="currentColor" /> {playLabel}
 							</button>

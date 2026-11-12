@@ -18,6 +18,7 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AURORA_BACK_EVENT } from "../lib/back-navigation";
 import { useI18n } from "../lib/i18n";
 import {
 	prepareSeekReloadUrl,
@@ -42,6 +43,7 @@ import {
 	reportPlaybackStateRuntime,
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
+import { moveTvFocus } from "../lib/tv-spatial-navigation";
 import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useRemotePlayback } from "./useRemotePlayback";
 
@@ -317,6 +319,14 @@ export function MediaPlayerDialog({
 		};
 	}, []);
 
+	const playButtonRef = useRef<HTMLButtonElement>(null);
+	// Latest seek functions for the Media Session handlers, which are only
+	// registered once per item.
+	const mediaControlsRef = useRef<{ seekBy(delta: number): void; seekTo(time: number): void }>({
+		seekBy: () => undefined,
+		seekTo: () => undefined,
+	});
+
 	const [currentTime, setCurrentTime] = useState(0);
 	const [scrubTime, setScrubTime] = useState<number | null>(null);
 	const [duration, setDuration] = useState(0);
@@ -326,6 +336,8 @@ export function MediaPlayerDialog({
 	const [autoplayMuted, setAutoplayMuted] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [controlsVisible, setControlsVisible] = useState(true);
+	const controlsVisibleRef = useRef(controlsVisible);
+	controlsVisibleRef.current = controlsVisible;
 	const [qualityPickerOpen, setQualityPickerOpen] = useState(false);
 	const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false);
 	const [subtitleFilter, setSubtitleFilter] = useState("");
@@ -1085,7 +1097,7 @@ export function MediaPlayerDialog({
 			?.scrollIntoView({ block: "nearest" });
 	}, [subtitlePickerOpen]);
 
-	// Keyboard shortcuts
+	// Keyboard shortcuts and the TV remote
 	useEffect(() => {
 		if (!open) return;
 		function handleKeydown(e: KeyboardEvent) {
@@ -1100,10 +1112,32 @@ export function MediaPlayerDialog({
 				onClose();
 				return;
 			}
-			if (isEditableTarget(e.target)) return;
 
 			const video = videoRef.current;
 			if (!video) return;
+
+			// Remote and keyboard media keys, whatever has focus.
+			const mediaKeyHandled = handleMediaKey(e.key, video);
+			if (mediaKeyHandled) {
+				e.preventDefault();
+				revealControls();
+				return;
+			}
+
+			if (isEditableTarget(e.target)) return;
+
+			const controlsWereVisible = controlsVisibleRef.current;
+			// Any key brings the controls back, so a remote user sees what
+			// they are doing; the hide timer restarts with every press.
+			revealControls();
+
+			if (
+				document.documentElement.classList.contains("tv-mode") &&
+				handleRemoteKey(e, controlsWereVisible)
+			) {
+				return;
+			}
+
 			if (e.key === " " || e.key === "k") {
 				e.preventDefault();
 				video.paused ? void video.play() : video.pause();
@@ -1123,7 +1157,173 @@ export function MediaPlayerDialog({
 		}
 		window.addEventListener("keydown", handleKeydown);
 		return () => window.removeEventListener("keydown", handleKeydown);
-	}, [currentTime, open, onClose, subtitlePickerOpen, qualityPickerOpen]);
+	}, [
+		currentTime,
+		isPlaying,
+		nextItem,
+		open,
+		onClose,
+		onSelectQueueItem,
+		subtitlePickerOpen,
+		qualityPickerOpen,
+	]);
+
+	// The Android back button closes an open picker before the player itself.
+	useEffect(() => {
+		if (!open) return;
+		function handleBack(event: Event) {
+			if (!subtitlePickerOpen && !qualityPickerOpen) return;
+			event.preventDefault();
+			closePickers();
+		}
+		window.addEventListener(AURORA_BACK_EVENT, handleBack);
+		return () => window.removeEventListener(AURORA_BACK_EVENT, handleBack);
+	}, [open, subtitlePickerOpen, qualityPickerOpen]);
+
+	// Media Session: the OS media controls (macOS Now Playing, media keys,
+	// Bluetooth headsets, the Android TV system remote) drive the player.
+	useEffect(() => {
+		if (!open || !item || typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+			return;
+		}
+		const session = navigator.mediaSession;
+		const artwork = item.backdropUrl ?? item.posterUrl;
+		try {
+			if (typeof MediaMetadata !== "undefined") {
+				session.metadata = new MediaMetadata({
+					title: item.title,
+					artist: item.seriesTitle ?? "",
+					artwork: artwork ? [{ src: new URL(artwork, window.location.href).href }] : [],
+				});
+			}
+		} catch {
+			// Metadata is cosmetic; the action handlers still work without it.
+		}
+
+		const handlers: [MediaSessionAction, MediaSessionActionHandler | null][] = [
+			["play", () => void videoRef.current?.play()],
+			["pause", () => videoRef.current?.pause()],
+			["seekbackward", (details) => mediaControlsRef.current.seekBy(-(details.seekOffset ?? 15))],
+			["seekforward", (details) => mediaControlsRef.current.seekBy(details.seekOffset ?? 30)],
+			[
+				"seekto",
+				(details) => {
+					if (details.seekTime != null) mediaControlsRef.current.seekTo(details.seekTime);
+				},
+			],
+			["nexttrack", nextItem ? () => onSelectQueueItem?.(nextItem) : null],
+		];
+		for (const [action, handler] of handlers) {
+			try {
+				session.setActionHandler(action, handler);
+			} catch {
+				// Not every browser supports every action.
+			}
+		}
+		return () => {
+			for (const [action] of handlers) {
+				try {
+					session.setActionHandler(action, null);
+				} catch {
+					// See above.
+				}
+			}
+			session.metadata = null;
+		};
+	}, [open, item, nextItem, onSelectQueueItem]);
+
+	useEffect(() => {
+		if (!open || typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+		if (!(duration > 0) || !Number.isFinite(duration)) return;
+		try {
+			navigator.mediaSession.setPositionState({
+				duration,
+				position: Math.max(0, Math.min(duration, currentTime)),
+				playbackRate: 1,
+			});
+		} catch {
+			// Older implementations reject position state; it's optional.
+		}
+	}, [open, currentTime, duration]);
+
+	/** Play/pause/seek keys from a remote or keyboard. Returns whether it acted. */
+	function handleMediaKey(key: string, video: HTMLVideoElement) {
+		switch (key) {
+			case "MediaPlayPause":
+				video.paused ? void video.play() : video.pause();
+				return true;
+			case "MediaPlay":
+				void video.play();
+				return true;
+			case "MediaPause":
+				video.pause();
+				return true;
+			case "MediaFastForward":
+				seekToMovieTime(currentTime + 30, { resumeIfPlaying: !video.paused });
+				return true;
+			case "MediaRewind":
+				seekToMovieTime(currentTime - 15, { resumeIfPlaying: !video.paused });
+				return true;
+			case "MediaTrackNext":
+				if (!nextItem) return false;
+				onSelectQueueItem?.(nextItem);
+				return true;
+			case "MediaStop":
+				onClose();
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * The D-pad in TV mode. With the controls hidden, Left/Right seek and any
+	 * other press brings up the controls with Play focused. With the controls
+	 * showing, the arrows move between them and OK presses the focused one
+	 * (the browser does that part). The seek bar handles Left/Right itself.
+	 */
+	function handleRemoteKey(e: KeyboardEvent, controlsWereVisible: boolean) {
+		const direction =
+			e.key === "ArrowLeft"
+				? "left"
+				: e.key === "ArrowRight"
+					? "right"
+					: e.key === "ArrowUp"
+						? "up"
+						: e.key === "ArrowDown"
+							? "down"
+							: null;
+		const container = containerRef.current;
+		const active = document.activeElement;
+		const focusInControls =
+			container != null &&
+			active instanceof HTMLElement &&
+			active !== container &&
+			container.contains(active);
+
+		if (!controlsWereVisible || !focusInControls) {
+			if (e.key === "Enter" || direction === "up" || direction === "down") {
+				e.preventDefault();
+				playButtonRef.current?.focus({ preventScroll: true });
+				return true;
+			}
+			if (direction === "left" || direction === "right") {
+				e.preventDefault();
+				seekToMovieTime(currentTime + (direction === "left" ? -15 : 30), {
+					resumeIfPlaying: !videoRef.current?.paused,
+				});
+				return true;
+			}
+			return false;
+		}
+
+		if (direction) {
+			e.preventDefault();
+			moveTvFocus(direction, container);
+			return true;
+		}
+		return false;
+	}
 
 	function closePickers() {
 		setSubtitlePickerOpen(false);
@@ -1494,8 +1694,11 @@ export function MediaPlayerDialog({
 	function handleProgressKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
 		const d = getBestDuration();
 		let target: number | null = null;
-		if (e.key === "ArrowLeft" || e.key === "ArrowDown") target = currentTime - KEYBOARD_SEEK_STEP_S;
-		else if (e.key === "ArrowRight" || e.key === "ArrowUp")
+		// On a TV, Up/Down leave the bar for the buttons around it.
+		const verticalSeeks = !document.documentElement.classList.contains("tv-mode");
+		if (e.key === "ArrowLeft" || (verticalSeeks && e.key === "ArrowDown"))
+			target = currentTime - KEYBOARD_SEEK_STEP_S;
+		else if (e.key === "ArrowRight" || (verticalSeeks && e.key === "ArrowUp"))
 			target = currentTime + KEYBOARD_SEEK_STEP_S;
 		else if (e.key === "PageDown") target = currentTime - 60;
 		else if (e.key === "PageUp") target = currentTime + 60;
@@ -1517,6 +1720,12 @@ export function MediaPlayerDialog({
 		seekToMovieTime(currentTime + 30, { resumeIfPlaying: !videoRef.current?.paused });
 	}
 
+	mediaControlsRef.current = {
+		seekBy: (delta) =>
+			seekToMovieTime(currentTime + delta, { resumeIfPlaying: !videoRef.current?.paused }),
+		seekTo: (time) => seekToMovieTime(time, { resumeIfPlaying: !videoRef.current?.paused }),
+	};
+
 	if (!open || !item) return null;
 
 	return (
@@ -1525,6 +1734,12 @@ export function MediaPlayerDialog({
 			className={`player-fullscreen${controlsVisible ? " controls-visible" : ""}`}
 			onMouseMove={revealControls}
 			onTouchStart={revealControls}
+			role="dialog"
+			aria-modal="true"
+			aria-label={item.title}
+			// The remote's arrows seek and move between the player's own
+			// controls (handleRemoteKey), not the page-wide TV navigation.
+			data-tv-arrows="manual"
 		>
 			{streamUrl ? (
 				<>
@@ -1670,10 +1885,12 @@ export function MediaPlayerDialog({
 							<div className="player-controls-row">
 								<div className="player-controls-left">
 									<button
+										ref={playButtonRef}
 										type="button"
 										className="icon-button"
 										onClick={togglePlay}
 										aria-label={isPlaying ? "Pause" : "Play"}
+										data-tv-autofocus
 									>
 										{isPlaying ? (
 											<Pause size={22} fill="currentColor" strokeWidth={0} />

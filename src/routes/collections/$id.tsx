@@ -202,7 +202,12 @@ function CollectionDetailPage() {
 					>
 						<div className="coll-dialog-head">
 							<h2>{t("route.collections.addItemsTitle")}</h2>
-							<button type="button" className="icon-button" onClick={() => setAddDialogOpen(false)}>
+							<button
+								type="button"
+								className="icon-button"
+								onClick={() => setAddDialogOpen(false)}
+								data-aurora-overlay-close
+							>
 								<X size={16} />
 							</button>
 						</div>

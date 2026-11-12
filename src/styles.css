@@ -4063,6 +4063,29 @@ html.tv-mode {
   --header-h: 72px; /* always single-row pill on TV */
 }
 
+/* Title-safe area: many TVs crop the edges of the picture (overscan), so keep
+   content about 5% in from every edge. */
+html.tv-mode .page-wrap {
+  width: min(1600px, calc(100% - 10vw));
+}
+
+html.tv-mode .app-header {
+  padding-top: max(3vh, var(--safe-top));
+}
+
+html.tv-mode .tv-detail-close {
+  top: 5vh;
+  right: 5vw;
+}
+
+html.tv-mode .player-controls-top {
+  padding: 5vh 5vw 0;
+}
+
+html.tv-mode .player-controls-bottom {
+  padding: 0 5vw 5vh;
+}
+
 /* Always-visible focus ring for D-pad / remote navigation */
 html.tv-mode *:focus-visible {
   outline: 3px solid var(--accent);
@@ -4110,11 +4133,11 @@ html.tv-mode .card-subtitle {
   font-size: 0.9rem;
 }
 
-/* Card actions: always visible on focus so user knows what to press */
-html.tv-mode .media-card:focus-within .card-hover-actions,
-html.tv-mode .media-card:focus-visible .card-hover-actions {
-  opacity: 1;
-  transform: translateY(0);
+/* A card is one stop for the remote: OK opens the details (where Play, My
+   List and Watched live) and the remote's play key plays. The hover actions
+   would only be extra stops inside every card. */
+html.tv-mode .card-hover-actions {
+  display: none;
 }
 
 /* Scale + glow on focused card */

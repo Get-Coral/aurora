@@ -213,3 +213,49 @@ describe("MediaPlayerDialog progress bar", () => {
 		expect(media.assignments).toEqual([610]);
 	});
 });
+
+describe("MediaPlayerDialog with a TV remote", () => {
+	beforeEach(() => document.documentElement.classList.add("tv-mode"));
+	afterEach(() => document.documentElement.classList.remove("tv-mode"));
+
+	it("brings up the controls with Play focused on OK or Up", async () => {
+		const { view, media } = await renderPlayer();
+		act(() => media.play(600));
+		const play = view.getByRole("button", { name: /^(pause|play)$/i });
+
+		fireEvent.keyDown(window, { key: "ArrowUp" });
+		expect(document.activeElement).toBe(play);
+		expect(media.assignments).toEqual([]);
+	});
+
+	it("seeks with Left and Right while nothing in the controls has focus", async () => {
+		const { media } = await renderPlayer();
+		act(() => media.play(600));
+
+		fireEvent.keyDown(window, { key: "ArrowLeft" });
+		expect(media.assignments).toEqual([585]);
+	});
+
+	it("leaves Up and Down on the seek bar to move between controls", async () => {
+		const { slider, media } = await renderPlayer();
+		act(() => media.play(600));
+		slider.focus();
+
+		fireEvent.keyDown(slider, { key: "ArrowUp" });
+		expect(media.assignments).toEqual([]);
+		fireEvent.keyDown(slider, { key: "ArrowRight" });
+		expect(media.assignments).toEqual([610]);
+	});
+
+	it("answers the remote's media keys", async () => {
+		const { video, media } = await renderPlayer();
+		const pause = vi.fn();
+		video.pause = pause;
+		act(() => media.play(600));
+
+		fireEvent.keyDown(window, { key: "MediaPlayPause" });
+		expect(pause).toHaveBeenCalledTimes(1);
+		fireEvent.keyDown(window, { key: "MediaFastForward" });
+		expect(media.assignments).toEqual([630]);
+	});
+});

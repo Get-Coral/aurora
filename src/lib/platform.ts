@@ -1,3 +1,5 @@
+import { isTvUserAgent, readNativeTvFlag } from "./tv-detection";
+
 export type ClientPlatform = "ios" | "android" | "android-tv" | "other";
 
 export interface ClientPlaybackContext {
@@ -9,6 +11,8 @@ export interface ClientPlaybackContext {
 interface DetectClientPlaybackContextOptions {
 	userAgent?: string;
 	maxTouchPoints?: number;
+	/** The native shell has confirmed it runs on a TV. */
+	isNativeTv?: boolean;
 }
 
 const DEFAULT_CONTEXT: ClientPlaybackContext = {
@@ -33,17 +37,7 @@ export function detectClientPlaybackContext(
 		matchesAny(userAgent, ["iphone", "ipad", "ipod"]) ||
 		(userAgent.includes("macintosh") && maxTouchPoints > 1);
 	const isAndroid = !isIos && userAgent.includes("android");
-	const isAndroidTv = matchesAny(userAgent, [
-		"android tv",
-		"googletv",
-		"google tv",
-		"afts",
-		"aftt",
-		"aftm",
-		"bravia",
-		"smarttv",
-		"hbbtv",
-	]);
+	const isAndroidTv = !isIos && (options.isNativeTv === true || isTvUserAgent(userAgent));
 	// Desktop Safari: has "safari" in UA but not "chrome"/"chromium".
 	// Safari does not support VP8/VP9/AV1/Opus/FLAC, so we must force
 	// transcoding to H.264/AAC to prevent direct-play failures.
@@ -86,5 +80,6 @@ export function getClientPlaybackContext(): ClientPlaybackContext {
 	return detectClientPlaybackContext({
 		userAgent: navigator.userAgent,
 		maxTouchPoints: navigator.maxTouchPoints,
+		isNativeTv: readNativeTvFlag(),
 	});
 }
