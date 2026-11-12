@@ -1535,9 +1535,14 @@ html.tv-mode .hero-copy-in {
   pointer-events: auto;
 }
 
-/* Bottom controls (progress + buttons) are ALWAYS interactive so the user
-   can seek/pause even when the overlay has faded out */
+/* Bottom controls only take clicks while visible. When they have faded out a
+   click near the bottom of the picture belongs to the video (play/pause), not
+   to an invisible progress bar; moving the mouse brings the controls back
+   before the click lands. */
 .player-controls-bottom {
+  pointer-events: none;
+}
+.player-controls-overlay.visible .player-controls-bottom {
   pointer-events: auto;
 }
 
@@ -1573,10 +1578,17 @@ html.tv-mode .hero-copy-in {
 .player-progress {
   cursor: pointer;
   padding: 0.6rem 0;
-  /* Always interactive — pointer-events on overlay is none when hidden,
-     but we need seek to work even before the overlay fully appears */
-  pointer-events: auto;
   touch-action: none; /* prevent scroll interfering with drag */
+  border-radius: 999px;
+}
+
+.player-progress:focus {
+  outline: none;
+}
+
+.player-progress:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
 }
 
 .player-progress-track {
@@ -1587,7 +1599,9 @@ html.tv-mode .hero-copy-in {
   transition: height 150ms ease;
 }
 
-.player-progress:hover .player-progress-track {
+.player-progress:hover .player-progress-track,
+.player-progress.scrubbing .player-progress-track,
+.player-progress:focus-visible .player-progress-track {
   height: 0.45rem;
 }
 
@@ -1609,8 +1623,22 @@ html.tv-mode .hero-copy-in {
   transition: transform 150ms ease;
 }
 
-.player-progress:hover .player-progress-thumb {
+.player-progress:hover .player-progress-thumb,
+.player-progress.scrubbing .player-progress-thumb,
+.player-progress:focus-visible .player-progress-thumb {
   transform: translate(-50%, -50%) scale(1);
+}
+
+/* Touch screens have no hover, so the thumb would never show. */
+@media (hover: none) {
+  .player-progress-thumb {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Follow the pointer exactly while dragging instead of easing behind it. */
+.player-progress.scrubbing .player-progress-thumb {
+  transition: none;
 }
 
 .player-controls-row {

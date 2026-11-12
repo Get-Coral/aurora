@@ -21,6 +21,7 @@ export function fromJellyfin(item: JellyfinItem): MediaItem {
 		title: item.Name,
 		year: item.ProductionYear,
 		runtimeMinutes: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600_000_000) : undefined,
+		runtimeSeconds: item.RunTimeTicks ? item.RunTimeTicks / 10_000_000 : undefined,
 		overview: item.Overview,
 		rating: item.CommunityRating,
 		ageRating: item.OfficialRating,

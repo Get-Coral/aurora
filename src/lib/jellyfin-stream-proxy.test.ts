@@ -78,3 +78,23 @@ describe("the token survives downstream URL rewrites", () => {
 		);
 	});
 });
+
+describe("prepareSeekReloadUrl", () => {
+	it("starts a progressive transcode at the target", () => {
+		const url = jellyfinStreamProxyUrl(
+			"http://jellyfin.local:8096/Videos/abc/stream.mp4?StartTimeTicks=5&api_key=secret",
+		);
+		const result = innerPath(prepareSeekReloadUrl(url, 600_000_000));
+		expect(result).toContain("StartTimeTicks=600000000");
+		expect(result).toContain("_ts=");
+	});
+
+	it("keeps an HLS playlist starting at 0:00 so the player can seek it", () => {
+		const url = jellyfinStreamProxyUrl(
+			"http://jellyfin.local:8096/videos/abc/master.m3u8?StartTimeTicks=5&api_key=secret",
+		);
+		const result = innerPath(prepareSeekReloadUrl(url, 600_000_000));
+		expect(result).not.toContain("StartTimeTicks");
+		expect(result).toContain("_ts=");
+	});
+});
