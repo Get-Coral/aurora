@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { dispatchAuroraBack, findTopOverlayClose } from "../lib/back-navigation";
+import { dispatchAuroraBack, findTopOverlayClose, returnToTopOfHome } from "../lib/back-navigation";
 import { getClientPlaybackContext } from "../lib/platform";
 import { setNativeTvDetected } from "../lib/tv-mode";
 import { installTvSpatialNavigation } from "../lib/tv-spatial-navigation";
@@ -71,6 +71,8 @@ export function AppBootstrap() {
 					closeTarget.click();
 					return;
 				}
+
+				if (returnToTopOfHome()) return;
 
 				if (canGoBack || window.history.length > 1) {
 					window.history.back();

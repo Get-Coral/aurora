@@ -173,4 +173,31 @@ describe("moveTvFocus", () => {
 		expect(press("ArrowRight").defaultPrevented).toBe(false);
 		expect(document.activeElement).toBe(a);
 	});
+
+	it("returns to the card last focused in a row when coming back to it", () => {
+		const makeRow = (top: number) => {
+			const row = document.createElement("div");
+			row.dataset.tvRow = "";
+			document.body.appendChild(row);
+			return [0, 1, 2, 3].map((i) => button(`r${top}-${i}`, rect(i * 150, top, 100, 100), row));
+		};
+		const first = makeRow(0);
+		const second = makeRow(200);
+
+		first[0].focus();
+		press("ArrowRight");
+		press("ArrowRight");
+		press("ArrowRight");
+		expect(document.activeElement).toBe(first[3]);
+
+		press("ArrowDown"); // the card below
+		expect(document.activeElement).toBe(second[3]);
+		press("ArrowLeft");
+		press("ArrowLeft");
+		press("ArrowLeft");
+		expect(document.activeElement).toBe(second[0]);
+
+		press("ArrowUp"); // back to where the first row was left
+		expect(document.activeElement).toBe(first[3]);
+	});
 });

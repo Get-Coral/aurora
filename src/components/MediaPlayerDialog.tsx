@@ -334,6 +334,11 @@ export function MediaPlayerDialog({
 	const [scrubTime, setScrubTime] = useState<number | null>(null);
 	// Movie time under the mouse while it hovers the bar without dragging.
 	const [hoverTime, setHoverTime] = useState<number | null>(null);
+	const [seekBarFocused, setSeekBarFocused] = useState(false);
+	// Same signal as the remote handling below: the class the TV-mode setting
+	// and detection put on <html>.
+	const tvMode =
+		typeof document !== "undefined" && document.documentElement.classList.contains("tv-mode");
 	// Movie time up to which the stream is downloaded, from the playing spot.
 	const [bufferedEnd, setBufferedEnd] = useState(0);
 	// A pause the player makes itself (the old stream during a reload) is not
@@ -424,7 +429,9 @@ export function MediaPlayerDialog({
 	const displayTime = scrubTime ?? currentTime;
 	const progress = clampProgress(displayTime, duration);
 	const bufferedProgress = clampProgress(bufferedEnd, duration);
-	const previewTime = scrubTime ?? hoverTime;
+	// On a TV the remote seeks the focused bar in steps, so show where each
+	// step lands (the optimistic target while it loads).
+	const previewTime = scrubTime ?? hoverTime ?? (tvMode && seekBarFocused ? displayTime : null);
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
@@ -1912,6 +1919,8 @@ export function MediaPlayerDialog({
 								onPointerCancel={handleProgressPointerCancel}
 								onLostPointerCapture={handleProgressPointerCancel}
 								onPointerLeave={() => setHoverTime(null)}
+								onFocus={() => setSeekBarFocused(true)}
+								onBlur={() => setSeekBarFocused(false)}
 								onKeyDown={handleProgressKeyDown}
 								role="slider"
 								tabIndex={0}

@@ -23,3 +23,26 @@ export function findTopOverlayClose(): HTMLElement | null {
 	).filter((element) => element.getClientRects().length > 0);
 	return candidates.at(-1) ?? null;
 }
+
+/**
+ * On the home screen in TV mode, Back first returns to the top: scroll up and
+ * put focus on the menu. Only a Back from there leaves (or exits) the app, so
+ * a press deep in a row never closes Aurora by surprise. Returns whether it
+ * handled the press.
+ */
+export function returnToTopOfHome(): boolean {
+	if (!document.documentElement.classList.contains("tv-mode")) return false;
+	if (window.location.pathname !== "/") return false;
+
+	const header = document.querySelector<HTMLElement>(".app-header");
+	const active = document.activeElement;
+	const focusInHeader = header != null && active instanceof Element && header.contains(active);
+	if (focusInHeader && window.scrollY < 8) return false;
+
+	window.scrollTo({ top: 0, behavior: "smooth" });
+	const target =
+		header?.querySelector<HTMLElement>(".nav-pill-active") ??
+		header?.querySelector<HTMLElement>("a[href], button");
+	target?.focus({ preventScroll: true });
+	return true;
+}

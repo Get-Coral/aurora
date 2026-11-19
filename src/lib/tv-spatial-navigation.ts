@@ -118,6 +118,11 @@ function focusElement(element: HTMLElement) {
 	// "nearest" keeps the page still when the element is already on screen and
 	// also scrolls horizontal rows; scroll-padding keeps it clear of the header.
 	element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	// For a card in a row, bring the whole section into view so its title
+	// isn't left under the header.
+	const row = element.closest(ROW_SELECTOR);
+	const section = row?.closest("section") ?? row;
+	section?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 }
 
 function getInitialTarget(scope: HTMLElement | null) {
@@ -170,8 +175,32 @@ export function moveTvFocus(
 	}
 
 	if (!best) return false;
-	focusElement(best);
+	focusElement(rememberedInRow(best, active) ?? best);
 	return true;
+}
+
+const ROW_SELECTOR = "[data-tv-row]";
+/** The last focused element of each row, for coming back to it. */
+const lastFocusedInRow = new WeakMap<Element, HTMLElement>();
+
+function rememberRowFocus(element: Element | null) {
+	if (!(element instanceof HTMLElement)) return;
+	const row = element.closest(ROW_SELECTOR);
+	if (row) lastFocusedInRow.set(row, element);
+}
+
+/**
+ * Entering a row from outside it (Up/Down from another row) returns to the
+ * card that was focused there last, as Plex and Jellyfin do, instead of the
+ * card that happens to sit under the current one.
+ */
+function rememberedInRow(target: HTMLElement, from: HTMLElement): HTMLElement | null {
+	const row = target.closest(ROW_SELECTOR);
+	if (!row || row.contains(from)) return null;
+	const remembered = lastFocusedInRow.get(row);
+	return remembered && remembered !== target && row.contains(remembered) && isNavigable(remembered)
+		? remembered
+		: null;
 }
 
 function directionForKey(key: string): TvDirection | null {
@@ -265,11 +294,15 @@ export function installTvSpatialNavigation() {
 		attributeFilter: ["aria-modal", "data-tv-scope", "inert"],
 	});
 
+	const handleFocusIn = (event: FocusEvent) => rememberRowFocus(event.target as Element | null);
+
 	window.addEventListener("keydown", handleKeyDown);
+	document.addEventListener("focusin", handleFocusIn);
 
 	return () => {
 		observer.disconnect();
 		if (frame) cancelAnimationFrame(frame);
 		window.removeEventListener("keydown", handleKeyDown);
+		document.removeEventListener("focusin", handleFocusIn);
 	};
 }

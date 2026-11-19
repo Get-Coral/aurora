@@ -321,6 +321,16 @@ describe("MediaPlayerDialog with a TV remote", () => {
 		expect(media.assignments).toEqual([610]);
 	});
 
+	it("previews where the focused seek bar is heading", async () => {
+		const { view, slider, media } = await renderPlayer();
+		act(() => media.play(600));
+		act(() => slider.focus());
+		fireEvent.keyDown(slider, { key: "ArrowRight" });
+		expect(view.container.querySelector(".player-scrub-preview")?.textContent).toBe("10:10");
+		act(() => slider.blur());
+		expect(view.container.querySelector(".player-scrub-preview")).toBeNull();
+	});
+
 	it("answers the remote's media keys", async () => {
 		const { video, media } = await renderPlayer();
 		const pause = vi.fn();

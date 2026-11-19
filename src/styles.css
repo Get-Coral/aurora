@@ -4135,28 +4135,89 @@ html.tv-mode .media-card:hover {
   transform: none;
 }
 
-/* Grid: fewer, wider columns */
-html.tv-mode .library-grid,
-html.tv-mode .shelf-grid {
+/* Library pages stay a grid: fewer, wider columns */
+html.tv-mode .library-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 1.25rem;
 }
 
-html.tv-mode .media-card-feature {
+/* Home shelves become single rows that scroll sideways, the way a remote
+   expects: Left/Right walk along a row, Up/Down move between rows. Cards are
+   sized so part of the next one shows, which says "there's more". */
+html.tv-mode .shelf-grid {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 2rem;
+  /* Room for the focused card's scale and glow, which overflow would clip. */
+  padding: 1.25rem 1.5rem;
+  margin: -1.25rem -1.5rem;
+}
+
+html.tv-mode .shelf-grid::-webkit-scrollbar {
+  display: none;
+}
+
+html.tv-mode .shelf-grid > .media-card {
+  flex: 0 0 calc((100% - 3 * 1.25rem) / 3.35);
+  min-height: 0;
+  aspect-ratio: 16 / 10;
+}
+
+.shelf-more-card {
+  display: none;
+}
+
+html.tv-mode .shelf-grid > .shelf-more-card {
+  flex: 0 0 12rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+html.tv-mode .shelf-grid > .shelf-more-card:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+/* The heading link moves to the end of the row on a TV. */
+html.tv-mode .shelf-section .section-trailing-button {
+  display: none;
+}
+
+html.tv-mode .shelf-grid > .media-card-feature {
+  flex-basis: calc(2 * (100% - 3 * 1.25rem) / 3.35 + 1.25rem);
+  aspect-ratio: auto;
+}
+
+html.tv-mode .library-grid .media-card-feature {
   grid-column: span 4;
 }
 
-html.tv-mode .media-card-poster,
-html.tv-mode .media-card-standard {
+html.tv-mode .library-grid .media-card-poster,
+html.tv-mode .library-grid .media-card-standard {
   grid-column: span 2;
 }
 
 /* Taller cards so artwork is comfortably visible from a couch */
-html.tv-mode .media-card {
+html.tv-mode .library-grid .media-card {
   min-height: 22rem;
 }
 
-html.tv-mode .media-card-feature {
+html.tv-mode .library-grid .media-card-feature {
   min-height: 26rem;
 }
 
