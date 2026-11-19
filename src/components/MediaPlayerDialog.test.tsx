@@ -213,3 +213,77 @@ describe("MediaPlayerDialog progress bar", () => {
 		expect(media.assignments).toEqual([610]);
 	});
 });
+
+describe("MediaPlayerDialog scrub preview", () => {
+	const trickplay = {
+		width: 320,
+		height: 180,
+		tileWidth: 10,
+		tileHeight: 10,
+		thumbnailCount: 600,
+		interval: 10,
+		tileUrls: Array.from({ length: 6 }, (_, i) => `/thumbs/${i}.jpg`),
+	};
+
+	it("shows the time and the thumbnail for the spot under the mouse", async () => {
+		runtime.beginPlaybackSessionRuntime.mockResolvedValue({
+			streamUrl: HLS_URL,
+			canSyncProgress: true,
+			playMethod: "Transcode",
+			playSessionId: "session-1",
+			subtitleTracks: [],
+			trickplay,
+		});
+		const { view, slider } = await renderPlayer();
+
+		// 25% of 100 minutes = 25:00 = thumbnail 150 → sheet 1, row 5, column 0.
+		pointer("pointermove", slider, 250, { buttons: 0 });
+		const preview = view.container.querySelector(".player-scrub-preview");
+		expect(preview?.textContent).toBe("25:00");
+		const thumb = view.container.querySelector<HTMLDivElement>(".player-scrub-thumb");
+		expect(thumb?.style.backgroundImage).toContain("/thumbs/1.jpg");
+		expect(thumb?.style.backgroundPosition).toBe("0px -540px");
+
+		// React builds onPointerLeave from pointerout towards an outside element.
+		fireEvent.pointerOut(slider, { relatedTarget: document.body });
+		expect(view.container.querySelector(".player-scrub-preview")).toBeNull();
+	});
+
+	it("shows just the time when the server has no thumbnails", async () => {
+		const { view, slider } = await renderPlayer();
+		pointer("pointermove", slider, 500, { buttons: 0 });
+		expect(view.container.querySelector(".player-scrub-preview")?.textContent).toBe("50:00");
+		expect(view.container.querySelector(".player-scrub-thumb")).toBeNull();
+	});
+});
+
+describe("MediaPlayerDialog reloading a progressive transcode", () => {
+	it("pauses the old stream without reporting a pause to Jellyfin", async () => {
+		runtime.beginPlaybackSessionRuntime.mockResolvedValue({
+			streamUrl: "/api/jellyfin-stream?path=%2FVideos%2Fabc%2Fstream.mp4%3FVideoCodec%3Dh264",
+			canSyncProgress: true,
+			playMethod: "Transcode",
+			playSessionId: "session-1",
+			subtitleTracks: [],
+		});
+		const { video, slider, media } = await renderPlayer();
+		let paused = false;
+		Object.defineProperty(video, "paused", { configurable: true, get: () => paused });
+		video.pause = () => {
+			paused = true;
+			fireEvent(video, new Event("pause"));
+		};
+		act(() => media.play(600));
+		runtime.reportPlaybackStateRuntime.mockClear();
+
+		// Nothing is downloaded at 80%, so this restarts the transcode there.
+		pointer("pointerdown", slider, 800, { button: 0, buttons: 1 });
+		pointer("pointerup", slider, 800, { button: 0, buttons: 0 });
+
+		expect(paused).toBe(true);
+		const pauseReports = runtime.reportPlaybackStateRuntime.mock.calls.filter(
+			([call]) => call.data.isPaused,
+		);
+		expect(pauseReports).toEqual([]);
+	});
+});

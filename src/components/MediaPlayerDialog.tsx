@@ -42,6 +42,8 @@ import {
 	reportPlaybackStateRuntime,
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
+import type { TrickplayPreview } from "../lib/trickplay";
+import { PlayerScrubPreview } from "./PlayerScrubPreview";
 import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useRemotePlayback } from "./useRemotePlayback";
 
@@ -265,6 +267,7 @@ export function MediaPlayerDialog({
 			language: string;
 			url: string;
 		}[];
+		trickplay?: TrickplayPreview | null;
 	} | null>(null);
 	// Signed token that lets an AirPlay/Cast receiver fetch the stream without
 	// Aurora's session cookie. Null when login isn't enforced (the proxy is
@@ -319,6 +322,13 @@ export function MediaPlayerDialog({
 
 	const [currentTime, setCurrentTime] = useState(0);
 	const [scrubTime, setScrubTime] = useState<number | null>(null);
+	// Movie time under the mouse while it hovers the bar without dragging.
+	const [hoverTime, setHoverTime] = useState<number | null>(null);
+	// Movie time up to which the stream is downloaded, from the playing spot.
+	const [bufferedEnd, setBufferedEnd] = useState(0);
+	// A pause the player makes itself (the old stream during a reload) is not
+	// the user pausing, so it must not be reported to Jellyfin as one.
+	const suppressPauseReportRef = useRef(false);
 	const [duration, setDuration] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isBuffering, setIsBuffering] = useState(true);
@@ -401,6 +411,8 @@ export function MediaPlayerDialog({
 	// While dragging, the bar follows the pointer rather than the video.
 	const displayTime = scrubTime ?? currentTime;
 	const progress = clampProgress(displayTime, duration);
+	const bufferedProgress = clampProgress(bufferedEnd, duration);
+	const previewTime = scrubTime ?? hoverTime;
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
@@ -468,6 +480,8 @@ export function MediaPlayerDialog({
 		seekDraggingRef.current = false;
 		scrubTimeRef.current = null;
 		setScrubTime(null);
+		setHoverTime(null);
+		setBufferedEnd(0);
 		lastKnownPositionRef.current = (item?.playbackPositionTicks ?? 0) / 10_000_000;
 		setIsBuffering(true);
 		setPlaybackSession(null);
@@ -739,6 +753,10 @@ export function MediaPlayerDialog({
 			if (playbackSession?.canSyncProgress) syncProgress();
 		}
 		function handlePause() {
+			if (suppressPauseReportRef.current) {
+				suppressPauseReportRef.current = false;
+				return;
+			}
 			syncProgress({ isPaused: true, force: true });
 		}
 		function handleEnded() {
@@ -881,7 +899,18 @@ export function MediaPlayerDialog({
 			}, BUFFER_DOWNGRADE_DELAY_MS);
 		}
 
+		const updateBuffered = () => {
+			// Only the stretch the playhead is in matters: that is what plays
+			// without waiting. Nothing is shown while a new stream loads.
+			if (seekPendingRef.current) {
+				setBufferedEnd(0);
+				return;
+			}
+			const range = findBufferedRangeAt(video, video.currentTime);
+			setBufferedEnd(range ? range.end + startTimeOffsetRef.current : 0);
+		};
 		const onTimeUpdate = () => {
+			updateBuffered();
 			const nextTime = video.currentTime + startTimeOffsetRef.current;
 			const optimisticTarget = optimisticSeekTargetRef.current;
 			if (optimisticTarget != null) {
@@ -961,6 +990,7 @@ export function MediaPlayerDialog({
 		};
 
 		video.addEventListener("timeupdate", onTimeUpdate);
+		video.addEventListener("progress", updateBuffered);
 		video.addEventListener("seeking", onSeeking);
 		video.addEventListener("seeked", onSeeked);
 		video.addEventListener("durationchange", onDurationChange);
@@ -973,6 +1003,7 @@ export function MediaPlayerDialog({
 		return () => {
 			clearAdaptiveTimers();
 			video.removeEventListener("timeupdate", onTimeUpdate);
+			video.removeEventListener("progress", updateBuffered);
 			video.removeEventListener("seeking", onSeeking);
 			video.removeEventListener("seeked", onSeeked);
 			video.removeEventListener("durationchange", onDurationChange);
@@ -1175,6 +1206,14 @@ export function MediaPlayerDialog({
 		options?: { qualityProfile?: TranscodeQualityProfile },
 	) {
 		if (!item) return;
+
+		// The old stream would otherwise keep playing (and pull the picture
+		// and sound away from the target) until the new one has loaded.
+		const outgoing = videoRef.current;
+		if (outgoing && !outgoing.paused) {
+			suppressPauseReportRef.current = true;
+			outgoing.pause();
+		}
 
 		const requestId = ++seekReloadRequestIdRef.current;
 		const client = getClientPlaybackContext();
@@ -1464,7 +1503,15 @@ export function MediaPlayerDialog({
 	}
 
 	function handleProgressPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-		if (!seekDraggingRef.current) return;
+		if (!seekDraggingRef.current) {
+			// A mouse hovering the bar previews the spot under it.
+			if (e.pointerType === "mouse") {
+				const d = getBestDuration();
+				if (d != null)
+					setHoverTime(ratioFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()) * d);
+			}
+			return;
+		}
 		e.preventDefault();
 		e.stopPropagation();
 		// The button was released somewhere we never heard about (outside the
@@ -1649,6 +1696,7 @@ export function MediaPlayerDialog({
 								onPointerUp={handleProgressPointerUp}
 								onPointerCancel={handleProgressPointerCancel}
 								onLostPointerCapture={handleProgressPointerCancel}
+								onPointerLeave={() => setHoverTime(null)}
 								onKeyDown={handleProgressKeyDown}
 								role="slider"
 								tabIndex={0}
@@ -1661,7 +1709,19 @@ export function MediaPlayerDialog({
 									total: formatTime(duration),
 								})}
 							>
+								{previewTime != null && duration > 0 ? (
+									<PlayerScrubPreview
+										time={previewTime}
+										duration={duration}
+										label={formatTime(previewTime)}
+										trickplay={playbackSession?.trickplay}
+									/>
+								) : null}
 								<div className="player-progress-track">
+									<div
+										className="player-progress-buffered"
+										style={{ width: `${bufferedProgress}%` }}
+									/>
 									<div className="player-progress-fill" style={{ width: `${progress}%` }} />
 									<div className="player-progress-thumb" style={{ left: `${progress}%` }} />
 								</div>

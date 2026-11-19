@@ -67,6 +67,7 @@ import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } fr
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
 import type { AvatarCandidates, UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
+import type { JellyfinTrickplayManifest } from "./trickplay";
 
 const AURORA_CLIENT_NAME = "Aurora";
 const AURORA_DEVICE_NAME = "Aurora Web";
@@ -204,6 +205,23 @@ export async function createPlaybackSession(
 	return createPlaybackSessionBase(getJellyfinClient(), itemId, {
 		prefersSafeVideo: client?.prefersSafeVideo,
 	});
+}
+
+/** The item's preview thumbnails (`Trickplay`), or null without any. */
+export async function getTrickplayManifest(
+	itemId: string,
+): Promise<JellyfinTrickplayManifest | null> {
+	const client = getJellyfinClient();
+	const item = await client.fetch<{ Trickplay?: JellyfinTrickplayManifest }>(
+		`/Users/${client.config.userId}/Items/${itemId}`,
+		{ Fields: "Trickplay" },
+	);
+	return item.Trickplay ?? null;
+}
+
+/** The server URL Aurora talks to, for building proxy paths. */
+export function getJellyfinServerUrl(): string {
+	return getJellyfinClient().config.url;
 }
 
 export async function syncPlaybackState(input: JellyfinPlaybackSyncInput) {

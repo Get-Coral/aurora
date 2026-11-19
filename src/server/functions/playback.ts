@@ -155,14 +155,29 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 		}) => input,
 	)
 	.handler(async ({ data }) => {
-		const { createPlaybackSession } = await import("@/lib/jellyfin");
+		const { createPlaybackSession, getJellyfinServerUrl, getTrickplayManifest } = await import(
+			"@/lib/jellyfin"
+		);
 		const { jellyfinStreamProxyUrl, setTranscodeQuality } = await import(
 			"@/lib/jellyfin-stream-proxy"
 		);
-		const session = await createPlaybackSession(data.id, data.client);
+		const { buildTrickplayPreview } = await import("@/lib/trickplay");
+		const [session, trickplayManifest] = await Promise.all([
+			createPlaybackSession(data.id, data.client),
+			// Thumbnails are a nicety; an older server or a failed lookup
+			// must never stop playback.
+			getTrickplayManifest(data.id).catch(() => null),
+		]);
 		const proxiedStreamUrl = jellyfinStreamProxyUrl(session.streamUrl);
+		const serverUrl = getJellyfinServerUrl();
 		return {
 			...session,
+			trickplay: buildTrickplayPreview({
+				manifest: trickplayManifest,
+				itemId: data.id,
+				mediaSourceId: session.mediaSourceId,
+				toUrl: (path) => jellyfinStreamProxyUrl(`${serverUrl}${path}`),
+			}),
 			streamUrl:
 				session.playMethod === "Transcode"
 					? setTranscodeQuality(proxiedStreamUrl)
