@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as IptvRouteImport } from './routes/iptv'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as OfflineRouteImport } from './routes/offline'
@@ -19,6 +20,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as ApiIptvRouteImport } from './routes/api/iptv'
 import { Route as ApiJellyfinImageRouteImport } from './routes/api/jellyfin-image'
 import { Route as ApiJellyfinStreamRouteImport } from './routes/api/jellyfin-stream'
 import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
@@ -42,6 +44,11 @@ const AdminRoute = AdminRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IptvRoute = IptvRouteImport.update({
+  id: '/iptv',
+  path: '/iptv',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -77,6 +84,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIptvRoute = ApiIptvRouteImport.update({
+  id: '/api/iptv',
+  path: '/api/iptv',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiJellyfinImageRoute = ApiJellyfinImageRouteImport.update({
@@ -129,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
@@ -136,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/api/iptv': typeof ApiIptvRoute
   '/api/jellyfin-image': typeof ApiJellyfinImageRoute
   '/api/jellyfin-stream': typeof ApiJellyfinStreamRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -150,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
@@ -157,6 +172,7 @@ export interface FileRoutesByTo {
   '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/api/iptv': typeof ApiIptvRoute
   '/api/jellyfin-image': typeof ApiJellyfinImageRoute
   '/api/jellyfin-stream': typeof ApiJellyfinStreamRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -171,6 +187,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
   '/my-list': typeof MyListRoute
   '/offline': typeof OfflineRoute
@@ -178,6 +195,7 @@ export interface FileRoutesById {
   '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/api/iptv': typeof ApiIptvRoute
   '/api/jellyfin-image': typeof ApiJellyfinImageRoute
   '/api/jellyfin-stream': typeof ApiJellyfinStreamRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -194,6 +212,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/iptv'
     | '/login'
     | '/my-list'
     | '/offline'
@@ -201,6 +220,7 @@ export interface FileRouteTypes {
     | '/profiles'
     | '/settings'
     | '/setup'
+    | '/api/iptv'
     | '/api/jellyfin-image'
     | '/api/jellyfin-stream'
     | '/collections/$id'
@@ -215,6 +235,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/iptv'
     | '/login'
     | '/my-list'
     | '/offline'
@@ -222,6 +243,7 @@ export interface FileRouteTypes {
     | '/profiles'
     | '/settings'
     | '/setup'
+    | '/api/iptv'
     | '/api/jellyfin-image'
     | '/api/jellyfin-stream'
     | '/collections/$id'
@@ -235,6 +257,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/iptv'
     | '/login'
     | '/my-list'
     | '/offline'
@@ -242,6 +265,7 @@ export interface FileRouteTypes {
     | '/profiles'
     | '/settings'
     | '/setup'
+    | '/api/iptv'
     | '/api/jellyfin-image'
     | '/api/jellyfin-stream'
     | '/collections/$id'
@@ -257,6 +281,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   HistoryRoute: typeof HistoryRoute
+  IptvRoute: typeof IptvRoute
   LoginRoute: typeof LoginRoute
   MyListRoute: typeof MyListRoute
   OfflineRoute: typeof OfflineRoute
@@ -264,6 +289,7 @@ export interface RootRouteChildren {
   ProfilesRoute: typeof ProfilesRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  ApiIptvRoute: typeof ApiIptvRoute
   ApiJellyfinImageRoute: typeof ApiJellyfinImageRoute
   ApiJellyfinStreamRoute: typeof ApiJellyfinStreamRoute
   CollectionsIdRoute: typeof CollectionsIdRoute
@@ -294,6 +320,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iptv': {
+      id: '/iptv'
+      path: '/iptv'
+      fullPath: '/iptv'
+      preLoaderRoute: typeof IptvRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -343,6 +376,13 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/iptv': {
+      id: '/api/iptv'
+      path: '/api/iptv'
+      fullPath: '/api/iptv'
+      preLoaderRoute: typeof ApiIptvRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/jellyfin-image': {
@@ -429,6 +469,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   HistoryRoute: HistoryRoute,
+  IptvRoute: IptvRoute,
   LoginRoute: LoginRoute,
   MyListRoute: MyListRoute,
   OfflineRoute: OfflineRoute,
@@ -436,6 +477,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfilesRoute: ProfilesRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  ApiIptvRoute: ApiIptvRoute,
   ApiJellyfinImageRoute: ApiJellyfinImageRoute,
   ApiJellyfinStreamRoute: ApiJellyfinStreamRoute,
   CollectionsIdRoute: CollectionsIdRoute,

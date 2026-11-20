@@ -340,6 +340,14 @@ export default function Header() {
 					>
 						{t("nav.myList")}
 					</Link>
+					<Link
+						to="/iptv"
+						className="nav-pill"
+						activeProps={{ className: "nav-pill nav-pill-active" }}
+						data-tv-focusable="true"
+					>
+						IPTV
+					</Link>
 				</div>
 
 				<div

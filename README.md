@@ -196,6 +196,14 @@ Aurora uses Jellyfin as the system of record.
 - `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
 - If you use the onboarding flow, Aurora stores these values in local SQLite instead of requiring env vars
 
+## IPTV in Aurora Web
+
+Set `AURORA_IPTV_ORIGINS` on your Aurora server to enable IPTV. Use a comma-separated list of trusted origins, for example `https://provider.example,https://video.example`. Include the scheme and any non-default port, with no path or credentials. The list also controls redirects and HLS segments and keys. Every allowed origin should be a dedicated IPTV host you trust, since Aurora can fetch its URLs on behalf of users.
+
+Restart Aurora and open **IPTV** in the navigation. Paste an M3U URL or select **Xtream Codes** and enter the server URL, username and password. The Xtream option loads the provider's extended M3U catalog. Search and filter live channels and on-demand titles from that catalog. Aurora keeps the playlist in memory for the current visit and does not save your login. Use an HTTPS provider URL where available, since HTTP sends credentials unencrypted upstream.
+
+Aurora plays HLS and MPEG-TS in supported browsers and plays on-demand files when the browser supports their container and codecs. Aurora does not transcode IPTV. IPTV runs in the hosted web app with one Aurora server process. Reload the source after a server restart.
+
 ## User Profiles
 
 Aurora supports multiple profiles for shared households: everyone picks their own Jellyfin user on a profile screen when opening Aurora.
