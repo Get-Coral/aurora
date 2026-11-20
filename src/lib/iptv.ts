@@ -34,6 +34,14 @@ export function xtreamPlaylist(server: string, username: string, password: strin
 	return url;
 }
 
+export function publicIptvArtwork(value: unknown) {
+	if (typeof value !== "string") return undefined;
+	const match = value.match(
+		/^https?:\/\/image\.tmdb\.org\/t\/p\/(?:original|[wh]\d+(?:_and_[wh]\d+_bestv2)?)\/([a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp))$/i,
+	);
+	return match ? `https://image.tmdb.org/t/p/w342/${match[1]}` : undefined;
+}
+
 export function parseIptvPlaylist(text: string, base: URL) {
 	if (!/^#EXTM3U\b/.test(text.trimStart()) || /^#EXT-X-/m.test(text)) {
 		throw new Error("Expected a channel playlist");
@@ -46,6 +54,7 @@ export function parseIptvPlaylist(text: string, base: URL) {
 		if (!line || line.startsWith("#") || !metadata) continue;
 		const parts = metadata.match(/^(?:[^",]|"[^"]*")*,(.*)$/);
 		const group = metadata.match(/\bgroup-title="([^"]*)"/i)?.[1] ?? "";
+		const artwork = publicIptvArtwork(metadata.match(/\btvg-logo="([^"]*)"/i)?.[1]);
 		const title = parts?.[1]?.trim();
 		metadata = "";
 		if (!title) continue;
@@ -57,7 +66,7 @@ export function parseIptvPlaylist(text: string, base: URL) {
 				: /\.ts$/i.test(url.pathname) || (!vod && !/\.[^/]+$/.test(url.pathname))
 					? "ts"
 					: "file";
-			entries.push({ title, group, vod, format, url });
+			entries.push({ title, group, vod, format, url, artwork });
 		} catch {
 			// Ignore unsupported playlist entries.
 		}
@@ -71,4 +80,5 @@ export interface IptvEntry {
 	vod: boolean;
 	format: string;
 	src: string;
+	artwork?: string;
 }

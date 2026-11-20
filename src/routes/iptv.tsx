@@ -1,4 +1,6 @@
+import "./iptv.css";
 import { createFileRoute } from "@tanstack/react-router";
+import { Film, Play, SlidersHorizontal, Tv, X } from "lucide-react";
 import { type FormEvent, useDeferredValue, useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import type { IptvEntry } from "../lib/iptv";
@@ -12,11 +14,14 @@ const field = "rounded-lg border border-current/25 bg-transparent p-2";
 function IptvPage() {
 	const { t } = useI18n();
 	const [mode, setMode] = useState("m3u");
+	const [sourceOpen, setSourceOpen] = useState(true);
+	const [attempt, setAttempt] = useState(0);
 	const [entries, setEntries] = useState<IptvEntry[]>([]);
 	const [selected, setSelected] = useState<IptvEntry>();
 	const [kind, setKind] = useState("live");
 	const [query, setQuery] = useState("");
 	const [group, setGroup] = useState("");
+	const [browseAll, setBrowseAll] = useState(false);
 	const [page, setPage] = useState(0);
 	const [message, setMessage] = useState("");
 	const [providerStatus, setProviderStatus] = useState<number>();
@@ -26,6 +31,12 @@ function IptvPage() {
 	const search = useDeferredValue(query.trim().toLowerCase());
 	const section = entries.filter((entry) => entry.vod === (kind === "vod"));
 	const groups = [...new Set(section.map((entry) => entry.group).filter(Boolean))].sort();
+	const illustratedGroups = new Set(
+		section.filter((entry) => entry.artwork).map((entry) => entry.group),
+	);
+	const shelfGroups = [...groups].sort(
+		(a, b) => Number(illustratedGroups.has(b)) - Number(illustratedGroups.has(a)),
+	);
 	const filtered = section.filter(
 		(entry) => (!group || entry.group === group) && entry.title.toLowerCase().includes(search),
 	);
@@ -70,7 +81,9 @@ function IptvPage() {
 			}
 			const catalog: IptvEntry[] = await response.json();
 			setEntries(catalog);
+			setSourceOpen(catalog.length === 0);
 			setSelected(undefined);
+			setBrowseAll(false);
 			setKind(catalog.some((entry) => !entry.vod) ? "live" : "vod");
 			setGroup("");
 			setQuery("");
@@ -85,72 +98,100 @@ function IptvPage() {
 	}
 
 	return (
-		<section className="page-wrap grid gap-5 py-8">
-			<h1 className="text-3xl font-bold">IPTV</h1>
+		<section className="page-wrap iptv-library">
+			<div className="iptv-hero">
+				<div className="iptv-hero-copy">
+					<h1>{entries.length ? t(kind === "vod" ? "iptv.vod" : "iptv.live") : "IPTV"}</h1>
+					{entries.length > 0 && (
+						<div className="iptv-tabs" role="group" aria-label={t("iptv.catalog")}>
+							{["live", "vod"].map((value) => (
+								<button
+									type="button"
+									className="nav-pill"
+									aria-pressed={kind === value}
+									key={value}
+									onClick={() => {
+										setKind(value);
+										setBrowseAll(false);
+										setGroup("");
+										setQuery("");
+										setPage(0);
+									}}
+								>
+									{value === "live" ? <Tv size={17} /> : <Film size={17} />}
+									{t(value === "live" ? "iptv.live" : "iptv.vod")}
+								</button>
+							))}
+						</div>
+					)}
+				</div>
+				{entries.length > 0 && (
+					<button
+						type="button"
+						className="nav-pill iptv-source-toggle"
+						aria-expanded={sourceOpen}
+						onClick={() => setSourceOpen(!sourceOpen)}
+					>
+						<SlidersHorizontal size={17} /> {t("iptv.changeSource")}
+					</button>
+				)}
+			</div>
 			{native ? (
 				<p>{t("iptv.native")}</p>
 			) : (
-				<form method="post" onSubmit={load} autoComplete="off" className="grid max-w-xl gap-3">
-					<label className="grid gap-1">
-						{t("iptv.source")}
-						<select
-							className={field}
-							value={mode}
-							disabled={busy}
-							onChange={(event) => setMode(event.target.value)}
-						>
-							<option value="m3u">M3U URL</option>
-							<option value="xtream">Xtream Codes</option>
-						</select>
-					</label>
-					{mode === "xtream" ? (
-						<>
-							<label className="grid gap-1">
-								{t("iptv.server")}
-								<input name="server" type="url" className={field} required />
-							</label>
-							<label className="grid gap-1">
-								{t("iptv.username")}
-								<input name="username" className={field} required />
-							</label>
-							<label className="grid gap-1">
-								{t("iptv.password")}
-								<input name="password" type="password" className={field} required />
-							</label>
-						</>
-					) : (
+				sourceOpen && (
+					<form method="post" onSubmit={load} autoComplete="off" className="iptv-source grid gap-3">
 						<label className="grid gap-1">
-							M3U URL
-							<input name="playlist" type="password" className={field} required />
+							{t("iptv.source")}
+							<select
+								className={field}
+								value={mode}
+								disabled={busy}
+								onChange={(event) => setMode(event.target.value)}
+							>
+								<option value="m3u">M3U URL</option>
+								<option value="xtream">Xtream Codes</option>
+							</select>
 						</label>
-					)}
-					<button type="submit" className="nav-pill justify-self-start" disabled={busy}>
-						{t(busy ? "iptv.loading" : "iptv.connect")}
-					</button>
-				</form>
+						{mode === "xtream" ? (
+							<>
+								<label className="grid gap-1">
+									{t("iptv.server")}
+									<input name="server" type="url" className={field} required />
+								</label>
+								<label className="grid gap-1">
+									{t("iptv.username")}
+									<input name="username" className={field} required />
+								</label>
+								<label className="grid gap-1">
+									{t("iptv.password")}
+									<input name="password" type="password" className={field} required />
+								</label>
+							</>
+						) : (
+							<label className="grid gap-1">
+								M3U URL
+								<input name="playlist" type="password" className={field} required />
+							</label>
+						)}
+						<button type="submit" className="nav-pill justify-self-start" disabled={busy}>
+							{t(busy ? "iptv.loading" : "iptv.connect")}
+						</button>
+					</form>
+				)
 			)}
 			{message && <p role="status">{t(message, { status: providerStatus })}</p>}
 			{selected && (
-				<IptvPlayer key={selected.src} entry={selected} close={() => setSelected(undefined)} />
+				<IptvPlayer
+					key={`${selected.src}-${attempt}`}
+					entry={selected}
+					retry={() => setAttempt(attempt + 1)}
+					close={() => setSelected(undefined)}
+				/>
 			)}
 			{entries.length > 0 && (
 				<>
-					<div className="flex flex-wrap items-end gap-3">
-						<label className="grid gap-1">
-							{t("iptv.catalog")}
-							<select
-								className={field}
-								value={kind}
-								onChange={(event) => {
-									setKind(event.target.value);
-									setGroup("");
-									setPage(0);
-								}}
-							>
-								<option value="live">{t("iptv.live")}</option>
-								<option value="vod">{t("iptv.vod")}</option>
-							</select>
-						</label>
+					<div className="iptv-filters">
 						<label className="grid gap-1">
 							{t("iptv.groups")}
 							<select
@@ -181,22 +222,50 @@ function IptvPage() {
 						</label>
 					</div>
 					{filtered.length === 0 && <p>{t("iptv.noResults")}</p>}
-					<ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-						{filtered.slice(page * pageSize, (page + 1) * pageSize).map((entry) => (
-							<li key={entry.src}>
-								<button
-									type="button"
-									data-tv-focusable="true"
-									aria-pressed={selected === entry}
-									className="nav-pill w-full justify-start text-left"
-									onClick={() => setSelected(entry)}
-								>
-									{entry.title}
-								</button>
-							</li>
-						))}
-					</ul>
-					{filtered.length > pageSize && (
+					{!browseAll && !group && !search && groups.length > 1 ? (
+						<div className="iptv-shelves">
+							<button
+								className="nav-pill justify-self-end"
+								type="button"
+								onClick={() => setBrowseAll(true)}
+							>
+								{t("iptv.viewAll")}
+							</button>
+							{shelfGroups.slice(0, 5).map((name) => (
+								<div key={name}>
+									<div className="iptv-row-heading">
+										<h2>{name}</h2>
+										<button
+											type="button"
+											className="nav-pill"
+											onClick={() => {
+												setGroup(name);
+												setPage(0);
+											}}
+										>
+											{t("iptv.viewGroup")}
+										</button>
+									</div>
+									<ul className="iptv-shelf">
+										{section
+											.filter((entry) => entry.group === name)
+											.sort((a, b) => Number(Boolean(b.artwork)) - Number(Boolean(a.artwork)))
+											.slice(0, 12)
+											.map((entry) => (
+												<IptvCard key={entry.src} entry={entry} play={() => setSelected(entry)} />
+											))}
+									</ul>
+								</div>
+							))}
+						</div>
+					) : (
+						<ul className={kind === "vod" ? "iptv-grid iptv-grid-poster" : "iptv-grid"}>
+							{filtered.slice(page * pageSize, (page + 1) * pageSize).map((entry) => (
+								<IptvCard key={entry.src} entry={entry} play={() => setSelected(entry)} />
+							))}
+						</ul>
+					)}
+					{(browseAll || group || search || groups.length <= 1) && filtered.length > pageSize && (
 						<div className="flex items-center gap-3">
 							<button
 								type="button"
@@ -225,15 +294,51 @@ function IptvPage() {
 	);
 }
 
-function IptvPlayer({ entry, close }: { entry: IptvEntry; close: () => void }) {
+function IptvCard({ entry, play }: { entry: IptvEntry; play: () => void }) {
+	const [missing, setMissing] = useState(false);
+	return (
+		<li>
+			<button type="button" className="iptv-card" data-tv-focusable="true" onClick={play}>
+				<span className={entry.vod ? "iptv-art iptv-art-poster" : "iptv-art"}>
+					{entry.artwork && !missing ? (
+						<img
+							src={entry.artwork}
+							alt=""
+							loading="lazy"
+							referrerPolicy="no-referrer"
+							onError={() => setMissing(true)}
+						/>
+					) : (
+						<span className="iptv-art-placeholder">{entry.vod ? <Film /> : <Tv />}</span>
+					)}
+					<span className="iptv-card-play" aria-hidden="true">
+						<Play size={20} fill="currentColor" />
+					</span>
+				</span>
+				<strong>{entry.title}</strong>
+			</button>
+		</li>
+	);
+}
+
+function IptvPlayer({
+	entry,
+	close,
+	retry,
+}: {
+	entry: IptvEntry;
+	close: () => void;
+	retry: () => void;
+}) {
 	const { t } = useI18n();
 	const video = useRef<HTMLVideoElement>(null);
+	const dialog = useRef<HTMLDialogElement>(null);
 	const [failed, setFailed] = useState(false);
 
 	useEffect(() => {
 		const element = video.current;
 		if (!element) return;
-		element.scrollIntoView({ block: "nearest" });
+		dialog.current?.showModal();
 		let disposed = false;
 		let destroy: (() => void) | undefined;
 		const fail = () => {
@@ -275,22 +380,38 @@ function IptvPlayer({ entry, close }: { entry: IptvEntry; close: () => void }) {
 	}, [entry]);
 
 	return (
-		<div className="grid gap-2">
-			<div className="flex items-center justify-between gap-3">
-				<h2 className="text-xl font-semibold">{entry.title}</h2>
-				<button type="button" className="nav-pill" onClick={close}>
-					{t("iptv.close")}
+		<dialog
+			className="iptv-player"
+			ref={dialog}
+			aria-label={entry.title}
+			onCancel={(event) => {
+				event.preventDefault();
+				close();
+			}}
+		>
+			<div className="iptv-player-bar">
+				<h2>{entry.title}</h2>
+				<button
+					type="button"
+					className="icon-button"
+					data-tv-focusable="true"
+					aria-label={t("iptv.close")}
+					onClick={close}
+				>
+					<X size={22} />
 				</button>
 			</div>
-
-			<video
-				ref={video}
-				controls
-				playsInline
-				className="max-h-[65vh] w-full bg-black"
-				onError={() => setFailed(true)}
-			/>
-			{failed && <p role="alert">{t("iptv.playError")}</p>}
-		</div>
+			<div className="iptv-screen">
+				<video ref={video} controls playsInline onError={() => setFailed(true)} />
+				{failed && (
+					<div className="iptv-player-error" role="alert">
+						<p>{t("iptv.playError")}</p>
+						<button type="button" className="nav-pill" onClick={retry}>
+							{t("iptv.retry")}
+						</button>
+					</div>
+				)}
+			</div>
+		</dialog>
 	);
 }

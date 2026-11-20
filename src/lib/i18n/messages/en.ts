@@ -398,4 +398,8 @@ export const enMessages: MessageDictionary = {
 		"Aurora blocked the IPTV server or a redirect. Check the allowed origins on the Aurora server.",
 	"iptv.providerError": ({ status } = {}) =>
 		`The IPTV server returned HTTP ${status}. Check your subscription and source details.`,
+	"iptv.changeSource": "Change source",
+	"iptv.viewGroup": "View category",
+	"iptv.viewAll": "View all",
+	"iptv.retry": "Try again",
 };

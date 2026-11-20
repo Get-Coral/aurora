@@ -403,4 +403,8 @@ export const nlMessages: MessageDictionary = {
 		"Aurora heeft de IPTV-server of een doorverwijzing geblokkeerd. Controleer de toegestane adressen op de Aurora-server.",
 	"iptv.providerError": ({ status } = {}) =>
 		`De IPTV-server antwoordde met HTTP ${status}. Controleer je abonnement en brongegevens.`,
+	"iptv.changeSource": "Bron wijzigen",
+	"iptv.viewGroup": "Bekijk categorie",
+	"iptv.viewAll": "Bekijk alles",
+	"iptv.retry": "Opnieuw proberen",
 };

@@ -129,7 +129,18 @@ export async function iptvRequest(request: Request) {
 
 		const target = readToken(address.searchParams.get("token") ?? "");
 		const format = address.searchParams.get("format");
-		const { response, url } = await upstream(target, request.signal, request.headers.get("range"));
+		const ffmpeg = /\.mkv$/i.test(target.pathname) ? process.env.AURORA_IPTV_FFMPEG : undefined;
+		const { response, url } = await upstream(
+			target,
+			request.signal,
+			ffmpeg ? null : request.headers.get("range"),
+		);
+		if (ffmpeg && response.body) {
+			const { transcodeIptv } = await import("./iptv-transcode");
+			return new Response(await transcodeIptv(response.body, ffmpeg, request.signal), {
+				headers: { ...headers, "content-type": "video/mp4" },
+			});
+		}
 		const contentType = response.headers.get("content-type") ?? "";
 		if (format === "hls" || /\.m3u8$/i.test(url.pathname) || /mpegurl/i.test(contentType)) {
 			const manifest = await readText(response, 2 * 1024 * 1024);

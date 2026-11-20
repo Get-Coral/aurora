@@ -202,7 +202,7 @@ Set `AURORA_IPTV_ORIGINS` on your Aurora server to enable IPTV. Use a comma-sepa
 
 Restart Aurora and open **IPTV** in the navigation. Paste an M3U URL or select **Xtream Codes** and enter the server URL, username and password. Aurora uses the Xtream API for Xtream Codes and compatible Xtream playlist links. It can fall back to the extended M3U download when the provider does not offer a usable API catalog. Search and filter live channels and on-demand titles from that catalog. Aurora keeps the playlist in memory for the current visit and does not save your login. Use an HTTPS provider URL where available, since HTTP sends credentials unencrypted upstream.
 
-Aurora plays HLS and MPEG-TS in supported browsers and plays on-demand files when the browser supports their container and codecs. Aurora does not transcode IPTV. IPTV runs in the hosted web app with one Aurora server process. Reload the source after a server restart.
+Aurora plays HLS and MPEG-TS in supported browsers and plays on-demand files when the browser supports their container and codecs. Set AURORA_IPTV_FFMPEG to an FFmpeg executable with H.264 and AAC encoding to convert MKV on demand to browser-compatible MP4. This optional mode handles one conversion per Aurora process and supports sequential playback. IPTV runs in the hosted web app with one Aurora server process. Reload the source after a server restart.
 
 ## User Profiles
 

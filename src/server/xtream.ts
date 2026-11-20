@@ -1,3 +1,5 @@
+import { publicIptvArtwork } from "../lib/iptv";
+
 type CatalogRequest = (url: URL) => Promise<unknown>;
 type XtreamItem = Record<string, unknown>;
 
@@ -59,6 +61,7 @@ export async function loadXtreamCatalog(playlist: URL, request: CatalogRequest) 
 			return [
 				{
 					title: item.name.trim(),
+					artwork: publicIptvArtwork(item.stream_icon),
 					group: groups.get(String(item.category_id)) ?? "",
 					vod,
 					format: extension === "m3u8" ? "hls" : extension === "ts" ? "ts" : "file",
