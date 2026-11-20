@@ -37,17 +37,19 @@ describe("IPTV routes", () => {
 	});
 
 	it("loads an Xtream catalog and proxies a TS channel without exposing its upstream URL", async () => {
-		fetchMock.mockResolvedValueOnce(
-			new Response(
-				[
-					"#EXTM3U",
-					'#EXTINF:-1 group-title="News, Local",News HD',
-					"/live/demo/test-secret/1.ts",
-					"#EXTINF:-1,Movie",
-					"/movie/demo/test-secret/2.mp4",
-				].join("\n"),
-			),
-		);
+		fetchMock
+			.mockResolvedValueOnce(new Response("unsupported"))
+			.mockResolvedValueOnce(
+				new Response(
+					[
+						"#EXTM3U",
+						'#EXTINF:-1 group-title="News, Local",News HD',
+						"/live/demo/test-secret/1.ts",
+						"#EXTINF:-1,Movie",
+						"/movie/demo/test-secret/2.mp4",
+					].join("\n"),
+				),
+			);
 		const result = await load({
 			mode: "xtream",
 			server: provider,
@@ -55,7 +57,7 @@ describe("IPTV routes", () => {
 			password: "test-secret",
 		});
 		expect(result.status).toBe(200);
-		const [url] = fetchMock.mock.calls[0] ?? [];
+		const [url] = fetchMock.mock.calls[1] ?? [];
 		expect(String(url)).toBe(
 			`${provider}/get.php?username=demo&password=test-secret&type=m3u_plus&output=ts`,
 		);
@@ -75,7 +77,10 @@ describe("IPTV routes", () => {
 		expect(stream.headers.get("cache-control")).toBe("no-store");
 
 		fetchMock.mockResolvedValueOnce(
-			new Response("movie bytes", { status: 206, headers: { "content-range": "bytes 0-10/100" } }),
+			new Response("movie bytes", {
+				status: 206,
+				headers: { "content-range": "bytes 0-10/100" },
+			}),
 		);
 		const partial = await play(entries[1].src, { range: "bytes=0-10" });
 		expect(partial.status).toBe(206);
@@ -83,9 +88,42 @@ describe("IPTV routes", () => {
 		expect(fetchMock.mock.lastCall?.[1]?.headers).toEqual({ range: "bytes=0-10" });
 	});
 
+	it("loads a pasted Xtream link via the account and catalog API", async () => {
+		fetchMock.mockImplementation(async (input) => {
+			const url = new URL(String(input));
+			expect(url.pathname).toBe("/player_api.php");
+			expect(url.searchParams.get("password")).toBe("placeholder");
+			switch (url.searchParams.get("action")) {
+				case "get_live_streams":
+					return Response.json([{ stream_id: 3, name: "News", category_id: "1" }]);
+				case "get_live_categories":
+					return Response.json([{ category_id: "1", category_name: "News group" }]);
+				case "get_vod_streams":
+					return Response.json([{ stream_id: 5, name: "Film", container_extension: "mp4" }]);
+				case "get_vod_categories":
+					return Response.json([]);
+				default:
+					return Response.json({ user_info: { auth: 1, allowed_output_formats: ["m3u8"] } });
+			}
+		});
+		const result = await load({
+			mode: "m3u",
+			playlist: `${provider}/get.php?username=demo&password=placeholder&type=m3u_plus&output=ts`,
+		});
+		expect(result.status).toBe(200);
+		const body = await result.text();
+		expect(body).not.toContain("placeholder");
+		expect(JSON.parse(body)).toMatchObject([
+			{ title: "News", group: "News group", vod: false, format: "hls" },
+			{ title: "Film", vod: true, format: "file" },
+		]);
+	});
+
 	it("accepts an Xtream M3U link pasted with a trailing comma", async () => {
 		const playlist = `${provider}/get.php?username=demo&password=placeholder&type=m3u_plus&output=ts`;
-		fetchMock.mockResolvedValueOnce(new Response("#EXTM3U\n#EXTINF:-1,Local\n/live.ts"));
+		fetchMock
+			.mockResolvedValueOnce(new Response("unsupported"))
+			.mockResolvedValueOnce(new Response("#EXTM3U\n#EXTINF:-1,Local\n/live.ts"));
 		expect((await load({ mode: "m3u", playlist: `${playlist},` })).status).toBe(200);
 		expect(String(fetchMock.mock.lastCall?.[0])).toBe(playlist);
 	});

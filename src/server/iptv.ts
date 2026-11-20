@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { isRequestAuthorized } from "../lib/auth-store";
 import { httpUrl, m3uPlaylist, parseIptvPlaylist, xtreamPlaylist } from "../lib/iptv";
+import { loadXtreamCatalog } from "./xtream";
 
 const key = randomBytes(32);
 const headers = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
@@ -111,11 +112,16 @@ export async function iptvRequest(request: Request) {
 				body.mode === "xtream"
 					? xtreamPlaylist(body.server, body.username, body.password)
 					: m3uPlaylist(body.playlist);
-			const { response, url } = await upstream(
-				input,
-				AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
-			);
-			const entries = parseIptvPlaylist(await readText(response, maxPlaylistBytes), url)
+			const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
+			const catalog = await loadXtreamCatalog(input, async (endpoint) => {
+				const { response } = await upstream(endpoint, signal);
+				return JSON.parse(await readText(response, maxPlaylistBytes));
+			}).catch(() => null);
+			async function loadPlaylist() {
+				const { response, url } = await upstream(input, signal);
+				return parseIptvPlaylist(await readText(response, maxPlaylistBytes), url);
+			}
+			const entries = (catalog?.length ? catalog : await loadPlaylist())
 				.filter((entry) => allowed(entry.url))
 				.map(({ url: stream, ...entry }) => ({ ...entry, src: streamPath(stream, entry.format) }));
 			return Response.json(entries, { headers });
