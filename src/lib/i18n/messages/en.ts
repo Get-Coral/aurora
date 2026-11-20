@@ -402,4 +402,10 @@ export const enMessages: MessageDictionary = {
 	"iptv.viewGroup": "View category",
 	"iptv.viewAll": "View all",
 	"iptv.retry": "Try again",
+	"iptv.direct": "Direct stream URL",
+	"iptv.saveHome": "Save this source as Home in this browser",
+	"iptv.jellyfinHome": "Use Jellyfin as Home",
+	"iptv.forgetSource": "Forget saved source",
+	"iptv.staleStream": "This playback link has expired. Reload the source.",
+	"iptv.useIptvHome": "Use this IPTV source as Home",
 };

@@ -1,7 +1,7 @@
 import "./iptv.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { Film, Play, SlidersHorizontal, Tv, X } from "lucide-react";
-import { type FormEvent, useDeferredValue, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import type { IptvEntry } from "../lib/iptv";
 import { isNativeShell } from "../lib/runtime-mode";
@@ -14,6 +14,8 @@ const field = "rounded-lg border border-current/25 bg-transparent p-2";
 function IptvPage() {
 	const { t } = useI18n();
 	const [mode, setMode] = useState("m3u");
+	const [iptvHome, setIptvHome] = useState(false);
+	const [saved, setSaved] = useState(false);
 	const [sourceOpen, setSourceOpen] = useState(true);
 	const [attempt, setAttempt] = useState(0);
 	const [entries, setEntries] = useState<IptvEntry[]>([]);
@@ -41,59 +43,95 @@ function IptvPage() {
 		(entry) => (!group || entry.group === group) && entry.title.toLowerCase().includes(search),
 	);
 
-	useEffect(() => {
-		setNative(isNativeShell());
-		return () => pending.current?.abort();
-	}, []);
+	const fetchCatalog = useCallback(
+		async (source: Record<string, unknown>, form?: HTMLFormElement) => {
+			const controller = new AbortController();
+			pending.current?.abort();
+			pending.current = controller;
+			setBusy(true);
+			setMessage("");
+			try {
+				const response = await fetch("/api/iptv", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(source),
+					signal: controller.signal,
+				});
+				if (source.action === "load-saved") {
+					if ([404, 503].includes(response.status)) return;
+					setSaved(true);
+				}
+				if (response.headers.get("x-aurora-iptv-saved")) {
+					setSaved(true);
+					setIptvHome(response.headers.has("x-aurora-iptv-home"));
+				}
+				if (response.status === 503) {
+					setMessage("iptv.disabled");
+					return;
+				}
+				if (!response.ok) {
+					const failure = await response.json().catch(() => null);
+					if (failure?.code === "origin") {
+						setMessage("iptv.blockedOrigin");
+						return;
+					}
+					if (failure?.code === "provider" && typeof failure.status === "number") {
+						setProviderStatus(failure.status);
+						setMessage("iptv.providerError");
+						return;
+					}
+					throw new Error();
+				}
+				const catalog: IptvEntry[] = await response.json();
+				setEntries(catalog);
+				setSourceOpen(catalog.length === 0);
+				setSelected(undefined);
+				setBrowseAll(false);
+				setKind(catalog.some((entry) => !entry.vod) ? "live" : "vod");
+				setGroup("");
+				setQuery("");
+				setPage(0);
+				form?.reset();
+				if (!catalog.length) setMessage("iptv.empty");
+			} catch {
+				if (!controller.signal.aborted) setMessage("iptv.loadError");
+			} finally {
+				if (!controller.signal.aborted) setBusy(false);
+			}
+		},
+		[],
+	);
 
-	async function load(event: FormEvent<HTMLFormElement>) {
+	useEffect(() => {
+		const nativeShell = isNativeShell();
+		setNative(nativeShell);
+		if (!nativeShell) void fetchCatalog({ action: "load-saved" });
+		return () => pending.current?.abort();
+	}, [fetchCatalog]);
+
+	function load(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const form = event.currentTarget;
-		const controller = new AbortController();
-		pending.current?.abort();
-		pending.current = controller;
-		setBusy(true);
+		void fetchCatalog({ ...Object.fromEntries(new FormData(form)), mode }, form);
+	}
+
+	async function changeHome(action: "jellyfin" | "forget" | "iptv-home") {
 		setMessage("");
 		try {
-			const source = Object.fromEntries(new FormData(form));
 			const response = await fetch("/api/iptv", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ ...source, mode }),
-				signal: controller.signal,
+				body: JSON.stringify({ action }),
 			});
-			if (response.status === 503) {
-				setMessage("iptv.disabled");
-				return;
+			if (!response.ok) throw new Error();
+			if (action === "jellyfin") window.location.assign("/");
+			else if (action === "iptv-home") setIptvHome(true);
+			else {
+				setSaved(false);
+				setIptvHome(false);
 			}
-			if (!response.ok) {
-				const failure = await response.json().catch(() => null);
-				if (failure?.code === "origin") {
-					setMessage("iptv.blockedOrigin");
-					return;
-				}
-				if (failure?.code === "provider" && typeof failure.status === "number") {
-					setProviderStatus(failure.status);
-					setMessage("iptv.providerError");
-					return;
-				}
-				throw new Error();
-			}
-			const catalog: IptvEntry[] = await response.json();
-			setEntries(catalog);
-			setSourceOpen(catalog.length === 0);
-			setSelected(undefined);
-			setBrowseAll(false);
-			setKind(catalog.some((entry) => !entry.vod) ? "live" : "vod");
-			setGroup("");
-			setQuery("");
-			setPage(0);
-			form.reset();
-			if (!catalog.length) setMessage("iptv.empty");
 		} catch {
-			if (!controller.signal.aborted) setMessage("iptv.loadError");
-		} finally {
-			if (!controller.signal.aborted) setBusy(false);
+			setMessage("iptv.loadError");
 		}
 	}
 
@@ -151,6 +189,7 @@ function IptvPage() {
 							>
 								<option value="m3u">M3U URL</option>
 								<option value="xtream">Xtream Codes</option>
+								<option value="stream">{t("iptv.direct")}</option>
 							</select>
 						</label>
 						{mode === "xtream" ? (
@@ -170,15 +209,32 @@ function IptvPage() {
 							</>
 						) : (
 							<label className="grid gap-1">
-								M3U URL
+								{mode === "stream" ? t("iptv.direct") : "M3U URL"}
 								<input name="playlist" type="password" className={field} required />
 							</label>
 						)}
+						<label className="flex items-center gap-2">
+							<input type="checkbox" name="saveHome" /> {t("iptv.saveHome")}
+						</label>
 						<button type="submit" className="nav-pill justify-self-start" disabled={busy}>
 							{t(busy ? "iptv.loading" : "iptv.connect")}
 						</button>
 					</form>
 				)
+			)}
+			{saved && (sourceOpen || !entries.length) && (
+				<div className="flex flex-wrap gap-2">
+					<button
+						className="nav-pill"
+						type="button"
+						onClick={() => void changeHome(iptvHome ? "jellyfin" : "iptv-home")}
+					>
+						{t(iptvHome ? "iptv.jellyfinHome" : "iptv.useIptvHome")}
+					</button>
+					<button className="nav-pill" type="button" onClick={() => void changeHome("forget")}>
+						{t("iptv.forgetSource")}
+					</button>
+				</div>
 			)}
 			{message && <p role="status">{t(message, { status: providerStatus })}</p>}
 			{selected && (
@@ -333,51 +389,67 @@ function IptvPlayer({
 	const { t } = useI18n();
 	const video = useRef<HTMLVideoElement>(null);
 	const dialog = useRef<HTMLDialogElement>(null);
-	const [failed, setFailed] = useState(false);
+	const [failed, setFailed] = useState("");
+	const [useFallback, setUseFallback] = useState(false);
 
 	useEffect(() => {
 		const element = video.current;
 		if (!element) return;
-		dialog.current?.showModal();
+		if (!dialog.current?.open) dialog.current?.showModal();
 		let disposed = false;
 		let destroy: (() => void) | undefined;
-		const fail = () => {
-			if (!disposed) setFailed(true);
+		const src = (useFallback && entry.fallbackSrc) || entry.src;
+		const format = useFallback ? "hls" : entry.format;
+		let failedAttempt = false;
+		const fail = (status?: number) => {
+			if (disposed || failedAttempt) return;
+			failedAttempt = true;
+			if (status === 410) setFailed("iptv.staleStream");
+			else if (status === 421) setFailed("iptv.blockedOrigin");
+			else if (!useFallback && entry.fallbackSrc) setUseFallback(true);
+			else setFailed("iptv.playError");
 		};
+		const onError = () => fail();
+		element.addEventListener("error", onError);
+		const startup = setTimeout(() => {
+			if (element.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) fail();
+		}, 12_000);
 		async function attach(media: HTMLVideoElement) {
-			if (entry.format === "hls" && !media.canPlayType("application/vnd.apple.mpegurl")) {
+			if (format === "hls" && !media.canPlayType("application/vnd.apple.mpegurl")) {
 				const { default: Hls } = await import("hls.js");
 				if (disposed) return;
 				if (!Hls.isSupported()) return fail();
 				const player = new Hls();
 				destroy = () => player.destroy();
 				player.on(Hls.Events.ERROR, (_, data) => {
-					if (data.fatal) fail();
+					if (data.fatal) fail(data.response?.code);
 				});
 				player.attachMedia(media);
-				player.loadSource(entry.src);
-			} else if (entry.format === "ts" && !media.canPlayType("video/mp2t")) {
+				player.loadSource(src);
+			} else if (format === "ts" && !media.canPlayType("video/mp2t")) {
 				const { default: mpegts } = await import("mpegts.js");
 				if (disposed) return;
 				if (!mpegts.getFeatureList().mseLivePlayback) return fail();
-				const player = mpegts.createPlayer({ type: "mpegts", isLive: !entry.vod, url: entry.src });
+				const player = mpegts.createPlayer({ type: "mpegts", isLive: !entry.vod, url: src });
 				destroy = () => player.destroy();
-				player.on(mpegts.Events.ERROR, fail);
+				player.on(mpegts.Events.ERROR, (_type, _detail, info) => fail(info?.code));
 				player.attachMediaElement(media);
 				player.load();
 			} else {
-				media.src = entry.src;
+				media.src = src;
 			}
 			void media.play().catch(() => {});
 		}
 		void attach(element).catch(fail);
 		return () => {
 			disposed = true;
+			clearTimeout(startup);
+			element.removeEventListener("error", onError);
 			destroy?.();
 			element.removeAttribute("src");
 			element.load();
 		};
-	}, [entry]);
+	}, [entry, useFallback]);
 
 	return (
 		<dialog
@@ -402,10 +474,10 @@ function IptvPlayer({
 				</button>
 			</div>
 			<div className="iptv-screen">
-				<video ref={video} controls playsInline onError={() => setFailed(true)} />
+				<video ref={video} controls playsInline />
 				{failed && (
 					<div className="iptv-player-error" role="alert">
-						<p>{t("iptv.playError")}</p>
+						<p>{t(failed)}</p>
 						<button type="button" className="nav-pill" onClick={retry}>
 							{t("iptv.retry")}
 						</button>

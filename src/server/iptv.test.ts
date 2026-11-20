@@ -161,7 +161,7 @@ describe("IPTV routes", () => {
 		const blocked = await load(source);
 		expect(blocked.status).toBe(502);
 		expect(await blocked.json()).toEqual({ code: "origin" });
-		expect((await play("/api/iptv?token=invalid")).status).toBe(502);
+		expect((await play("/api/iptv?token=invalid")).status).toBe(410);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

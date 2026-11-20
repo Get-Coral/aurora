@@ -95,7 +95,7 @@ async function readText(response: Request | Response, limit: number) {
 
 export async function iptvRequest(request: Request) {
 	if (!isRequestAuthorized(request)) return new Response(null, { status: 401, headers });
-	if (!process.env.AURORA_IPTV_ORIGINS?.trim()) {
+	if (request.method !== "POST" && !process.env.AURORA_IPTV_ORIGINS?.trim()) {
 		return new Response(null, { status: 503, headers });
 	}
 	try {
@@ -108,26 +108,94 @@ export async function iptvRequest(request: Request) {
 				return new Response(null, { status: 403, headers });
 			}
 			const body = JSON.parse(await readText(request, 16 * 1024));
-			const input =
-				body.mode === "xtream"
+			const responseHeaders = new Headers(headers);
+			const sourceId = request.headers
+				.get("cookie")
+				?.match(/(?:^|;\s*)aurora_iptv_source=([a-f0-9]{64})(?:;|$)/)?.[1];
+			if (body.action === "jellyfin" || body.action === "forget" || body.action === "iptv-home") {
+				const { forgetIptvSource, setIptvHome } = await import("../lib/iptv-source-store");
+				if (body.action === "forget") forgetIptvSource(sourceId);
+				else setIptvHome(sourceId, body.action === "iptv-home");
+				return new Response(null, { status: 204, headers });
+			}
+			const saved =
+				body.action === "load-saved"
+					? (await import("../lib/iptv-source-store")).loadIptvSource(sourceId)
+					: null;
+			if (body.action === "load-saved" && !saved)
+				return new Response(null, { status: 404, headers });
+			if (!process.env.AURORA_IPTV_ORIGINS?.trim())
+				return new Response(null, { status: 503, headers });
+			const input = saved
+				? httpUrl(saved.input)
+				: body.mode === "xtream"
 					? xtreamPlaylist(body.server, body.username, body.password)
 					: m3uPlaylist(body.playlist);
+			const direct = saved?.direct ?? body.mode === "stream";
 			const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
-			const catalog = await loadXtreamCatalog(input, async (endpoint) => {
-				const { response } = await upstream(endpoint, signal);
-				return JSON.parse(await readText(response, maxPlaylistBytes));
-			}).catch(() => null);
 			async function loadPlaylist() {
 				const { response, url } = await upstream(input, signal);
 				return parseIptvPlaylist(await readText(response, maxPlaylistBytes), url);
 			}
-			const entries = (catalog?.length ? catalog : await loadPlaylist())
+			const catalog = direct
+				? null
+				: await loadXtreamCatalog(input, async (endpoint) => {
+						const { response } = await upstream(endpoint, signal);
+						return JSON.parse(await readText(response, maxPlaylistBytes));
+					}).catch(() => null);
+			if (direct && !allowed(input)) throw new IptvSourceError("origin");
+			const format = /\.ts$/i.test(input.pathname)
+				? "ts"
+				: /\.(mp4|mkv|mov|webm)$/i.test(input.pathname)
+					? "file"
+					: "hls";
+			const sourceEntries = direct
+				? [
+						{
+							title: input.hostname,
+							group: "",
+							vod: format === "file",
+							format,
+							url: input,
+						},
+					]
+				: catalog?.length
+					? catalog
+					: await loadPlaylist();
+			const entries = sourceEntries
 				.filter((entry) => allowed(entry.url))
-				.map(({ url: stream, ...entry }) => ({ ...entry, src: streamPath(stream, entry.format) }));
-			return Response.json(entries, { headers });
+				.map(({ url: stream, ...entry }) => {
+					const { fallbackUrl, ...item } = { fallbackUrl: undefined, ...entry };
+					return {
+						...item,
+						src: streamPath(stream, item.format),
+						fallbackSrc: fallbackUrl ? streamPath(fallbackUrl, "hls") : undefined,
+					};
+				});
+
+			if (body.saveHome === "on" && entries.length) {
+				const { saveIptvSource, IPTV_SOURCE_COOKIE, IPTV_SOURCE_MAX_AGE } = await import(
+					"../lib/iptv-source-store"
+				);
+				const id = saveIptvSource(sourceId, input, direct);
+				responseHeaders.set(
+					"set-cookie",
+					`${IPTV_SOURCE_COOKIE}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${IPTV_SOURCE_MAX_AGE}${address.protocol === "https:" ? "; Secure" : ""}`,
+				);
+			}
+			if (saved || (body.saveHome === "on" && entries.length))
+				responseHeaders.set("x-aurora-iptv-saved", "1");
+			if (saved?.home || (body.saveHome === "on" && entries.length))
+				responseHeaders.set("x-aurora-iptv-home", "1");
+			return Response.json(entries, { headers: responseHeaders });
 		}
 
-		const target = readToken(address.searchParams.get("token") ?? "");
+		let target: URL;
+		try {
+			target = readToken(address.searchParams.get("token") ?? "");
+		} catch {
+			return new Response(null, { status: 410, headers });
+		}
 		const format = address.searchParams.get("format");
 		const ffmpeg = /\.mkv$/i.test(target.pathname) ? process.env.AURORA_IPTV_FFMPEG : undefined;
 		const { response, url } = await upstream(
@@ -172,6 +240,9 @@ export async function iptvRequest(request: Request) {
 		}
 		return new Response(response.body, { status: response.status, headers: mediaHeaders });
 	} catch (error) {
+		if (request.method === "GET" && error instanceof IptvSourceError && error.code === "origin") {
+			return new Response(null, { status: 421, headers });
+		}
 		if (request.method === "POST" && error instanceof IptvSourceError) {
 			return Response.json({ code: error.code, status: error.status }, { status: 502, headers });
 		}

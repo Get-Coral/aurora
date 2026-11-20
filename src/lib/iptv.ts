@@ -80,5 +80,6 @@ export interface IptvEntry {
 	vod: boolean;
 	format: string;
 	src: string;
+	fallbackSrc?: string;
 	artwork?: string;
 }

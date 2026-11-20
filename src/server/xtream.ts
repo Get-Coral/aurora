@@ -57,10 +57,15 @@ export async function loadXtreamCatalog(playlist: URL, request: CatalogRequest) 
 			const id = String(item.stream_id);
 			if (!/^\d+$/.test(id) || typeof item.name !== "string" || !item.name.trim()) return [];
 			const extension = vod ? String(item.container_extension ?? "mp4") : liveExtension;
+			const fallbackUrl =
+				!vod && extension === "ts" && formats?.includes("m3u8")
+					? new URL(`live/${credentials}/${id}.m3u8`, api)
+					: undefined;
 			if (!/^[a-z0-9]+$/i.test(extension)) return [];
 			return [
 				{
 					title: item.name.trim(),
+					fallbackUrl,
 					artwork: publicIptvArtwork(item.stream_icon),
 					group: groups.get(String(item.category_id)) ?? "",
 					vod,

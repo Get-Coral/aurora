@@ -16,7 +16,9 @@ import {
 	fetchRecommendedFromItemRuntime,
 	fetchSetupStatusRuntime,
 } from "../lib/runtime-functions";
+import { shouldUseClientRuntime } from "../lib/runtime-mode";
 import { useTvMode } from "../lib/tv-mode";
+import { fetchIptvHome } from "../server/functions/iptv";
 
 const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 
@@ -95,6 +97,8 @@ function getSpotlightInsights(
 
 export const Route = createFileRoute("/")({
 	loader: async ({ context: { queryClient } }) => {
+		if (!IS_PRERENDER_BUILD && !shouldUseClientRuntime() && (await fetchIptvHome()))
+			throw redirect({ to: "/iptv" });
 		if (IS_PRERENDER_BUILD) {
 			return;
 		}

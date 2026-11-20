@@ -407,4 +407,10 @@ export const nlMessages: MessageDictionary = {
 	"iptv.viewGroup": "Bekijk categorie",
 	"iptv.viewAll": "Bekijk alles",
 	"iptv.retry": "Opnieuw proberen",
+	"iptv.direct": "Directe stream-URL",
+	"iptv.saveHome": "Bewaar deze bron als startscherm in deze browser",
+	"iptv.jellyfinHome": "Jellyfin als startscherm",
+	"iptv.forgetSource": "Bewaarde bron verwijderen",
+	"iptv.staleStream": "Deze afspeellink is vervallen. Laad de bron opnieuw.",
+	"iptv.useIptvHome": "Deze IPTV-bron als startscherm",
 };
