@@ -19,6 +19,7 @@ function IptvPage() {
 	const [group, setGroup] = useState("");
 	const [page, setPage] = useState(0);
 	const [message, setMessage] = useState("");
+	const [providerStatus, setProviderStatus] = useState<number>();
 	const [busy, setBusy] = useState(false);
 	const [native, setNative] = useState(false);
 	const pending = useRef<AbortController>(null);
@@ -54,7 +55,19 @@ function IptvPage() {
 				setMessage("iptv.disabled");
 				return;
 			}
-			if (!response.ok) throw new Error();
+			if (!response.ok) {
+				const failure = await response.json().catch(() => null);
+				if (failure?.code === "origin") {
+					setMessage("iptv.blockedOrigin");
+					return;
+				}
+				if (failure?.code === "provider" && typeof failure.status === "number") {
+					setProviderStatus(failure.status);
+					setMessage("iptv.providerError");
+					return;
+				}
+				throw new Error();
+			}
 			const catalog: IptvEntry[] = await response.json();
 			setEntries(catalog);
 			setSelected(undefined);
@@ -116,7 +129,7 @@ function IptvPage() {
 					</button>
 				</form>
 			)}
-			{message && <p role="status">{t(message)}</p>}
+			{message && <p role="status">{t(message, { status: providerStatus })}</p>}
 			{selected && (
 				<IptvPlayer key={selected.src} entry={selected} close={() => setSelected(undefined)} />
 			)}

@@ -399,4 +399,8 @@ export const nlMessages: MessageDictionary = {
 	"iptv.playError":
 		"Deze stream kan niet worden afgespeeld. Controleer of de stream beschikbaar is en of je browser de codecs ondersteunt.",
 	"iptv.native": "Open Aurora in je browser om IPTV te gebruiken.",
+	"iptv.blockedOrigin":
+		"Aurora heeft de IPTV-server of een doorverwijzing geblokkeerd. Controleer de toegestane adressen op de Aurora-server.",
+	"iptv.providerError": ({ status } = {}) =>
+		`De IPTV-server antwoordde met HTTP ${status}. Controleer je abonnement en brongegevens.`,
 };

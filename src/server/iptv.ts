@@ -1,10 +1,19 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { isRequestAuthorized } from "../lib/auth-store";
-import { httpUrl, parseIptvPlaylist, xtreamPlaylist } from "../lib/iptv";
+import { httpUrl, m3uPlaylist, parseIptvPlaylist, xtreamPlaylist } from "../lib/iptv";
 
 const key = randomBytes(32);
 const headers = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
 const maxPlaylistBytes = 32 * 1024 * 1024;
+
+class IptvSourceError extends Error {
+	constructor(
+		readonly code: "origin" | "provider",
+		readonly status?: number,
+	) {
+		super("IPTV source request failed");
+	}
+}
 
 function allowed(url: URL) {
 	return (process.env.AURORA_IPTV_ORIGINS ?? "")
@@ -31,7 +40,7 @@ function readToken(token: string) {
 async function upstream(initial: URL, signal: AbortSignal, range?: string | null) {
 	let url = initial;
 	for (let hops = 0; hops <= 5; hops++) {
-		if (!allowed(url)) throw new Error("IPTV origin is disabled");
+		if (!allowed(url)) throw new IptvSourceError("origin");
 		const timeout = new AbortController();
 		const timer = setTimeout(() => timeout.abort(), 15_000);
 		let response: Response;
@@ -52,7 +61,7 @@ async function upstream(initial: URL, signal: AbortSignal, range?: string | null
 		}
 		if (response.ok) return { response, url };
 		await response.body?.cancel();
-		throw new Error("IPTV request failed");
+		throw new IptvSourceError("provider", response.status);
 	}
 	throw new Error("Too many IPTV redirects");
 }
@@ -101,7 +110,7 @@ export async function iptvRequest(request: Request) {
 			const input =
 				body.mode === "xtream"
 					? xtreamPlaylist(body.server, body.username, body.password)
-					: httpUrl(body.playlist);
+					: m3uPlaylist(body.playlist);
 			const { response, url } = await upstream(
 				input,
 				AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
@@ -145,7 +154,10 @@ export async function iptvRequest(request: Request) {
 				mediaHeaders.set(name, value);
 		}
 		return new Response(response.body, { status: response.status, headers: mediaHeaders });
-	} catch {
+	} catch (error) {
+		if (request.method === "POST" && error instanceof IptvSourceError) {
+			return Response.json({ code: error.code, status: error.status }, { status: 502, headers });
+		}
 		return new Response(null, { status: 502, headers });
 	}
 }

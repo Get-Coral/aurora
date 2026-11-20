@@ -83,6 +83,13 @@ describe("IPTV routes", () => {
 		expect(fetchMock.mock.lastCall?.[1]?.headers).toEqual({ range: "bytes=0-10" });
 	});
 
+	it("accepts an Xtream M3U link pasted with a trailing comma", async () => {
+		const playlist = `${provider}/get.php?username=demo&password=placeholder&type=m3u_plus&output=ts`;
+		fetchMock.mockResolvedValueOnce(new Response("#EXTM3U\n#EXTINF:-1,Local\n/live.ts"));
+		expect((await load({ mode: "m3u", playlist: `${playlist},` })).status).toBe(200);
+		expect(String(fetchMock.mock.lastCall?.[0])).toBe(playlist);
+	});
+
 	it("rewrites nested HLS URLs, segments and encryption keys", async () => {
 		fetchMock
 			.mockResolvedValueOnce(new Response("#EXTM3U\n#EXTINF:-1,Live\n/live/master.m3u8"))
@@ -113,7 +120,9 @@ describe("IPTV routes", () => {
 		fetchMock.mockResolvedValueOnce(
 			new Response(null, { status: 302, headers: { location: "http://other.example/list" } }),
 		);
-		expect((await load(source)).status).toBe(502);
+		const blocked = await load(source);
+		expect(blocked.status).toBe(502);
+		expect(await blocked.json()).toEqual({ code: "origin" });
 		expect((await play("/api/iptv?token=invalid")).status).toBe(502);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});

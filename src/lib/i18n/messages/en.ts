@@ -394,4 +394,8 @@ export const enMessages: MessageDictionary = {
 	"iptv.playError":
 		"Could not play this stream. Check that the stream is available and your browser supports its codecs.",
 	"iptv.native": "Open Aurora in your browser to use IPTV.",
+	"iptv.blockedOrigin":
+		"Aurora blocked the IPTV server or a redirect. Check the allowed origins on the Aurora server.",
+	"iptv.providerError": ({ status } = {}) =>
+		`The IPTV server returned HTTP ${status}. Check your subscription and source details.`,
 };

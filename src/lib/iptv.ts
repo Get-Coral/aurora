@@ -7,6 +7,20 @@ export function httpUrl(value: string, base?: URL): URL {
 	return url;
 }
 
+export function m3uPlaylist(value: string) {
+	const url = httpUrl(value);
+	if (
+		url.pathname.endsWith("/get.php") &&
+		url.searchParams.has("username") &&
+		url.searchParams.has("password") &&
+		/^(?:ts|mpegts|hls|m3u8),$/.test(url.searchParams.get("output") ?? "")
+	) {
+		const output = url.searchParams.get("output") ?? "";
+		url.searchParams.set("output", output.slice(0, -1));
+	}
+	return url;
+}
+
 export function xtreamPlaylist(server: string, username: string, password: string) {
 	const url = httpUrl(server);
 	if (!username.trim() || !password || url.search) throw new Error("Invalid Xtream source");
