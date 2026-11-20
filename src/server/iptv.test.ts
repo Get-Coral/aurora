@@ -1,27 +1,58 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IptvEntry } from "../lib/iptv";
-import { iptvRequest } from "./iptv";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "aurora-iptv-"));
+process.env.AURORA_DATA_DIR = dataDir;
+delete process.env.AURORA_IPTV_SOURCE_KEY;
+delete process.env.AURORA_IPTV_FFMPEG;
 
 const { authorized } = vi.hoisted(() => ({ authorized: vi.fn() }));
-vi.mock("../lib/auth-store", () => ({ isRequestAuthorized: authorized }));
+vi.mock("../lib/auth-store", () => ({
+	isRequestAuthorized: authorized,
+	getSessionByTokenHash: () => null,
+	getSessionByToken: () => null,
+	isLoginEnforced: () => false,
+	SESSION_COOKIE_NAME: "aurora_session",
+}));
+vi.mock("@tanstack/react-start/server", () => ({ getCookie: () => undefined }));
 
 const aurora = "https://aurora.example";
 const provider = "http://provider.example";
 const fetchMock = vi.fn<typeof fetch>();
 
-function load(source: object) {
-	return iptvRequest(
-		new Request(`${aurora}/api/iptv`, {
-			method: "POST",
-			headers: { "content-type": "application/json", origin: aurora },
-			body: JSON.stringify(source),
-		}),
-	);
+async function modules() {
+	const [{ iptvRequest }, store, backend, tokens] = await Promise.all([
+		import("./iptv"),
+		import("../lib/iptv-source-store"),
+		import("./iptv/backend"),
+		import("./iptv/tokens"),
+	]);
+	return { iptvRequest, store, backend, tokens };
 }
 
-function play(src: string, headers?: HeadersInit) {
-	return iptvRequest(new Request(new URL(src, aurora), { headers }));
+async function get(target: string, headers?: HeadersInit) {
+	const { iptvRequest } = await modules();
+	return iptvRequest(new Request(new URL(target, aurora), { headers }));
 }
+
+async function addPlaylist(lines: string[]) {
+	const { store, backend } = await modules();
+	for (const id of store.listIptvSourceIds()) store.deleteIptvSource(id);
+	const id = store.saveIptvSource({ kind: "m3u", url: `${provider}/channels.m3u` });
+	fetchMock.mockResolvedValueOnce(new Response(["#EXTM3U", ...lines].join("\n")));
+	const catalog = await backend.loadServerCatalog(id);
+	return { id, catalog };
+}
+
+afterAll(() => {
+	try {
+		fs.rmSync(dataDir, { recursive: true, force: true });
+	} catch {
+		// The SQLite handle stays open for the process lifetime.
+	}
+});
 
 describe("IPTV routes", () => {
 	beforeEach(() => {
@@ -36,101 +67,40 @@ describe("IPTV routes", () => {
 		vi.unstubAllEnvs();
 	});
 
-	it("loads an Xtream catalog and proxies a TS channel without exposing its upstream URL", async () => {
-		fetchMock
-			.mockResolvedValueOnce(new Response("unsupported"))
-			.mockResolvedValueOnce(
-				new Response(
-					[
-						"#EXTM3U",
-						'#EXTINF:-1 group-title="News, Local",News HD',
-						"/live/demo/test-secret/1.ts",
-						"#EXTINF:-1,Movie",
-						"/movie/demo/test-secret/2.mp4",
-					].join("\n"),
-				),
-			);
-		const result = await load({
-			mode: "xtream",
-			server: provider,
-			username: "demo",
-			password: "test-secret",
-		});
-		expect(result.status).toBe(200);
-		const [url] = fetchMock.mock.calls[1] ?? [];
-		expect(String(url)).toBe(
-			`${provider}/get.php?username=demo&password=test-secret&type=m3u_plus&output=ts`,
-		);
-		const body = await result.text();
-		expect(body).not.toContain("test-secret");
-		expect(body).not.toContain(provider);
-		const entries: IptvEntry[] = JSON.parse(body);
-		expect(entries).toMatchObject([
-			{ title: "News HD", group: "News, Local", vod: false, format: "ts" },
-			{ title: "Movie", vod: true, format: "file" },
+	it("plays a channel and a film by id without exposing the upstream URL", async () => {
+		const { id, catalog } = await addPlaylist([
+			'#EXTINF:-1 group-title="News",News HD',
+			"/live/demo/test-secret/1.ts",
+			"#EXTINF:-1,Movie",
+			"/movie/demo/test-secret/2.mp4",
 		]);
+		const channel = `iptv:${id}:live:${catalog.channels[0]?.pid}`;
+		const movie = `iptv:${id}:vod:${catalog.movies[0]?.pid}`;
+
 		fetchMock.mockResolvedValueOnce(
 			new Response("ts bytes", { headers: { "content-type": "video/mp2t" } }),
 		);
-		const stream = await play(entries[0].src);
+		const stream = await get(`/api/iptv?id=${channel}`);
 		expect(await stream.text()).toBe("ts bytes");
 		expect(stream.headers.get("cache-control")).toBe("no-store");
+		expect(String(fetchMock.mock.lastCall?.[0])).toBe(`${provider}/live/demo/test-secret/1.ts`);
 
 		fetchMock.mockResolvedValueOnce(
-			new Response("movie bytes", {
-				status: 206,
-				headers: { "content-range": "bytes 0-10/100" },
-			}),
+			new Response("movie bytes", { status: 206, headers: { "content-range": "bytes 0-10/100" } }),
 		);
-		const partial = await play(entries[1].src, { range: "bytes=0-10" });
+		const partial = await get(`/api/iptv?id=${movie}`, { range: "bytes=0-10" });
 		expect(partial.status).toBe(206);
 		expect(partial.headers.get("content-range")).toBe("bytes 0-10/100");
-		expect(fetchMock.mock.lastCall?.[1]?.headers).toEqual({ range: "bytes=0-10" });
+		expect(fetchMock.mock.lastCall?.[1]?.headers).toMatchObject({ range: "bytes=0-10" });
+
+		expect((await get(`/api/iptv?id=iptv:${id}:live:unknown`)).status).toBe(404);
+		expect((await get("/api/iptv?id=iptv:000000000000:live:1")).status).toBe(404);
 	});
 
-	it("loads a pasted Xtream link via the account and catalog API", async () => {
-		fetchMock.mockImplementation(async (input) => {
-			const url = new URL(String(input));
-			expect(url.pathname).toBe("/player_api.php");
-			expect(url.searchParams.get("password")).toBe("placeholder");
-			switch (url.searchParams.get("action")) {
-				case "get_live_streams":
-					return Response.json([{ stream_id: 3, name: "News", category_id: "1" }]);
-				case "get_live_categories":
-					return Response.json([{ category_id: "1", category_name: "News group" }]);
-				case "get_vod_streams":
-					return Response.json([{ stream_id: 5, name: "Film", container_extension: "mp4" }]);
-				case "get_vod_categories":
-					return Response.json([]);
-				default:
-					return Response.json({ user_info: { auth: 1, allowed_output_formats: ["m3u8"] } });
-			}
-		});
-		const result = await load({
-			mode: "m3u",
-			playlist: `${provider}/get.php?username=demo&password=placeholder&type=m3u_plus&output=ts`,
-		});
-		expect(result.status).toBe(200);
-		const body = await result.text();
-		expect(body).not.toContain("placeholder");
-		expect(JSON.parse(body)).toMatchObject([
-			{ title: "News", group: "News group", vod: false, format: "hls" },
-			{ title: "Film", vod: true, format: "file" },
-		]);
-	});
-
-	it("accepts an Xtream M3U link pasted with a trailing comma", async () => {
-		const playlist = `${provider}/get.php?username=demo&password=placeholder&type=m3u_plus&output=ts`;
+	it("rewrites nested HLS, keys and segments with links that survive a restart", async () => {
+		const { id, catalog } = await addPlaylist(["#EXTINF:-1,Live", "/live/master.m3u8"]);
+		const channel = `iptv:${id}:live:${catalog.channels[0]?.pid}`;
 		fetchMock
-			.mockResolvedValueOnce(new Response("unsupported"))
-			.mockResolvedValueOnce(new Response("#EXTM3U\n#EXTINF:-1,Local\n/live.ts"));
-		expect((await load({ mode: "m3u", playlist: `${playlist},` })).status).toBe(200);
-		expect(String(fetchMock.mock.lastCall?.[0])).toBe(playlist);
-	});
-
-	it("rewrites nested HLS URLs, segments and encryption keys", async () => {
-		fetchMock
-			.mockResolvedValueOnce(new Response("#EXTM3U\n#EXTINF:-1,Live\n/live/master.m3u8"))
 			.mockResolvedValueOnce(
 				new Response("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000\nvariant.m3u8"),
 			)
@@ -138,30 +108,86 @@ describe("IPTV routes", () => {
 				new Response(
 					'#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key?secret=demo"\n#EXTINF:4,\nclip.ts',
 				),
-			)
-			.mockResolvedValueOnce(new Response("test segment"));
-		const result = await load({ mode: "m3u", playlist: `${provider}/channels.m3u` });
-		const [entry]: IptvEntry[] = await result.json();
-		const master = await (await play(entry.src)).text();
-		const variant = await (await play(master.split("\n")[2])).text();
+			);
+		const master = await (await get(`/api/iptv?id=${channel}`)).text();
+		const variant = await (await get(master.split("\n")[2] ?? "")).text();
 		expect(variant).toMatch(/URI="\/api\/iptv\?token=/);
 		expect(variant).not.toContain("secret");
-		expect(await (await play(variant.split("\n")[3])).text()).toBe("test segment");
+
+		vi.resetModules();
+		fetchMock.mockResolvedValueOnce(new Response("test segment"));
+		expect(await (await get(variant.split("\n")[3] ?? "")).text()).toBe("test segment");
 		expect(String(fetchMock.mock.lastCall?.[0])).toBe(`${provider}/live/clip.ts`);
 	});
 
-	it("rejects unauthorized requests, unapproved redirects and forged tokens", async () => {
-		const source = { mode: "m3u", playlist: `${provider}/channels.m3u` };
-		authorized.mockReturnValueOnce(false);
-		expect((await load(source)).status).toBe(401);
-		expect(fetchMock).not.toHaveBeenCalled();
+	it("follows provider redirects to public load balancers only", async () => {
+		const { id, catalog } = await addPlaylist(["#EXTINF:-1,Live", "/live/1.ts"]);
+		const channel = `iptv:${id}:live:${catalog.channels[0]?.pid}`;
+		fetchMock
+			.mockResolvedValueOnce(
+				new Response(null, { status: 302, headers: { location: "http://203.0.113.9/play/1" } }),
+			)
+			.mockResolvedValueOnce(new Response("balanced"));
+		expect(await (await get(`/api/iptv?id=${channel}`)).text()).toBe("balanced");
+
 		fetchMock.mockResolvedValueOnce(
-			new Response(null, { status: 302, headers: { location: "http://other.example/list" } }),
+			new Response(null, { status: 302, headers: { location: "http://10.0.0.5/admin" } }),
 		);
-		const blocked = await load(source);
-		expect(blocked.status).toBe(502);
-		expect(await blocked.json()).toEqual({ code: "origin" });
-		expect((await play("/api/iptv?token=invalid")).status).toBe(410);
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect((await get(`/api/iptv?id=${channel}`)).status).toBe(421);
+
+		vi.stubEnv("AURORA_IPTV_STRICT_ORIGINS", "true");
+		fetchMock.mockResolvedValueOnce(
+			new Response(null, { status: 302, headers: { location: "http://203.0.113.9/play/1" } }),
+		);
+		expect((await get(`/api/iptv?id=${channel}`)).status).toBe(421);
+		expect(fetchMock).toHaveBeenCalledTimes(5);
+	});
+
+	it("rejects unauthorized requests, forged links and unknown images", async () => {
+		const { id, catalog } = await addPlaylist(["#EXTINF:-1,Live", "/live/1.ts"]);
+		const channel = `iptv:${id}:live:${catalog.channels[0]?.pid}`;
+		authorized.mockReturnValue(false);
+		expect((await get(`/api/iptv?id=${channel}`)).status).toBe(401);
+
+		const { mintStreamToken, OPEN_SESSION_REF } = await import("../lib/stream-token");
+		const other = mintStreamToken({
+			itemId: `iptv:${id}:live:other`,
+			sessionRef: OPEN_SESSION_REF,
+		});
+		expect((await get(`/api/iptv?id=${channel}&st=${other.token}`)).status).toBe(401);
+		const valid = mintStreamToken({ itemId: channel, sessionRef: OPEN_SESSION_REF });
+		fetchMock.mockResolvedValueOnce(new Response("cast"));
+		expect(await (await get(`/api/iptv?id=${channel}&st=${valid.token}`)).text()).toBe("cast");
+
+		authorized.mockReturnValue(true);
+		expect((await get("/api/iptv?token=invalid")).status).toBe(410);
+		const { tokens } = await modules();
+		const signed = tokens.signedImagePath("http://203.0.113.9/logo.png");
+		expect((await get(signed.replace(/sig=[^&]+/, "sig=forged"))).status).toBe(404);
+		fetchMock.mockResolvedValueOnce(
+			new Response("<html>", { headers: { "content-type": "text/html" } }),
+		);
+		expect((await get(signed)).status).toBe(415);
+		fetchMock.mockResolvedValueOnce(
+			new Response("png", { headers: { "content-type": "image/png" } }),
+		);
+		const logo = await get(signed);
+		expect(logo.status).toBe(200);
+		expect(logo.headers.get("cache-control")).toContain("max-age");
+	});
+
+	it("never lists credentials and drops a legacy cookie source into the list", async () => {
+		const { store } = await modules();
+		for (const id of store.listIptvSourceIds()) store.deleteIptvSource(id);
+		store.saveIptvSource({
+			kind: "m3u",
+			url: `${provider}/get.php?username=demo&password=test-secret&type=m3u_plus&output=ts`,
+		});
+		const listed = JSON.stringify(store.listIptvSources());
+		expect(listed).not.toContain("test-secret");
+		expect(store.listIptvSources()[0]).toMatchObject({ kind: "xtream", username: "demo" });
+		expect(fs.readFileSync(path.join(dataDir, "aurora.sqlite")).toString("latin1")).not.toContain(
+			"test-secret",
+		);
 	});
 });

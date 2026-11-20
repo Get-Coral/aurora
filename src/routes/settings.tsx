@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Bug, ExternalLink, Github, Heart, Lock, Tv, Users } from "lucide-react";
 import { useState } from "react";
+import { IptvSourcesSection } from "../components/IptvSourcesSection";
 import type { Locale } from "../lib/i18n";
 import { supportedLocales, useI18n } from "../lib/i18n";
 import {
@@ -10,6 +11,7 @@ import {
 	fetchMultiUserSettingsRuntime,
 	fetchOpenSubtitlesKeyRuntime,
 	fetchSetupStatusRuntime,
+	fetchSourcesRuntime,
 	saveOpenSubtitlesKeyRuntime,
 	saveSettingsRuntime,
 	setMultiUserModeRuntime,
@@ -19,8 +21,11 @@ import { useTvMode } from "../lib/tv-mode";
 
 export const Route = createFileRoute("/settings")({
 	loader: async () => {
-		const setupStatus = await fetchSetupStatusRuntime();
-		if (!setupStatus?.configured) {
+		const [setupStatus, sources] = await Promise.all([
+			fetchSetupStatusRuntime(),
+			fetchSourcesRuntime(),
+		]);
+		if (!setupStatus?.configured && !sources.iptvEnabled) {
 			throw redirect({ to: "/setup" });
 		}
 		const multiUser = await fetchMultiUserSettingsRuntime();
@@ -208,7 +213,9 @@ function SettingsPage() {
 					</section>
 				) : null}
 
-				{auth.isAdmin || multiUser.multiUserMode ? (
+				{auth.isAdmin ? <IptvSourcesSection /> : null}
+
+				{setupStatus.configured && (auth.isAdmin || multiUser.multiUserMode) ? (
 					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
 						<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
 							<p className="eyebrow">{t("settings.userProfilesSection")}</p>
@@ -255,7 +262,7 @@ function SettingsPage() {
 					</section>
 				) : null}
 
-				{auth.isAdmin ? (
+				{setupStatus.configured && auth.isAdmin ? (
 					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>
 						<div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
 							<p className="eyebrow">{t("settings.securitySection")}</p>

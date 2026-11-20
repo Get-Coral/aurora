@@ -2,13 +2,13 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LibraryView } from "../components/LibraryView";
 import { useI18n } from "../lib/i18n";
-import { fetchMyListRuntime, fetchSetupStatusRuntime } from "../lib/runtime-functions";
+import { fetchMyListRuntime, fetchSourcesRuntime } from "../lib/runtime-functions";
 
 export const Route = createFileRoute("/my-list")({
 	loader: async ({ context: { queryClient } }) => {
-		const setupStatus = await fetchSetupStatusRuntime();
+		const sources = await fetchSourcesRuntime();
 
-		if (!setupStatus.configured) {
+		if (!sources.jellyfin && !sources.iptv) {
 			throw redirect({ to: "/setup" });
 		}
 

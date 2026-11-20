@@ -1,4 +1,4 @@
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { HeroSection } from "../components/HeroSection";
@@ -10,15 +10,15 @@ import {
 	fetchContinueWatchingRuntime,
 	fetchFavoriteMoviesRuntime,
 	fetchFeaturedRuntime,
+	fetchIptvShelvesRuntime,
+	fetchIptvStatusRuntime,
 	fetchLatestMoviesRuntime,
 	fetchLatestSeriesRuntime,
 	fetchMostPlayedRuntime,
 	fetchRecommendedFromItemRuntime,
 	fetchSetupStatusRuntime,
 } from "../lib/runtime-functions";
-import { shouldUseClientRuntime } from "../lib/runtime-mode";
 import { useTvMode } from "../lib/tv-mode";
-import { fetchIptvHome } from "../server/functions/iptv";
 
 const IS_PRERENDER_BUILD = process.env.TSS_PRERENDERING === "true";
 
@@ -97,66 +97,91 @@ function getSpotlightInsights(
 
 export const Route = createFileRoute("/")({
 	loader: async ({ context: { queryClient } }) => {
-		if (!IS_PRERENDER_BUILD && !shouldUseClientRuntime() && (await fetchIptvHome()))
-			throw redirect({ to: "/iptv" });
 		if (IS_PRERENDER_BUILD) {
-			return;
+			return { jellyfin: true, iptv: false };
 		}
 
-		const setupStatus = await fetchSetupStatusRuntime();
+		const [setupStatus, iptvStatus] = await Promise.all([
+			fetchSetupStatusRuntime(),
+			fetchIptvStatusRuntime().catch(() => ({ enabled: false, sources: 0 })),
+		]);
+		const sources = {
+			jellyfin: setupStatus.configured,
+			iptv: iptvStatus.enabled && iptvStatus.sources > 0,
+		};
 
-		if (!setupStatus.configured) {
+		if (!sources.jellyfin && !sources.iptv) {
 			throw redirect({ to: "/setup" });
 		}
 
 		await Promise.all([
-			queryClient.ensureQueryData({
-				queryKey: ["featured"],
-				queryFn: () => fetchFeaturedRuntime(),
-			}),
+			...(sources.jellyfin
+				? [
+						queryClient.ensureQueryData({
+							queryKey: ["featured"],
+							queryFn: () => fetchFeaturedRuntime(),
+						}),
+						queryClient.ensureQueryData({
+							queryKey: ["latest-movies"],
+							queryFn: () => fetchLatestMoviesRuntime(),
+						}),
+						queryClient.ensureQueryData({
+							queryKey: ["latest-series"],
+							queryFn: () => fetchLatestSeriesRuntime(),
+						}),
+					]
+				: []),
 			queryClient.ensureQueryData({
 				queryKey: ["continue-watching"],
 				queryFn: () => fetchContinueWatchingRuntime(),
 			}),
-			queryClient.ensureQueryData({
-				queryKey: ["latest-movies"],
-				queryFn: () => fetchLatestMoviesRuntime(),
-			}),
-			queryClient.ensureQueryData({
-				queryKey: ["latest-series"],
-				queryFn: () => fetchLatestSeriesRuntime(),
-			}),
 		]);
+		return sources;
 	},
 	component: HomePage,
 });
 
 function HomePage() {
 	const { t } = useI18n();
-	const { data: featured } = useSuspenseQuery({
+	const sources = Route.useLoaderData() ?? { jellyfin: true, iptv: false };
+	const { data: featured = null } = useQuery({
 		queryKey: ["featured"],
 		queryFn: () => fetchFeaturedRuntime(),
+		enabled: sources.jellyfin,
 	});
-	const { data: continueWatching } = useSuspenseQuery({
+	const { data: continueWatching = [] } = useQuery({
 		queryKey: ["continue-watching"],
 		queryFn: () => fetchContinueWatchingRuntime(),
 	});
-	const { data: latestMovies } = useSuspenseQuery({
+	const { data: latestMovies = [] } = useQuery({
 		queryKey: ["latest-movies"],
 		queryFn: () => fetchLatestMoviesRuntime(),
+		enabled: sources.jellyfin,
 	});
-	const { data: latestSeries } = useSuspenseQuery({
+	const { data: latestSeries = [] } = useQuery({
 		queryKey: ["latest-series"],
 		queryFn: () => fetchLatestSeriesRuntime(),
+		enabled: sources.jellyfin,
 	});
 	const { data: favoriteMovies = [] } = useQuery({
 		queryKey: ["favorite-movies"],
 		queryFn: () => fetchFavoriteMoviesRuntime(),
+		enabled: sources.jellyfin,
 	});
 	const { data: mostPlayed = [] } = useQuery({
 		queryKey: ["most-played"],
 		queryFn: () => fetchMostPlayedRuntime(),
+		enabled: sources.jellyfin,
 	});
+	const { data: iptvShelves } = useQuery({
+		queryKey: ["iptv-shelves"],
+		queryFn: () => fetchIptvShelvesRuntime(),
+		enabled: sources.iptv,
+		staleTime: 60_000,
+	});
+	const iptvLive = iptvShelves?.live ?? [];
+	const iptvMovies = iptvShelves?.movies ?? [];
+	const iptvSeries = iptvShelves?.series ?? [];
 	const [heroIndex, setHeroIndex] = useState(0);
 	const [insightIndex, setInsightIndex] = useState(0);
 	const [screensaverActive, setScreensaverActive] = useState(false);
@@ -169,9 +194,13 @@ function HomePage() {
 	const screensaverCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const screensaverClockRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-	const heroPool = [...(featured ? [featured] : []), ...latestMovies, ...latestSeries].filter(
-		(item, index, arr) => arr.findIndex((c) => c.id === item.id) === index,
-	);
+	const heroPool = [
+		...(featured ? [featured] : []),
+		...latestMovies,
+		...latestSeries,
+		...iptvSeries.filter((item) => item.backdropUrl),
+		...(sources.jellyfin ? [] : iptvMovies.filter((item) => item.posterUrl)),
+	].filter((item, index, arr) => arr.findIndex((c) => c.id === item.id) === index);
 
 	useEffect(() => {
 		if (heroTimerRef.current) clearInterval(heroTimerRef.current);
@@ -239,7 +268,13 @@ function HomePage() {
 		},
 		enabled: Boolean(spotlightItem?.id),
 	});
-	const companionItems = [...continueWatching, ...latestMovies, ...latestSeries]
+	const companionItems = [
+		...continueWatching,
+		...latestMovies,
+		...latestSeries,
+		...iptvMovies,
+		...iptvSeries,
+	]
 		.filter(
 			(item, index, array) =>
 				item.id !== spotlightItem?.id &&
@@ -302,7 +337,7 @@ function HomePage() {
 			<div className="home-gradient-band" />
 
 			<div className="page-wrap home-sections">
-				{!tvMode ? (
+				{!tvMode && sources.jellyfin ? (
 					<section className="overview-band">
 						<div className="overview-card">
 							<p className="eyebrow">{t("home.libraryPulse")}</p>
@@ -335,70 +370,118 @@ function HomePage() {
 					emptyTitle={t("home.continue.emptyTitle")}
 					emptyCopy={t("home.continue.emptyCopy")}
 				/>
-				<SectionShelf
-					id="movies"
-					title={t("home.movies.title")}
-					subtitle={t("home.movies.subtitle")}
-					items={latestMovies}
-					onSelect={dispatchSelect}
-					onPlay={(item) => dispatchPlay(item, latestMovies)}
-					onToggleFavorite={(item) =>
-						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-					}
-					browseTo="/library/movies"
-				/>
-				<SectionShelf
-					id="favorites"
-					title={t("home.favorites.title")}
-					subtitle={t("home.favorites.subtitle")}
-					items={favoriteMovies}
-					onSelect={dispatchSelect}
-					onPlay={(item) => dispatchPlay(item, favoriteMovies)}
-					onToggleFavorite={(item) =>
-						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-					}
-					browseTo="/my-list"
-					emptyTitle={t("home.favorites.emptyTitle")}
-					emptyCopy={t("home.favorites.emptyCopy")}
-				/>
-				<SectionShelf
-					id="series"
-					title={t("home.series.title")}
-					subtitle={t("home.series.subtitle")}
-					items={latestSeries}
-					onSelect={dispatchSelect}
-					onPlay={(item) => dispatchPlay(item, latestSeries)}
-					onToggleFavorite={(item) =>
-						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-					}
-					browseTo="/library/series"
-				/>
-				<SectionShelf
-					id="recommended"
-					title={t("home.recommended.title")}
-					subtitle={t("home.recommended.subtitle")}
-					items={recommendedItems}
-					onSelect={dispatchSelect}
-					onPlay={(item) => dispatchPlay(item, recommendedItems)}
-					onToggleFavorite={(item) =>
-						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-					}
-					browseTo="/library/movies"
-					emptyTitle={t("home.recommended.emptyTitle")}
-					emptyCopy={t("home.recommended.emptyCopy")}
-				/>
-				{mostPlayed.length > 0 ? (
+				{iptvLive.length > 0 ? (
 					<SectionShelf
-						id="most-played"
-						title={t("home.mostPlayed.title")}
-						subtitle={t("home.mostPlayed.subtitle")}
-						items={mostPlayed}
+						id="live"
+						title={t("home.live.title")}
+						subtitle={t("home.live.subtitle")}
+						items={iptvLive}
 						onSelect={dispatchSelect}
-						onPlay={(item) => dispatchPlay(item, mostPlayed)}
+						onPlay={(item) => dispatchPlay(item, [item])}
 						onToggleFavorite={(item) =>
 							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
 						}
-						browseTo="/history"
+						browseTo="/iptv"
+					/>
+				) : null}
+				{sources.jellyfin ? (
+					<>
+						<SectionShelf
+							id="movies"
+							title={t("home.movies.title")}
+							subtitle={t("home.movies.subtitle")}
+							items={latestMovies}
+							onSelect={dispatchSelect}
+							onPlay={(item) => dispatchPlay(item, latestMovies)}
+							onToggleFavorite={(item) =>
+								favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+							}
+							browseTo="/library/movies"
+						/>
+						<SectionShelf
+							id="favorites"
+							title={t("home.favorites.title")}
+							subtitle={t("home.favorites.subtitle")}
+							items={favoriteMovies}
+							onSelect={dispatchSelect}
+							onPlay={(item) => dispatchPlay(item, favoriteMovies)}
+							onToggleFavorite={(item) =>
+								favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+							}
+							browseTo="/my-list"
+							emptyTitle={t("home.favorites.emptyTitle")}
+							emptyCopy={t("home.favorites.emptyCopy")}
+						/>
+						<SectionShelf
+							id="series"
+							title={t("home.series.title")}
+							subtitle={t("home.series.subtitle")}
+							items={latestSeries}
+							onSelect={dispatchSelect}
+							onPlay={(item) => dispatchPlay(item, latestSeries)}
+							onToggleFavorite={(item) =>
+								favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+							}
+							browseTo="/library/series"
+						/>
+						<SectionShelf
+							id="recommended"
+							title={t("home.recommended.title")}
+							subtitle={t("home.recommended.subtitle")}
+							items={recommendedItems}
+							onSelect={dispatchSelect}
+							onPlay={(item) => dispatchPlay(item, recommendedItems)}
+							onToggleFavorite={(item) =>
+								favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+							}
+							browseTo="/library/movies"
+							emptyTitle={t("home.recommended.emptyTitle")}
+							emptyCopy={t("home.recommended.emptyCopy")}
+						/>
+						{mostPlayed.length > 0 ? (
+							<SectionShelf
+								id="most-played"
+								title={t("home.mostPlayed.title")}
+								subtitle={t("home.mostPlayed.subtitle")}
+								items={mostPlayed}
+								onSelect={dispatchSelect}
+								onPlay={(item) => dispatchPlay(item, mostPlayed)}
+								onToggleFavorite={(item) =>
+									favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+								}
+								browseTo="/history"
+							/>
+						) : null}
+					</>
+				) : null}
+				{iptvMovies.length > 0 ? (
+					<SectionShelf
+						id="iptv-movies"
+						title={t("home.iptvMovies.title")}
+						subtitle={t("home.iptvMovies.subtitle")}
+						items={iptvMovies}
+						onSelect={dispatchSelect}
+						onPlay={(item) => dispatchPlay(item, iptvMovies)}
+						onToggleFavorite={(item) =>
+							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+						}
+						browseTo="/iptv"
+						browseSearch={{ tab: "vod" }}
+					/>
+				) : null}
+				{iptvSeries.length > 0 ? (
+					<SectionShelf
+						id="iptv-series"
+						title={t("home.iptvSeries.title")}
+						subtitle={t("home.iptvSeries.subtitle")}
+						items={iptvSeries}
+						onSelect={dispatchSelect}
+						onPlay={dispatchSelect}
+						onToggleFavorite={(item) =>
+							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+						}
+						browseTo="/iptv"
+						browseSearch={{ tab: "series" }}
 					/>
 				) : null}
 			</div>

@@ -8,12 +8,12 @@ import { MediaSpotlightDialog } from "../components/MediaSpotlightDialog";
 import { useFavoriteAction } from "../components/useFavoriteAction";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
-import { fetchSetupStatusRuntime, fetchWatchHistoryRuntime } from "../lib/runtime-functions";
+import { fetchSourcesRuntime, fetchWatchHistoryRuntime } from "../lib/runtime-functions";
 
 export const Route = createFileRoute("/history")({
 	loader: async () => {
-		const setupStatus = await fetchSetupStatusRuntime();
-		if (!setupStatus.configured) throw redirect({ to: "/setup" });
+		const sources = await fetchSourcesRuntime();
+		if (!sources.jellyfin && !sources.iptv) throw redirect({ to: "/setup" });
 	},
 	component: HistoryPage,
 });

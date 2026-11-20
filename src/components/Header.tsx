@@ -18,7 +18,9 @@ import {
 	clearActiveUserRuntime,
 	fetchAuthStatusRuntime,
 	fetchCurrentProfileRuntime,
+	fetchIptvStatusRuntime,
 	fetchSearchRuntime,
+	fetchSetupStatusRuntime,
 	fetchUsernameRuntime,
 	logoutRuntime,
 } from "../lib/runtime-functions";
@@ -43,6 +45,18 @@ export default function Header() {
 		queryKey: ["auth-status"],
 		queryFn: () => fetchAuthStatusRuntime(),
 	});
+	const { data: setupStatus } = useQuery({
+		queryKey: ["setup-status"],
+		queryFn: () => fetchSetupStatusRuntime(),
+		staleTime: 60_000,
+	});
+	const { data: iptvStatus } = useQuery({
+		queryKey: ["iptv-status"],
+		queryFn: () => fetchIptvStatusRuntime(),
+		staleTime: 60_000,
+	});
+	const hasJellyfin = setupStatus?.configured ?? true;
+	const hasIptv = Boolean(iptvStatus?.enabled && iptvStatus.sources > 0);
 	const loginRequired = authStatus?.required ?? false;
 	const canAdminister = authStatus?.isAdmin ?? true;
 	const [searchOpen, setSearchOpen] = useState(false);
@@ -290,47 +304,51 @@ export default function Header() {
 					>
 						{t("nav.home")}
 					</Link>
-					<Link
-						to="/library/movies"
-						search={{
-							sort: "DateCreated",
-							order: "Descending",
-							ratings: "",
-							decade: "",
-							minScore: 0,
-							watchStatus: undefined,
-						}}
-						className="nav-pill"
-						activeProps={{ className: "nav-pill nav-pill-active" }}
-						data-tv-focusable="true"
-					>
-						{t("nav.movies")}
-					</Link>
-					<Link
-						to="/library/series"
-						search={{
-							sort: "DateCreated",
-							order: "Descending",
-							ratings: "",
-							decade: "",
-							minScore: 0,
-							watchStatus: undefined,
-						}}
-						className="nav-pill"
-						activeProps={{ className: "nav-pill nav-pill-active" }}
-						data-tv-focusable="true"
-					>
-						{t("nav.series")}
-					</Link>
-					{!tvMode ? (
-						<Link
-							to="/collections"
-							className="nav-pill"
-							activeProps={{ className: "nav-pill nav-pill-active" }}
-							data-tv-focusable="true"
-						>
-							{t("nav.collections")}
-						</Link>
+					{hasJellyfin ? (
+						<>
+							<Link
+								to="/library/movies"
+								search={{
+									sort: "DateCreated",
+									order: "Descending",
+									ratings: "",
+									decade: "",
+									minScore: 0,
+									watchStatus: undefined,
+								}}
+								className="nav-pill"
+								activeProps={{ className: "nav-pill nav-pill-active" }}
+								data-tv-focusable="true"
+							>
+								{t("nav.movies")}
+							</Link>
+							<Link
+								to="/library/series"
+								search={{
+									sort: "DateCreated",
+									order: "Descending",
+									ratings: "",
+									decade: "",
+									minScore: 0,
+									watchStatus: undefined,
+								}}
+								className="nav-pill"
+								activeProps={{ className: "nav-pill nav-pill-active" }}
+								data-tv-focusable="true"
+							>
+								{t("nav.series")}
+							</Link>
+							{!tvMode ? (
+								<Link
+									to="/collections"
+									className="nav-pill"
+									activeProps={{ className: "nav-pill nav-pill-active" }}
+									data-tv-focusable="true"
+								>
+									{t("nav.collections")}
+								</Link>
+							) : null}
+						</>
 					) : null}
 					<Link
 						to="/my-list"
@@ -340,14 +358,17 @@ export default function Header() {
 					>
 						{t("nav.myList")}
 					</Link>
-					<Link
-						to="/iptv"
-						className="nav-pill"
-						activeProps={{ className: "nav-pill nav-pill-active" }}
-						data-tv-focusable="true"
-					>
-						IPTV
-					</Link>
+					{hasIptv ? (
+						<Link
+							to="/iptv"
+							search={{ tab: "live" }}
+							className="nav-pill"
+							activeProps={{ className: "nav-pill nav-pill-active" }}
+							data-tv-focusable="true"
+						>
+							{t("nav.liveTv")}
+						</Link>
+					) : null}
 				</div>
 
 				<div
@@ -389,7 +410,14 @@ export default function Header() {
 												<strong>{item.title}</strong>
 												<span>
 													{[
-														item.type === "series" ? t("search.series") : t("search.movie"),
+														item.type === "series"
+															? t("search.series")
+															: item.type === "channel"
+																? t("search.channel")
+																: item.type === "episode"
+																	? t("search.episode")
+																	: t("search.movie"),
+														item.source === "iptv" ? (item.group ?? "IPTV") : null,
 														item.year,
 													]
 														.filter(Boolean)

@@ -120,13 +120,15 @@ export function MediaSpotlightDialog({
 	}
 
 	const playLabel =
-		activeItem.type === "series"
-			? isResumable(nextUp[0] ?? episodes[0] ?? detail)
-				? t("hero.resumeNow")
-				: t("hero.playNow")
-			: resumable
-				? t("hero.resumeNow")
-				: t("hero.playNow");
+		activeItem.type === "channel"
+			? t("dialog.watchLive")
+			: activeItem.type === "series"
+				? isResumable(nextUp[0] ?? episodes[0] ?? detail)
+					? t("hero.resumeNow")
+					: t("hero.playNow")
+				: resumable
+					? t("hero.resumeNow")
+					: t("hero.playNow");
 
 	// ── TV mode: full-screen detail view ──────────────────────────────────────
 	if (tvMode) {
@@ -173,7 +175,11 @@ export function MediaSpotlightDialog({
 							) : null}
 						</div>
 
-						{detail.overview ? <p className="tv-detail-overview">{detail.overview}</p> : null}
+						{detail.type === "channel" ? (
+							<ChannelGuide epg={detail.epg} />
+						) : detail.overview ? (
+							<p className="tv-detail-overview">{detail.overview}</p>
+						) : null}
 
 						<div className="tv-detail-actions">
 							<button
@@ -199,7 +205,7 @@ export function MediaSpotlightDialog({
 									</>
 								)}
 							</button>
-							{activeItem.type !== "series" ? (
+							{activeItem.type !== "series" && activeItem.type !== "channel" ? (
 								<button
 									type="button"
 									className="secondary-action"
@@ -413,14 +419,20 @@ export function MediaSpotlightDialog({
 				<div className="dialog-body">
 					<div className="dialog-header-block">
 						{detail.posterUrl ? (
-							<img src={detail.posterUrl} alt={detail.title} className="dialog-poster-thumb" />
+							<img
+								src={detail.posterUrl}
+								alt={detail.title}
+								className={`dialog-poster-thumb${detail.type === "channel" ? " dialog-poster-logo" : ""}`}
+							/>
 						) : null}
 
 						<div className="dialog-copy-block">
 							<p className="eyebrow">
 								{detail.type === "series"
 									? t("dialog.seriesSpotlight")
-									: t("dialog.movieSpotlight")}
+									: detail.type === "channel"
+										? t("dialog.liveSpotlight")
+										: t("dialog.movieSpotlight")}
 							</p>
 							<h2 id="aurora-dialog-title" className="dialog-title">
 								{detail.title}
@@ -461,7 +473,7 @@ export function MediaSpotlightDialog({
 										</>
 									)}
 								</button>
-								{activeItem.type !== "series" ? (
+								{activeItem.type !== "series" && activeItem.type !== "channel" ? (
 									<button
 										type="button"
 										className="secondary-action"
@@ -480,7 +492,11 @@ export function MediaSpotlightDialog({
 								) : null}
 							</div>
 
-							<p className="dialog-overview">{detail.overview || t("dialog.noSynopsis")}</p>
+							{detail.type === "channel" ? (
+								<ChannelGuide epg={detail.epg} loading={loadingState} />
+							) : (
+								<p className="dialog-overview">{detail.overview || t("dialog.noSynopsis")}</p>
+							)}
 
 							{detail.genres.length ? (
 								<div className="chip-row">
@@ -627,33 +643,35 @@ export function MediaSpotlightDialog({
 						</section>
 					) : null}
 
-					<section className="detail-section">
-						<div className="detail-section-head">
-							<p className="eyebrow">{t("dialog.castCrew")}</p>
-							{loadingState ? (
-								<span className="detail-loading">{t("dialog.loadingCredits")}</span>
-							) : null}
-						</div>
-						{detail.cast.length ? (
-							<div className="cast-grid">
-								{detail.cast.map((person) => (
-									<article key={person.id} className="cast-card">
-										{person.imageUrl ? (
-											<img src={person.imageUrl} alt={person.name} className="cast-photo" />
-										) : (
-											<div className="cast-photo cast-photo-fallback">
-												<span>{person.name.slice(0, 1)}</span>
-											</div>
-										)}
-										<strong>{person.name}</strong>
-										<span>{person.role ?? person.type ?? t("dialog.castFallback")}</span>
-									</article>
-								))}
+					{detail.type !== "channel" ? (
+						<section className="detail-section">
+							<div className="detail-section-head">
+								<p className="eyebrow">{t("dialog.castCrew")}</p>
+								{loadingState ? (
+									<span className="detail-loading">{t("dialog.loadingCredits")}</span>
+								) : null}
 							</div>
-						) : (
-							<p className="detail-empty">{t("dialog.noCast")}</p>
-						)}
-					</section>
+							{detail.cast.length ? (
+								<div className="cast-grid">
+									{detail.cast.map((person) => (
+										<article key={person.id} className="cast-card">
+											{person.imageUrl ? (
+												<img src={person.imageUrl} alt={person.name} className="cast-photo" />
+											) : (
+												<div className="cast-photo cast-photo-fallback">
+													<span>{person.name.slice(0, 1)}</span>
+												</div>
+											)}
+											<strong>{person.name}</strong>
+											<span>{person.role ?? person.type ?? t("dialog.castFallback")}</span>
+										</article>
+									))}
+								</div>
+							) : (
+								<p className="detail-empty">{t("dialog.noCast")}</p>
+							)}
+						</section>
+					) : null}
 
 					<section className="detail-section">
 						<div className="detail-section-head">
@@ -694,6 +712,49 @@ export function MediaSpotlightDialog({
 					</section>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function formatClock(time: number) {
+	return new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/** What's on a live channel now and next. */
+function ChannelGuide({ epg, loading }: { epg?: MediaItem["epg"]; loading?: boolean }) {
+	const { t } = useI18n();
+	const now = epg?.now;
+	const next = epg?.next;
+	if (!now && !next) {
+		return (
+			<p className="dialog-overview">{loading ? t("dialog.loadingGuide") : t("dialog.noGuide")}</p>
+		);
+	}
+	const progress = now
+		? Math.min(100, Math.max(0, ((Date.now() - now.start) / (now.end - now.start)) * 100))
+		: 0;
+	return (
+		<div className="channel-guide">
+			{now ? (
+				<div className="channel-guide-row channel-guide-now">
+					<span className="channel-guide-time">
+						{t("dialog.onNow")} · {formatClock(now.start)}–{formatClock(now.end)}
+					</span>
+					<strong>{now.title}</strong>
+					<div className="channel-guide-progress">
+						<span style={{ width: `${progress}%` }} />
+					</div>
+					{now.description ? <p>{now.description}</p> : null}
+				</div>
+			) : null}
+			{next ? (
+				<div className="channel-guide-row">
+					<span className="channel-guide-time">
+						{t("dialog.upNext")} · {formatClock(next.start)}
+					</span>
+					<strong>{next.title}</strong>
+				</div>
+			) : null}
 		</div>
 	);
 }

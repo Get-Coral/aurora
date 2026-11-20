@@ -1,4 +1,5 @@
-import { Check, CheckCircle, Heart, Info, Play, Plus, Star } from "lucide-react";
+import { Check, CheckCircle, Heart, Info, Play, Plus, Radio, Star } from "lucide-react";
+import { useState } from "react";
 import { useI18n } from "../lib/i18n";
 import { isResumable, type MediaItem } from "../lib/media";
 import { useTvMode } from "../lib/tv-mode";
@@ -25,6 +26,12 @@ export function MediaCard({
 	const { tvMode } = useTvMode();
 	const resumable = isResumable(item);
 	const prefetchMediaDetails = usePrefetchMediaDetails();
+	const [imageFailed, setImageFailed] = useState(false);
+	const channel = item.type === "channel";
+	const onNow = item.epg?.now;
+	const liveProgress = onNow
+		? Math.min(100, Math.max(0, ((Date.now() - onNow.start) / (onNow.end - onNow.start)) * 100))
+		: null;
 
 	function handlePrefetch() {
 		void prefetchMediaDetails(item).catch(() => undefined);
@@ -32,7 +39,7 @@ export function MediaCard({
 
 	return (
 		<div
-			className={`media-card media-card-${variant}${item.played ? " media-card-watched" : ""}`}
+			className={`media-card media-card-${variant}${channel ? " media-card-channel" : ""}${item.played && !channel ? " media-card-watched" : ""}`}
 			onClick={onClick}
 			onMouseEnter={handlePrefetch}
 			onFocus={handlePrefetch}
@@ -50,8 +57,10 @@ export function MediaCard({
 			}}
 			data-tv-focusable="true"
 		>
-			{(item.backdropUrl ?? item.posterUrl) ? (
+			{(item.backdropUrl ?? item.posterUrl) && !imageFailed ? (
 				<img
+					onError={() => setImageFailed(true)}
+					referrerPolicy="no-referrer"
 					src={
 						variant === "poster"
 							? (item.posterUrl ?? item.backdropUrl)
@@ -68,7 +77,13 @@ export function MediaCard({
 
 			<div className="card-overlay" />
 
-			{item.played ? (
+			{channel ? (
+				liveProgress != null ? (
+					<div className="card-progress-bar">
+						<div className="card-progress-fill" style={{ width: `${liveProgress}%` }} />
+					</div>
+				) : null
+			) : item.played ? (
 				<div className="card-watched-badge" aria-hidden="true">
 					<CheckCircle size={14} />
 				</div>
@@ -79,12 +94,20 @@ export function MediaCard({
 			) : null}
 
 			<div className="card-topline">
-				<span className="card-format">
-					{item.type === "series"
-						? t("card.series")
-						: variant === "feature"
-							? t("card.tonight")
-							: t("card.feature")}
+				<span className={channel ? "card-format card-format-live" : "card-format"}>
+					{channel ? (
+						<>
+							<Radio size={12} /> {t("card.live")}
+						</>
+					) : item.type === "series" ? (
+						t("card.series")
+					) : item.type === "episode" ? (
+						t("card.episode")
+					) : variant === "feature" ? (
+						t("card.tonight")
+					) : (
+						t("card.feature")
+					)}
 				</span>
 				<div className="card-badges">
 					{item.isFavorite ? (
@@ -152,9 +175,18 @@ export function MediaCard({
 				<div className="card-copy">
 					<p className="card-title">{item.title}</p>
 					<p className="card-subtitle">
-						{[item.year, item.ageRating, item.runtimeMinutes ? `${item.runtimeMinutes}m` : null]
-							.filter(Boolean)
-							.join(" • ") || t("card.instantlyAvailable")}
+						{channel
+							? onNow
+								? t("card.onNow", { title: onNow.title })
+								: (item.group ?? t("card.live"))
+							: [
+									item.type === "episode" && item.seriesTitle ? item.seriesTitle : null,
+									item.year,
+									item.ageRating,
+									item.runtimeMinutes ? `${item.runtimeMinutes}m` : null,
+								]
+									.filter(Boolean)
+									.join(" • ") || t("card.instantlyAvailable")}
 					</p>
 				</div>
 

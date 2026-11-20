@@ -96,7 +96,7 @@ export function prepareSeekReloadUrl(streamUrl: string, ticks: number): string {
  * never hit the proxy, so they are left alone.
  */
 export function withStreamToken(streamUrl: string, token: string | null | undefined): string {
-	if (!token || !streamUrl.startsWith("/api/jellyfin-stream")) return streamUrl;
+	if (!token || !/^\/api\/(?:jellyfin-stream|iptv)\b/.test(streamUrl)) return streamUrl;
 
 	const outer = new URL(streamUrl, "http://x");
 	outer.searchParams.set("st", token);

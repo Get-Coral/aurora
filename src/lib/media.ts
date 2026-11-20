@@ -1,5 +1,13 @@
-export type MediaSource = "jellyfin" | "plex";
-export type MediaType = "movie" | "series" | "episode" | "collection";
+export type MediaSource = "jellyfin" | "plex" | "iptv";
+export type MediaType = "movie" | "series" | "episode" | "collection" | "channel";
+
+/** A programme in a live channel's guide. Times are epoch milliseconds. */
+export interface MediaProgramme {
+	title: string;
+	start: number;
+	end: number;
+	description?: string;
+}
 
 export interface MediaItem {
 	id: string;
@@ -26,6 +34,12 @@ export interface MediaItem {
 	streamUrl?: string;
 	childCount?: number;
 	watchedAt?: string;
+	/** A live channel: no seeking, no progress. */
+	live?: boolean;
+	/** The provider category an IPTV item belongs to. */
+	group?: string;
+	channelNumber?: number;
+	epg?: { now?: MediaProgramme; next?: MediaProgramme };
 }
 
 export interface MediaPerson {

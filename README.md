@@ -196,15 +196,27 @@ Aurora uses Jellyfin as the system of record.
 - `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
 - If you use the onboarding flow, Aurora stores these values in local SQLite instead of requiring env vars
 
-## IPTV in Aurora Web
+## IPTV sources
 
-Set `AURORA_IPTV_ORIGINS` on your Aurora server to enable IPTV. Use a comma-separated list of trusted origins, for example `https://provider.example,https://video.example`. Include the scheme and any non-default port, with no path or credentials. The list also controls redirects and HLS segments and keys. Every allowed origin should be a dedicated IPTV host you trust, since Aurora can fetch its URLs on behalf of users.
+Aurora can show IPTV next to Jellyfin, or on its own. Live channels, films and series from IPTV appear on Home, in search, in My List and in history, open in the same details view and play in the same player as Jellyfin titles.
 
-Restart Aurora and open **IPTV** in the navigation. Paste an M3U URL or select **Xtream Codes** and enter the server URL, username and password. Aurora uses the Xtream API for Xtream Codes and compatible Xtream playlist links. It can fall back to the extended M3U download when the provider does not offer a usable API catalog. Search and filter live channels and on-demand titles from that catalog. By default, Aurora keeps the playlist in memory for the current visit. Use an HTTPS provider URL where available, since HTTP sends credentials unencrypted upstream.
+Set `AURORA_IPTV_ORIGINS` on your Aurora server to enable IPTV. Use a comma-separated list of the origins your sources start from, for example `https://provider.example`. Include the scheme and any non-default port, with no path or credentials. Aurora only contacts a source through these origins.
 
-Select **Direct stream URL** for a single HLS, TS, or browser-compatible video URL. Enable **Save this source as Home in this browser** to open the IPTV library from Aurora's Home link. Aurora stores the source encrypted in SQLite and uses a browser cookie to find it. Use **Change source** to switch Home back to Jellyfin, restore the saved IPTV home, or remove the saved source. An optional 64-character hexadecimal `AURORA_IPTV_SOURCE_KEY` overrides the key file Aurora creates beside the database.
+Xtream providers hand every stream to load balancers whose addresses change per request. Aurora follows those redirects, HLS segments and artwork to public internet addresses and never to private, loopback or link-local networks. Set `AURORA_IPTV_STRICT_ORIGINS=true` to require every hop to be on the allowed list instead.
 
-Aurora plays HLS and MPEG-TS in supported browsers and plays on-demand files when the browser supports their container and codecs. Set AURORA_IPTV_FFMPEG to an FFmpeg executable with H.264 and AAC encoding to convert MKV on demand to browser-compatible MP4. This optional mode handles one conversion per Aurora process and supports sequential playback. IPTV runs in the hosted web app with one Aurora server process. Reload the source after a server restart.
+Add sources in **Settings → IPTV sources**. Without Jellyfin, choose **Use Aurora with IPTV only** on the setup screen. Choose:
+
+- **Xtream Codes** with the server URL, username and password. Aurora loads live TV, films, series with seasons and episodes, film details and the TV guide through the Xtream API. A pasted Xtream M3U link (`get.php?username=…&password=…`) is turned into an Xtream source automatically. If a panel has its API turned off, Aurora reads its M3U download instead.
+- **M3U playlist URL** for any other playlist. Channel numbers, logos, categories and the guide advertised in `url-tvg` are used.
+- **Direct stream URL** for a single HLS, MPEG-TS or video file.
+
+You can give a source its own XMLTV guide URL. Without one, Aurora uses the guide from the provider. Guides are read in the background, so the first page view may only show the provider's short guide.
+
+Sources are shared by everyone using the Aurora server and can only be changed by an administrator (or by anyone before Jellyfin is set up). Aurora stores them encrypted in SQLite, with a key file it creates beside the database. An optional 64-character hexadecimal `AURORA_IPTV_SOURCE_KEY` replaces that key. Passwords and full playlist URLs never reach the browser: streams and artwork go through Aurora with signed links that survive a restart. Watch progress, history and My List for IPTV are kept per Aurora user.
+
+Aurora plays HLS and MPEG-TS in supported browsers and falls back to the provider's HLS when an MPEG-TS channel fails. Films and episodes play when the browser supports their container and codecs. Set `AURORA_IPTV_FFMPEG` to an FFmpeg executable with H.264 and AAC encoding to convert MKV and AVI to browser-compatible MP4 on the fly, including resuming and seeking. This mode handles one conversion at a time per Aurora process, which matches most IPTV accounts' single-connection limit.
+
+In the Android and iOS apps, sources are kept on the device and the app talks to the provider directly. Live channels use the provider's HLS. Raw MPEG-TS playlists and MKV files can't play there.
 
 ## User Profiles
 

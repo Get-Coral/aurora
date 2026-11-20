@@ -1,251 +1,213 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { isRequestAuthorized } from "../lib/auth-store";
-import { httpUrl, m3uPlaylist, parseIptvPlaylist, xtreamPlaylist } from "../lib/iptv";
-import { loadXtreamCatalog } from "./xtream";
+import { parseIptvId } from "../lib/iptv/ids";
+import { resolveStream } from "../lib/iptv/streams";
+import { httpUrl } from "../lib/iptv/urls";
+import { loadServerCatalog, serverSeriesInfo } from "./iptv/backend";
+import { IptvSourceError, iptvEnabled, readText, upstream } from "./iptv/network";
+import { openStreamUrl, sealStreamUrl, verifyImage } from "./iptv/tokens";
 
-const key = randomBytes(32);
-const headers = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
-const maxPlaylistBytes = 32 * 1024 * 1024;
+const baseHeaders = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-class IptvSourceError extends Error {
-	constructor(
-		readonly code: "origin" | "provider",
-		readonly status?: number,
-	) {
-		super("IPTV source request failed");
-	}
+function respond(status: number) {
+	return new Response(null, { status, headers: baseHeaders });
 }
 
-function allowed(url: URL) {
-	return (process.env.AURORA_IPTV_ORIGINS ?? "")
-		.split(",")
-		.some((origin) => origin.trim() === url.origin);
+/**
+ * A receiver playing over AirPlay/Cast fetches the stream itself, without
+ * Aurora's cookie. The same signed token Jellyfin streams use stands in.
+ */
+async function tokenAllows(token: string | null, itemId: string) {
+	if (!token) return false;
+	const { OPEN_SESSION_REF, normalizeItemId, verifyStreamToken } = await import(
+		"../lib/stream-token"
+	);
+	const claims = verifyStreamToken(token);
+	if (!claims || claims.itemId !== normalizeItemId(itemId)) return false;
+	if (claims.sessionRef === OPEN_SESSION_REF) return true;
+	const { getSessionByTokenHash } = await import("../lib/auth-store");
+	return Boolean(getSessionByTokenHash(claims.sessionRef));
 }
 
-function streamPath(url: URL, format: string) {
-	const nonce = randomBytes(12);
-	const cipher = createCipheriv("aes-256-gcm", key, nonce);
-	const payload = Buffer.concat([cipher.update(url.href, "utf8"), cipher.final()]);
-	const token = Buffer.concat([nonce, cipher.getAuthTag(), payload]).toString("base64url");
-	return `/api/iptv?token=${token}&format=${format}`;
+function mediaFormat(url: URL, contentType: string, hinted?: string | null) {
+	if (hinted === "hls" || /\.m3u8$/i.test(url.pathname) || /mpegurl/i.test(contentType))
+		return "hls";
+	return "media";
 }
 
-function readToken(token: string) {
-	const data = Buffer.from(token, "base64url");
-	const decipher = createDecipheriv("aes-256-gcm", key, data.subarray(0, 12));
-	decipher.setAuthTag(data.subarray(12, 28));
-	return httpUrl(Buffer.concat([decipher.update(data.subarray(28)), decipher.final()]).toString());
+function corsHeaders(headers: Headers) {
+	headers.set("access-control-allow-origin", "*");
+	headers.set(
+		"access-control-expose-headers",
+		"content-length, content-range, accept-ranges, content-type",
+	);
+	return headers;
 }
 
-// Check every hop before contacting it. Never forward browser cookies or authorization headers.
-async function upstream(initial: URL, signal: AbortSignal, range?: string | null) {
-	let url = initial;
-	for (let hops = 0; hops <= 5; hops++) {
-		if (!allowed(url)) throw new IptvSourceError("origin");
-		const timeout = new AbortController();
-		const timer = setTimeout(() => timeout.abort(), 15_000);
-		let response: Response;
-		try {
-			response = await fetch(url, {
-				redirect: "manual",
-				signal: AbortSignal.any([signal, timeout.signal]),
-				headers: range ? { range } : undefined,
-			});
-		} finally {
-			clearTimeout(timer);
-		}
-		const location = response.headers.get("location");
-		if (response.status >= 300 && response.status < 400 && location) {
-			await response.body?.cancel();
-			url = httpUrl(location, url);
-			continue;
-		}
-		if (response.ok) return { response, url };
+async function proxy(
+	request: Request,
+	target: URL,
+	itemId: string,
+	options: {
+		format?: string | null;
+		trusted: boolean;
+		start?: number;
+		streamToken?: string | null;
+	},
+) {
+	const ffmpeg =
+		/\.(mkv|avi)$/i.test(target.pathname) && process.env.AURORA_IPTV_FFMPEG
+			? process.env.AURORA_IPTV_FFMPEG
+			: undefined;
+	if (ffmpeg) {
+		const { transcodeIptv } = await import("./iptv-transcode");
+		// Resolve redirects (and check every hop) before ffmpeg opens the URL
+		// itself, so it can seek with range requests.
+		const { response, url } = await upstream(target, request.signal, {
+			range: "bytes=0-0",
+			trusted: options.trusted,
+		});
 		await response.body?.cancel();
-		throw new IptvSourceError("provider", response.status);
+		const body = await transcodeIptv(url, ffmpeg, request.signal, options.start ?? 0);
+		return new Response(body, {
+			headers: corsHeaders(new Headers({ ...baseHeaders, "content-type": "video/mp4" })),
+		});
 	}
-	throw new Error("Too many IPTV redirects");
+
+	const { response, url } = await upstream(target, request.signal, {
+		range: request.headers.get("range"),
+		trusted: options.trusted,
+	});
+	const contentType = response.headers.get("content-type") ?? "";
+	if (mediaFormat(url, contentType, options.format) === "hls") {
+		const manifest = await readText(response, 2 * 1024 * 1024, 20_000);
+		if (!/^#EXTM3U\b/.test(manifest.trimStart())) throw new Error("Invalid HLS manifest");
+		const suffix = options.streamToken ? `&st=${encodeURIComponent(options.streamToken)}` : "";
+		const link = (uri: string) => {
+			const next = httpUrl(uri, url);
+			const nested = /\.m3u8$/i.test(next.pathname) ? "&format=hls" : "";
+			return `/api/iptv?token=${sealStreamUrl(next, itemId)}${nested}${suffix}`;
+		};
+		const rewritten = manifest
+			.split(/\r?\n/)
+			.map((raw) => {
+				const line = raw.trim();
+				if (!line) return line;
+				if (!line.startsWith("#")) return link(line);
+				return line.replace(/\bURI="([^"]+)"/g, (_, uri: string) => `URI="${link(uri)}"`);
+			})
+			.join("\n");
+		return new Response(rewritten, {
+			headers: corsHeaders(
+				new Headers({ ...baseHeaders, "content-type": "application/vnd.apple.mpegurl" }),
+			),
+		});
+	}
+
+	const headers = corsHeaders(new Headers(baseHeaders));
+	headers.set(
+		"content-type",
+		/^(video|audio)\/[\w.+-]+$/i.test(contentType)
+			? contentType
+			: /\.ts$/i.test(url.pathname)
+				? "video/mp2t"
+				: /\.mp4$/i.test(url.pathname)
+					? "video/mp4"
+					: "application/octet-stream",
+	);
+	headers.set("content-security-policy", "default-src 'none'; sandbox");
+	for (const name of ["accept-ranges", "content-range", "content-length"]) {
+		const value = response.headers.get(name);
+		if (value && (name !== "content-length" || !response.headers.has("content-encoding")))
+			headers.set(name, value);
+	}
+	return new Response(response.body, { status: response.status, headers });
 }
 
-async function readText(response: Request | Response, limit: number) {
-	if (!response.body) throw new Error("Empty playlist");
-	const reader = response.body.getReader();
-	const decoder = new TextDecoder();
-	let bytes = 0;
-	let text = "";
-	const deadline = AbortSignal.timeout(30_000);
-	const cancel = () => {
-		void reader.cancel().catch(() => {});
-	};
-	deadline.addEventListener("abort", cancel, { once: true });
-	try {
-		while (true) {
-			const chunk = await reader.read();
-			deadline.throwIfAborted();
-			if (chunk.done) return text + decoder.decode();
-			bytes += chunk.value.byteLength;
-			if (bytes > limit) throw new Error("Playlist is too large");
-			text += decoder.decode(chunk.value, { stream: true });
-		}
-	} finally {
-		deadline.removeEventListener("abort", cancel);
-		await reader.cancel();
+async function image(request: Request, encoded: string, signature: string) {
+	const url = verifyImage(encoded, signature);
+	if (!url) return respond(404);
+	const { response } = await upstream(url, request.signal, { trusted: true, timeoutMs: 10_000 });
+	const type = response.headers.get("content-type") ?? "";
+	const length = Number(response.headers.get("content-length") ?? 0);
+	if (
+		!/^image\/(png|jpe?g|webp|gif|avif)$/i.test(type.split(";")[0]?.trim() ?? "") ||
+		length > MAX_IMAGE_BYTES
+	) {
+		await response.body?.cancel();
+		return respond(415);
 	}
+	const bytes = new Uint8Array(await response.arrayBuffer());
+	if (bytes.byteLength > MAX_IMAGE_BYTES) return respond(413);
+	return new Response(bytes, {
+		headers: {
+			"content-type": type,
+			"cache-control": "private, max-age=86400",
+			"x-content-type-options": "nosniff",
+			"content-security-policy": "default-src 'none'; sandbox",
+		},
+	});
 }
 
 export async function iptvRequest(request: Request) {
-	if (!isRequestAuthorized(request)) return new Response(null, { status: 401, headers });
-	if (request.method !== "POST" && !process.env.AURORA_IPTV_ORIGINS?.trim()) {
-		return new Response(null, { status: 503, headers });
-	}
+	if (request.method !== "GET" && request.method !== "HEAD") return respond(405);
+	const address = new URL(request.url);
+	const params = address.searchParams;
+	const streamToken = params.get("st");
 	try {
-		const address = new URL(request.url);
-		if (request.method === "POST") {
-			if (
-				(request.headers.get("origin") && request.headers.get("origin") !== address.origin) ||
-				!request.headers.get("content-type")?.startsWith("application/json")
-			) {
-				return new Response(null, { status: 403, headers });
-			}
-			const body = JSON.parse(await readText(request, 16 * 1024));
-			const responseHeaders = new Headers(headers);
-			const sourceId = request.headers
-				.get("cookie")
-				?.match(/(?:^|;\s*)aurora_iptv_source=([a-f0-9]{64})(?:;|$)/)?.[1];
-			if (body.action === "jellyfin" || body.action === "forget" || body.action === "iptv-home") {
-				const { forgetIptvSource, setIptvHome } = await import("../lib/iptv-source-store");
-				if (body.action === "forget") forgetIptvSource(sourceId);
-				else setIptvHome(sourceId, body.action === "iptv-home");
-				return new Response(null, { status: 204, headers });
-			}
-			const saved =
-				body.action === "load-saved"
-					? (await import("../lib/iptv-source-store")).loadIptvSource(sourceId)
-					: null;
-			if (body.action === "load-saved" && !saved)
-				return new Response(null, { status: 404, headers });
-			if (!process.env.AURORA_IPTV_ORIGINS?.trim())
-				return new Response(null, { status: 503, headers });
-			const input = saved
-				? httpUrl(saved.input)
-				: body.mode === "xtream"
-					? xtreamPlaylist(body.server, body.username, body.password)
-					: m3uPlaylist(body.playlist);
-			const direct = saved?.direct ?? body.mode === "stream";
-			const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
-			async function loadPlaylist() {
-				const { response, url } = await upstream(input, signal);
-				return parseIptvPlaylist(await readText(response, maxPlaylistBytes), url);
-			}
-			const catalog = direct
-				? null
-				: await loadXtreamCatalog(input, async (endpoint) => {
-						const { response } = await upstream(endpoint, signal);
-						return JSON.parse(await readText(response, maxPlaylistBytes));
-					}).catch(() => null);
-			if (direct && !allowed(input)) throw new IptvSourceError("origin");
-			const format = /\.ts$/i.test(input.pathname)
-				? "ts"
-				: /\.(mp4|mkv|mov|webm)$/i.test(input.pathname)
-					? "file"
-					: "hls";
-			const sourceEntries = direct
-				? [
-						{
-							title: input.hostname,
-							group: "",
-							vod: format === "file",
-							format,
-							url: input,
-						},
-					]
-				: catalog?.length
-					? catalog
-					: await loadPlaylist();
-			const entries = sourceEntries
-				.filter((entry) => allowed(entry.url))
-				.map(({ url: stream, ...entry }) => {
-					const { fallbackUrl, ...item } = { fallbackUrl: undefined, ...entry };
-					return {
-						...item,
-						src: streamPath(stream, item.format),
-						fallbackSrc: fallbackUrl ? streamPath(fallbackUrl, "hls") : undefined,
-					};
-				});
-
-			if (body.saveHome === "on" && entries.length) {
-				const { saveIptvSource, IPTV_SOURCE_COOKIE, IPTV_SOURCE_MAX_AGE } = await import(
-					"../lib/iptv-source-store"
-				);
-				const id = saveIptvSource(sourceId, input, direct);
-				responseHeaders.set(
-					"set-cookie",
-					`${IPTV_SOURCE_COOKIE}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${IPTV_SOURCE_MAX_AGE}${address.protocol === "https:" ? "; Secure" : ""}`,
-				);
-			}
-			if (saved || (body.saveHome === "on" && entries.length))
-				responseHeaders.set("x-aurora-iptv-saved", "1");
-			if (saved?.home || (body.saveHome === "on" && entries.length))
-				responseHeaders.set("x-aurora-iptv-home", "1");
-			return Response.json(entries, { headers: responseHeaders });
+		const imageParam = params.get("image");
+		if (imageParam) {
+			if (!isRequestAuthorized(request)) return respond(401);
+			if (!iptvEnabled()) return respond(503);
+			return await image(request, imageParam, params.get("sig") ?? "");
 		}
 
-		let target: URL;
+		const sealed = params.get("token");
+		if (sealed) {
+			const opened = openStreamUrl(sealed);
+			if (!opened) return respond(410);
+			if (!isRequestAuthorized(request) && !(await tokenAllows(streamToken, opened.itemId)))
+				return respond(401);
+			if (!iptvEnabled()) return respond(503);
+			return await proxy(request, opened.url, opened.itemId, {
+				format: params.get("format"),
+				trusted: true,
+				streamToken,
+			});
+		}
+
+		const id = params.get("id") ?? "";
+		const parts = parseIptvId(id);
+		if (!parts) return respond(404);
+		if (!isRequestAuthorized(request) && !(await tokenAllows(streamToken, id))) return respond(401);
+		if (!iptvEnabled()) return respond(503);
+		const { listIptvSourceIds } = await import("../lib/iptv-source-store");
+		if (!listIptvSourceIds().includes(parts.source)) return respond(404);
+		const catalog = await loadServerCatalog(parts.source);
+		let target: Awaited<ReturnType<typeof resolveStream>>;
 		try {
-			target = readToken(address.searchParams.get("token") ?? "");
+			target = await resolveStream(catalog, parts, {
+				preferHls: params.get("prefer") === "hls",
+				seriesInfo: (pid) => serverSeriesInfo(catalog, pid),
+			});
 		} catch {
-			return new Response(null, { status: 410, headers });
+			return respond(404);
 		}
-		const format = address.searchParams.get("format");
-		const ffmpeg = /\.mkv$/i.test(target.pathname) ? process.env.AURORA_IPTV_FFMPEG : undefined;
-		const { response, url } = await upstream(
-			target,
-			request.signal,
-			ffmpeg ? null : request.headers.get("range"),
-		);
-		if (ffmpeg && response.body) {
-			const { transcodeIptv } = await import("./iptv-transcode");
-			return new Response(await transcodeIptv(response.body, ffmpeg, request.signal), {
-				headers: { ...headers, "content-type": "video/mp4" },
-			});
-		}
-		const contentType = response.headers.get("content-type") ?? "";
-		if (format === "hls" || /\.m3u8$/i.test(url.pathname) || /mpegurl/i.test(contentType)) {
-			const manifest = await readText(response, 2 * 1024 * 1024);
-			if (!/^#EXTM3U\b/.test(manifest.trimStart())) throw new Error("Invalid HLS manifest");
-			const proxy = (uri: string) => streamPath(httpUrl(uri, url), "file");
-			const rewritten = manifest
-				.split(/\r?\n/)
-				.map((raw) => {
-					const line = raw.trim();
-					if (!line) return line;
-					if (!line.startsWith("#")) return proxy(line);
-					return line.replace(/\bURI="([^"]+)"/g, (_, uri) => `URI="${proxy(uri)}"`);
-				})
-				.join("\n");
-			return new Response(rewritten, {
-				headers: { ...headers, "content-type": "application/vnd.apple.mpegurl" },
-			});
-		}
-		const mediaHeaders = new Headers(headers);
-		mediaHeaders.set(
-			"content-type",
-			/^(video|audio)\/[\w.+-]+$/i.test(contentType) ? contentType : "application/octet-stream",
-		);
-		mediaHeaders.set("content-security-policy", "default-src 'none'; sandbox");
-		for (const name of ["accept-ranges", "content-range", "content-length"]) {
-			const value = response.headers.get(name);
-			if (value && (name !== "content-length" || !response.headers.has("content-encoding")))
-				mediaHeaders.set(name, value);
-		}
-		return new Response(response.body, { status: response.status, headers: mediaHeaders });
+		const useFallback = params.get("fallback") === "1" && target.fallback;
+		const start = Number(params.get("start") ?? 0);
+		return await proxy(request, useFallback ? (target.fallback as URL) : target.url, id, {
+			format: useFallback ? "hls" : target.format,
+			trusted: false,
+			start: Number.isFinite(start) && start > 0 ? start : 0,
+			streamToken,
+		});
 	} catch (error) {
-		if (request.method === "GET" && error instanceof IptvSourceError && error.code === "origin") {
-			return new Response(null, { status: 421, headers });
-		}
-		if (request.method === "POST" && error instanceof IptvSourceError) {
-			return Response.json({ code: error.code, status: error.status }, { status: 502, headers });
-		}
-		return new Response(null, { status: 502, headers });
+		if (error instanceof IptvSourceError && error.code === "origin") return respond(421);
+		if (error instanceof IptvSourceError && error.code === "provider")
+			return new Response(null, {
+				status: 502,
+				headers: { ...baseHeaders, "x-aurora-provider-status": String(error.status ?? "") },
+			});
+		return respond(502);
 	}
 }

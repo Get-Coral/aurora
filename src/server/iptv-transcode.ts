@@ -1,18 +1,16 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { Readable } from "node:stream";
 
-let active = false;
+let active: ChildProcess | undefined;
 
-export async function transcodeIptv(
-	body: ReadableStream<Uint8Array>,
-	binary: string,
-	signal: AbortSignal,
-) {
-	if (active) {
-		await body.cancel();
-		throw new Error("IPTV transcoder is busy");
-	}
-	active = true;
+/**
+ * Convert a provider file (MKV, AVI) to fragmented MP4 the browser can play.
+ * One conversion runs per Aurora process — most IPTV accounts allow a single
+ * connection anyway — and a new request (a seek, another title) replaces the
+ * running one. `start` seeks with range requests, so resuming is fast.
+ */
+export async function transcodeIptv(source: URL, binary: string, signal: AbortSignal, start = 0) {
+	active?.kill("SIGKILL");
 	const child = spawn(
 		binary,
 		[
@@ -20,11 +18,12 @@ export async function transcodeIptv(
 			"-loglevel",
 			"error",
 			"-protocol_whitelist",
-			"pipe",
-			"-threads",
-			"2",
+			"http,https,tcp,tls,crypto",
+			"-user_agent",
+			"Aurora IPTV",
+			...(start > 0 ? ["-ss", String(Math.floor(start))] : []),
 			"-i",
-			"pipe:0",
+			source.href,
 			"-map",
 			"0:v:0",
 			"-map",
@@ -51,27 +50,20 @@ export async function transcodeIptv(
 			"mp4",
 			"pipe:1",
 		],
-		{ stdio: ["pipe", "pipe", "ignore"], windowsHide: true },
+		{ stdio: ["ignore", "pipe", "ignore"], windowsHide: true },
 	);
-	const source = Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]);
-	const stop = () => {
-		source.destroy();
-		child.kill();
-	};
-	const onExit = () => {
-		active = false;
+	active = child;
+	const stop = () => child.kill("SIGKILL");
+	child.once("close", () => {
+		if (active === child) active = undefined;
 		signal.removeEventListener("abort", stop);
-		source.destroy();
-	};
-	child.once("close", onExit);
-	child.on("error", () => source.destroy());
-	child.stdin.on("error", () => source.destroy());
-	source.on("error", stop);
+	});
 	signal.addEventListener("abort", stop, { once: true });
 	if (signal.aborted) stop();
-	source.pipe(child.stdin);
 
-	const reader = Readable.toWeb(child.stdout).getReader();
+	const reader = Readable.toWeb(
+		child.stdout,
+	).getReader() as ReadableStreamDefaultReader<Uint8Array>;
 	return new ReadableStream<Uint8Array>({
 		async pull(controller) {
 			const chunk = await reader.read();

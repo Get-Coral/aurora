@@ -76,7 +76,14 @@ export function GlobalMediaDialogs() {
 			<MediaPlayerDialog
 				item={playingItem}
 				open={playingItem != null}
-				onClose={() => setPlayingItem(null)}
+				onClose={() => {
+					setPlayingItem(null);
+					// Progress just changed: refresh the rows that show it.
+					void queryClient.invalidateQueries({ queryKey: ["continue-watching"] });
+					void queryClient.invalidateQueries({ queryKey: ["iptv-shelves"] });
+					void queryClient.invalidateQueries({ queryKey: ["iptv-browse"] });
+					void queryClient.invalidateQueries({ queryKey: ["series-details"] });
+				}}
 				queue={playQueue}
 				onSelectQueueItem={setPlayingItem}
 			/>
