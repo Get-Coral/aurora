@@ -1,22 +1,30 @@
-Aurora is a beautiful, open-source front-end for your own Jellyfin media server. It keeps Jellyfin as the source of truth and layers a cinematic, living-room-ready experience on top.
+Aurora is a beautiful, open-source app for your own Jellyfin media server and the IPTV subscription you already have. It keeps your server as the source of truth and layers a cinematic, living-room-ready experience on top, on your phone, your tablet and your Android TV or Google TV.
 
 WHAT YOU GET
 • A home screen built for discovery: featured titles, Continue Watching, favourites and recommendations
+• Films and series in rows by genre, new arrivals and top rated, like a streaming service
 • Rich detail pages with cast, related titles and full episode lists for series
-• Movie and series libraries with genre browsing and sorting
 • My List, synced with your Jellyfin favourites
-• Fast search across your whole library
-• Embedded playback that reports progress back to your server
+• Search across everything at once, grouped by type and forgiving of typos
+• Embedded playback that reports progress back to your server, with audio track and subtitle choice
 • Subtitles from OpenSubtitles (bring your own free API key)
 • Multiple profiles for shared households, with an optional sign-in per user
-• A TV mode with large, remote-friendly controls
 • Available in English and Dutch
 
+ON YOUR TV
+Aurora runs on Android TV and Google TV and is made for the remote: move around with the arrows, open anything with OK and go back with Back. Live channels change with the channel keys, and the player shows a preview of where a skip will land.
+
+ON YOUR TABLET
+The layout uses the room of a large screen, in landscape and in portrait.
+
+YOUR OWN IPTV
+Add the M3U playlist, Xtream Codes account or stream URL you get from your TV provider. Its channels, films and series appear next to your Jellyfin library, with a TV guide, catch-up for channels that offer it, and favourites. Aurora does not include, sell or recommend any channels or playlists: you need your own, from a provider you are entitled to watch.
+
 YOUR SERVER, YOUR DATA
-Aurora has no accounts, no ads and no tracking. It talks only to the Jellyfin server you connect it to, and your settings stay on your device.
+Aurora has no accounts, no ads and no tracking. It talks only to the Jellyfin server and the IPTV provider you connect it to, and your settings stay on your device.
 
 REQUIREMENTS
-You need access to a Jellyfin server with a server URL, an API key and a user account. Aurora does not provide any media content.
+For Jellyfin, access to a Jellyfin server and a user account. For IPTV, a playlist or account from your provider. Aurora does not provide any media content.
 
 OPEN SOURCE
 Aurora is MIT-licensed and developed in the open. Report bugs, request features or contribute at github.com/Get-Coral/aurora, or join the community on Discord.

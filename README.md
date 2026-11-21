@@ -402,7 +402,7 @@ The signed bundle is written to `android/app/build/outputs/bundle/release/app-re
 
 The version comes from `package.json`. The versionCode is `major * 1000000 + minor * 10000 + patch * 100 + build`, so 1.14.1 becomes `1140100`. To upload the same version again, raise the build number with `AURORA_BUILD_NUMBER` (0–99), for example `AURORA_BUILD_NUMBER=1 pnpm android:bundle:release`.
 
-Store listing texts, release notes, the icon, the feature graphic and phone screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
+Store listing texts, release notes, the icon, the feature graphic, the TV banner and the phone, tablet and TV screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The tablet and TV screenshots come from [`scripts/store/screenshots.mjs`](./scripts/store/screenshots.mjs), which runs the built app as the Android app does (on-device runtime, TV mode at 1080p) against the public Jellyfin demo server, whose films are all public domain or Creative Commons: `pnpm build && node scripts/store/screenshots.mjs`. The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
 
 The public Android app is [Aurora for Jellyfin](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
 
@@ -410,7 +410,7 @@ The public Android app is [Aurora for Jellyfin](https://play.google.com/store/ap
 
 - Android release bundles are built with `pnpm android:bundle:release` (see above). Android Studio is still useful for running and debugging.
 - iOS packaging happens from Xcode after opening the generated project.
-- The same Android build runs on Android TV and Google TV. It appears in the TV launcher (`LEANBACK_LAUNCHER`, with the banner in `res/drawable-xhdpi/tv_banner.png`) and asks the system whether it runs on a TV, so TV mode switches on even when the WebView's user agent doesn't mention one. To ship it to TVs, opt in to the Android TV form factor in the Play Console and upload TV screenshots; the store banner is `fastlane/metadata/android/en-US/images/tvBanner.png`.
+- The same Android build runs on Android TV and Google TV. It appears in the TV launcher (`LEANBACK_LAUNCHER`, with the banner in `res/drawable-xhdpi/tv_banner.png`) and asks the system whether it runs on a TV, so TV mode switches on even when the WebView's user agent doesn't mention one. To ship it to TVs, opt in to the Android TV form factor in the Play Console (Release → Advanced settings → Form factors); the TV screenshots and the store banner are in `fastlane/metadata/android/*/images` (`tvScreenshots`, `tvBanner.png`), and Google reviews TV apps separately before they show up on TVs.
 - To try the TV build, create an Android TV device in Android Studio's Device Manager (Television, 1080p) and run `pnpm cap:run:android` with it selected. In a desktop browser, Settings → TV mode gives the same layout, driven with the arrow keys and Enter.
 - On a TV the remote does everything: the arrows move between controls, OK opens a text field's keyboard (fields reached with the arrows keep it closed, so it doesn't take over the remote), Back goes back, and in the player Up/Down and the channel keys zap through live channels.
 - Capacitor Android 8 requires JDK 21 for local and CI builds.
