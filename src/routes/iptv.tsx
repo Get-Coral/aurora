@@ -254,7 +254,9 @@ function IptvPage() {
 					<IptvGuide group={group} query={search} favorites={favorites} onGroups={setGuideGroups} />
 				) : null
 			) : (
-				<div className={`page-wrap library-grid${tab === "live" ? " iptv-channel-grid" : ""}`}>
+				<div
+					className={`page-wrap library-grid ${tab === "live" ? "iptv-channel-grid" : "iptv-poster-grid"}`}
+				>
 					{browse.isLoading || !status
 						? SKELETON_KEYS.map((key) => (
 								<div

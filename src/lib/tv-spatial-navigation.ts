@@ -26,34 +26,54 @@ function getFocusableCandidates() {
 		.filter(isVisibleElement);
 }
 
-function getRectCenter(rect: DOMRect) {
-	return {
-		x: rect.left + rect.width / 2,
-		y: rect.top + rect.height / 2,
-	};
+type Direction = "left" | "right" | "up" | "down";
+
+function overlap(startA: number, endA: number, startB: number, endB: number) {
+	return Math.min(endA, endB) - Math.max(startA, startB);
 }
 
-function getDirectionalScore(
-	currentRect: DOMRect,
-	candidateRect: DOMRect,
-	direction: "left" | "right" | "up" | "down",
+/**
+ * Lower is better; null means the candidate isn't in that direction.
+ * Distances run edge to edge, so a wide guide programme or a tall card is
+ * judged by where it begins, not by its middle. Candidates that share the row
+ * (or column) always beat ones that don't, so moving right through a grid
+ * reaches the next card rather than a button above it.
+ */
+export function getDirectionalScore(
+	current: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+	candidate: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+	direction: Direction,
 ) {
-	const current = getRectCenter(currentRect);
-	const candidate = getRectCenter(candidateRect);
-	const deltaX = candidate.x - current.x;
-	const deltaY = candidate.y - current.y;
-
-	if (direction === "right" && deltaX <= 8) return null;
-	if (direction === "left" && deltaX >= -8) return null;
-	if (direction === "down" && deltaY <= 8) return null;
-	if (direction === "up" && deltaY >= -8) return null;
-
-	const primaryDistance =
-		direction === "left" || direction === "right" ? Math.abs(deltaX) : Math.abs(deltaY);
-	const secondaryDistance =
-		direction === "left" || direction === "right" ? Math.abs(deltaY) : Math.abs(deltaX);
-
-	return primaryDistance * 1000 + secondaryDistance * 5;
+	const tolerance = 4;
+	let primary: number;
+	let shared: number;
+	let gap: number;
+	if (direction === "right" || direction === "left") {
+		primary =
+			direction === "right" ? candidate.left - current.right : current.left - candidate.right;
+		if (primary < -tolerance) return null;
+		shared = overlap(current.top, current.bottom, candidate.top, candidate.bottom);
+		gap =
+			shared > 0
+				? 0
+				: Math.min(
+						Math.abs(candidate.top - current.bottom),
+						Math.abs(current.top - candidate.bottom),
+					);
+	} else {
+		primary =
+			direction === "down" ? candidate.top - current.bottom : current.top - candidate.bottom;
+		if (primary < -tolerance) return null;
+		shared = overlap(current.left, current.right, candidate.left, candidate.right);
+		gap =
+			shared > 0
+				? 0
+				: Math.min(
+						Math.abs(candidate.left - current.right),
+						Math.abs(current.left - candidate.right),
+					);
+	}
+	return (shared > 0 ? 0 : 1_000_000) + Math.max(primary, 0) * 10 + gap * 3;
 }
 
 function focusFirstCandidate(candidates: HTMLElement[]) {
@@ -118,6 +138,8 @@ export function installTvSpatialNavigation() {
 
 		event.preventDefault();
 		bestCandidate.focus();
+		// Keep the focused element in view, also inside sideways-scrolling rows.
+		bestCandidate.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 	}
 
 	window.addEventListener("keydown", handleKeyDown);

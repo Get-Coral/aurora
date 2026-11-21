@@ -6722,13 +6722,17 @@ html.tv-mode .player-autoplay-cancel {
   background: rgba(8, 13, 28, 0.96);
 }
 
+.iptv-guide {
+  --guide-channel: 14rem;
+}
+
 .iptv-guide-corner,
 .iptv-guide-channel {
   position: sticky;
   left: 0;
   z-index: 2;
-  flex: 0 0 14rem;
-  width: 14rem;
+  flex: 0 0 var(--guide-channel);
+  width: var(--guide-channel);
   background: #080d1c;
   border-right: 1px solid var(--line);
 }
@@ -6831,7 +6835,7 @@ html.tv-mode .player-autoplay-cancel {
 /* Keeps a programme's title readable when it started before the visible time. */
 .iptv-guide-label {
   position: sticky;
-  left: calc(14rem + 0.6rem);
+  left: calc(var(--guide-channel) + 0.6rem);
   display: grid;
   gap: 0.1rem;
   min-width: 0;
@@ -6891,7 +6895,7 @@ html.tv-mode .player-autoplay-cancel {
 .iptv-guide-empty {
   position: sticky;
   top: 1.4rem;
-  left: calc(14rem + 1rem);
+  left: calc(var(--guide-channel) + 1rem);
   display: inline-block;
   margin-top: 1.4rem;
   color: var(--ink-faint);
@@ -6900,4 +6904,114 @@ html.tv-mode .player-autoplay-cancel {
 
 .iptv-source-copy span:last-child {
   white-space: normal;
+}
+
+/* Phones: two compact columns for channels and posters, a narrow guide. */
+@media (max-width: 800px) {
+  .library-grid.iptv-channel-grid,
+  .library-grid.iptv-poster-grid,
+  .search-section .library-grid.search-grid,
+  .library-grid.search-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .iptv-channel-grid .media-card,
+  .iptv-poster-grid .media-card,
+  .search-grid .media-card {
+    grid-column: auto;
+    min-height: 10rem;
+    border-radius: 1.1rem;
+  }
+
+  .iptv-poster-grid .media-card,
+  .search-grid .media-card-poster {
+    min-height: 0;
+    aspect-ratio: 2 / 3;
+  }
+
+  .iptv-channel-grid .media-card-channel img,
+  .search-grid .media-card-channel img {
+    padding: 2.4rem 20% 4.6rem;
+  }
+
+  .iptv-channel-grid .card-subtitle,
+  .search-grid .card-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .iptv-channel-grid .card-hover-actions,
+  .iptv-poster-grid .card-hover-actions,
+  .search-grid .card-hover-actions,
+  .iptv-channel-grid .card-rating,
+  .iptv-poster-grid .card-format,
+  .search-grid .card-format:not(.card-format-live) {
+    display: none;
+  }
+
+  .iptv-channel-grid .card-body,
+  .iptv-poster-grid .card-body,
+  .search-grid .card-body {
+    padding: 0.7rem;
+  }
+
+  .iptv-channel-grid .card-title,
+  .iptv-poster-grid .card-title,
+  .search-grid .card-title {
+    font-size: 0.9rem;
+  }
+
+  .iptv-channel-grid .card-action,
+  .iptv-poster-grid .card-action,
+  .search-grid .card-action {
+    display: none;
+  }
+
+  .iptv-guide {
+    --guide-channel: 7.5rem;
+  }
+
+  .iptv-guide-logo {
+    flex-basis: 2.4rem;
+  }
+
+  .iptv-guide-channel > .icon-button {
+    display: none;
+  }
+
+  .iptv-guide-name {
+    font-size: 0.75rem;
+  }
+
+  .iptv-guide-range {
+    font-size: 0.8rem;
+  }
+
+  .iptv-source-row {
+    flex-wrap: wrap;
+  }
+
+  .iptv-source-copy {
+    flex-basis: calc(100% - 2.5rem);
+  }
+
+  .iptv-source-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .search-top-card {
+    min-height: 0;
+  }
+
+  .search-top-copy {
+    padding: 1.4rem;
+  }
+
+  .search-top-channel .search-top-art {
+    width: 45%;
+    opacity: 0.35;
+  }
 }
