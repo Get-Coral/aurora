@@ -505,4 +505,11 @@ export const nlMessages: MessageDictionary = {
 	"dialog.watchBack": "Terugkijken",
 	"player.previousChannel": "Vorige zender",
 	"player.nextChannel": "Volgende zender",
+	"iptv.guide": "Tv-gids",
+	"iptv.guideSummary":
+		"Wat er nu en straks speelt en wat je nog kunt terugkijken, zender per zender.",
+	"iptv.guideEarlier": "Vroeger",
+	"iptv.guideLater": "Later",
+	"iptv.guideNow": "Nu",
+	"iptv.guideEmpty": "Geen zenders met een tv-gids hier.",
 };

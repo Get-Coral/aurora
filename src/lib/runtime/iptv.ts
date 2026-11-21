@@ -6,6 +6,7 @@ import {
 	deleteIptvSourceFn,
 	fetchIptvBrowse,
 	fetchIptvGuide,
+	fetchIptvGuideRows,
 	fetchIptvItemDetails,
 	fetchIptvList,
 	fetchIptvOverview,
@@ -287,5 +288,17 @@ export async function saveIptvSourceOptionsRuntime(id: string, options: IptvSour
 	return callRuntime(
 		async () => (await client()).saveClientIptvSourceOptions(id, options),
 		() => saveIptvSourceOptionsFn({ data: { id, options } }),
+	);
+}
+
+export async function fetchIptvGuideRowsRuntime(
+	input: Omit<IptvBrowseInput, "kind"> & { from: number; to: number },
+) {
+	return callRuntime(
+		async () => {
+			const { service, backend } = await client();
+			return service.iptvGuideRows(backend, input);
+		},
+		() => fetchIptvGuideRows({ data: input }),
 	);
 }

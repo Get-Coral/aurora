@@ -6678,3 +6678,222 @@ html.tv-mode .player-autoplay-cancel {
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
+
+/* TV guide timeline */
+.iptv-guide {
+  margin-top: 1.25rem;
+}
+
+.iptv-guide-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.iptv-guide-range {
+  margin-left: 0.5rem;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.iptv-guide-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.iptv-guide-grid {
+  position: relative;
+}
+
+.iptv-guide-ruler,
+.iptv-guide-row {
+  display: flex;
+}
+
+.iptv-guide-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 2.2rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(8, 13, 28, 0.96);
+}
+
+.iptv-guide-corner,
+.iptv-guide-channel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 14rem;
+  width: 14rem;
+  background: #080d1c;
+  border-right: 1px solid var(--line);
+}
+
+.iptv-guide-ticks,
+.iptv-guide-track {
+  position: relative;
+  flex: none;
+}
+
+.iptv-guide-ticks span {
+  position: absolute;
+  top: 0.55rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.iptv-guide-row {
+  height: 4.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.iptv-guide-channel {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.4rem;
+}
+
+.iptv-guide-channel-button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  height: 100%;
+  padding: 0 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.iptv-guide-logo {
+  display: grid;
+  flex: 0 0 3rem;
+  place-items: center;
+  height: 2.2rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(160deg, #18264a 0%, #0c1427 100%);
+}
+
+.iptv-guide-logo img {
+  max-width: 2.6rem;
+  max-height: 1.8rem;
+  object-fit: contain;
+}
+
+.iptv-guide-name {
+  display: grid;
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iptv-guide-name small {
+  color: var(--ink-faint);
+  font-size: 0.7rem;
+}
+
+.iptv-guide-programme {
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  overflow: clip;
+  padding: 0 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.iptv-guide-programme:hover,
+.iptv-guide-programme:focus-visible {
+  z-index: 1;
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.09);
+  outline: none;
+}
+
+/* Keeps a programme's title readable when it started before the visible time. */
+.iptv-guide-label {
+  position: sticky;
+  left: calc(14rem + 0.6rem);
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.iptv-guide-programme strong,
+.iptv-guide-programme span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iptv-guide-programme strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.iptv-guide-programme span {
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+}
+
+.iptv-guide-past {
+  opacity: 0.5;
+}
+
+.iptv-guide-replay {
+  opacity: 0.78;
+}
+
+.iptv-guide-now {
+  border-color: rgba(112, 168, 255, 0.45);
+  background: rgba(112, 168, 255, 0.14);
+}
+
+.iptv-guide-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.iptv-guide-now-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 2px;
+  background: #ff5f7a;
+  pointer-events: none;
+}
+
+.iptv-guide-empty {
+  position: sticky;
+  top: 1.4rem;
+  left: calc(14rem + 1rem);
+  display: inline-block;
+  margin-top: 1.4rem;
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+}

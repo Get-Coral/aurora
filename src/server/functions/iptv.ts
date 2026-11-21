@@ -175,6 +175,11 @@ export const fetchIptvBrowse = createServerFn({ method: "GET" })
 	.validator((input: IptvBrowseInput) => input)
 	.handler(async ({ data }) => (await service()).browseIptv(await backend(), data));
 
+export const fetchIptvGuideRows = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: Omit<IptvBrowseInput, "kind"> & { from: number; to: number }) => input)
+	.handler(async ({ data }) => (await service()).iptvGuideRows(await backend(), data));
+
 export const fetchIptvShelves = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => (await service()).iptvShelves(await backend()));

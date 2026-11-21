@@ -1,14 +1,25 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Film, Heart, Radio, Search, Settings2, Tv, X } from "lucide-react";
+import {
+	ArrowLeft,
+	CalendarClock,
+	Clapperboard,
+	Film,
+	Heart,
+	Search,
+	Settings2,
+	Tv,
+	X,
+} from "lucide-react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { IptvGuide } from "../components/IptvGuide";
 import { MediaCard } from "../components/MediaCard";
 import { useFavoriteAction } from "../components/useFavoriteAction";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
 import { fetchIptvBrowseRuntime, fetchIptvStatusRuntime } from "../lib/runtime-functions";
 
-type Tab = "live" | "vod" | "series";
+type Tab = "live" | "guide" | "vod" | "series";
 type Sort = "default" | "added" | "title" | "rating";
 
 interface IptvSearch {
@@ -23,7 +34,10 @@ const SKELETON_KEYS = Array.from({ length: 12 }, (_, index) => `iptv-skeleton-${
 
 export const Route = createFileRoute("/iptv")({
 	validateSearch: (search: Record<string, unknown>): IptvSearch => ({
-		tab: search.tab === "vod" || search.tab === "series" ? search.tab : "live",
+		tab:
+			search.tab === "vod" || search.tab === "series" || search.tab === "guide"
+				? search.tab
+				: "live",
 		group: typeof search.group === "string" && search.group ? search.group : undefined,
 		sort:
 			search.sort === "added" || search.sort === "title" || search.sort === "rating"
@@ -67,7 +81,7 @@ function IptvPage() {
 		queryKey: ["iptv-browse", tab, group ?? "", sort ?? "default", favorites ?? false, search],
 		queryFn: ({ pageParam }) =>
 			fetchIptvBrowseRuntime({
-				kind: tab,
+				kind: tab === "guide" ? "live" : tab,
 				group,
 				query: search,
 				sort: sort ?? (tab === "live" ? "default" : "added"),
@@ -80,7 +94,7 @@ function IptvPage() {
 			const loaded = pages.reduce((sum, page) => sum + page.items.length, 0);
 			return loaded < last.total ? loaded : undefined;
 		},
-		enabled: Boolean(status?.enabled && status.sources > 0),
+		enabled: Boolean(status?.enabled && status.sources > 0) && tab !== "guide",
 		// Live guide data goes stale; refresh what's on now every few minutes.
 		refetchInterval: tab === "live" ? 5 * 60_000 : false,
 		staleTime: 60_000,
@@ -88,7 +102,10 @@ function IptvPage() {
 
 	const items = browse.data?.pages.flatMap((page) => page.items) ?? [];
 	const total = browse.data?.pages[0]?.total ?? 0;
-	const groups = [...(browse.data?.pages[0]?.groups ?? [])].sort((a, b) => a.localeCompare(b));
+	const [guideGroups, setGuideGroups] = useState<string[]>([]);
+	const groups = [...((tab === "guide" ? guideGroups : browse.data?.pages[0]?.groups) ?? [])].sort(
+		(a, b) => a.localeCompare(b),
+	);
 	const { fetchNextPage, hasNextPage, isFetchingNextPage } = browse;
 
 	useEffect(() => {
@@ -110,8 +127,9 @@ function IptvPage() {
 
 	const tabs: { value: Tab; label: string; icon: typeof Tv }[] = [
 		{ value: "live", label: t("iptv.live"), icon: Tv },
+		{ value: "guide", label: t("iptv.guide"), icon: CalendarClock },
 		{ value: "vod", label: t("iptv.movies"), icon: Film },
-		{ value: "series", label: t("iptv.series"), icon: Radio },
+		{ value: "series", label: t("iptv.series"), icon: Clapperboard },
 	];
 
 	const unavailable = status && (!status.enabled || status.sources === 0);
@@ -125,10 +143,20 @@ function IptvPage() {
 					</Link>
 					<p className="eyebrow">{t("iptv.eyebrow")}</p>
 					<h1 className="library-title">
-						{tab === "live" ? t("iptv.live") : tab === "vod" ? t("iptv.movies") : t("iptv.series")}
+						{tab === "live"
+							? t("iptv.live")
+							: tab === "guide"
+								? t("iptv.guide")
+								: tab === "vod"
+									? t("iptv.movies")
+									: t("iptv.series")}
 					</h1>
 					<p className="library-summary">
-						{tab === "live" ? t("iptv.liveSummary") : t("iptv.vodSummary")}
+						{tab === "live"
+							? t("iptv.liveSummary")
+							: tab === "guide"
+								? t("iptv.guideSummary")
+								: t("iptv.vodSummary")}
 					</p>
 				</div>
 			</div>
@@ -172,7 +200,7 @@ function IptvPage() {
 							</option>
 						))}
 					</select>
-					{tab !== "live" ? (
+					{tab === "vod" || tab === "series" ? (
 						<select
 							className="toolbar-sort-select"
 							value={sort ?? "added"}
@@ -221,6 +249,10 @@ function IptvPage() {
 						) : null}
 					</div>
 				</div>
+			) : tab === "guide" ? (
+				status ? (
+					<IptvGuide group={group} query={search} favorites={favorites} onGroups={setGuideGroups} />
+				) : null
 			) : (
 				<div className={`page-wrap library-grid${tab === "live" ? " iptv-channel-grid" : ""}`}>
 					{browse.isLoading || !status
@@ -268,7 +300,7 @@ function IptvPage() {
 
 			<div ref={sentinelRef} />
 
-			{!unavailable ? (
+			{!unavailable && tab !== "guide" ? (
 				<div className="page-wrap library-footer library-footer-compact">
 					{browse.isLoading || isFetchingNextPage ? (
 						<span className="eyebrow" style={{ opacity: 0.5 }}>

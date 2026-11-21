@@ -499,4 +499,11 @@ export const enMessages: MessageDictionary = {
 	"dialog.watchBack": "Watch back",
 	"player.previousChannel": "Previous channel",
 	"player.nextChannel": "Next channel",
+	"iptv.guide": "TV guide",
+	"iptv.guideSummary":
+		"What's on, what's next and what you can still watch back, channel by channel.",
+	"iptv.guideEarlier": "Earlier",
+	"iptv.guideLater": "Later",
+	"iptv.guideNow": "Now",
+	"iptv.guideEmpty": "No channels with a TV guide here.",
 };

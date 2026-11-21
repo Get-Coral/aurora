@@ -1,4 +1,4 @@
-import type { DetailedMediaItem, MediaItem, SeriesDetailPayload } from "../media";
+import type { DetailedMediaItem, MediaItem, MediaProgramme, SeriesDetailPayload } from "../media";
 import {
 	dropTypoMatches,
 	normalizeSearchText,
@@ -79,6 +79,8 @@ export interface IptvBrowseInput {
 	query?: string;
 	sort?: "default" | "added" | "title" | "rating";
 	favoritesOnly?: boolean;
+	/** Only channels that have a TV guide. */
+	guideOnly?: boolean;
 	offset?: number;
 	limit?: number;
 }
@@ -120,10 +122,6 @@ async function catalogFor(backend: IptvBackend, id: string) {
 
 function listFor(catalog: IptvCatalog, kind: IptvBrowseKind): CatalogEntry[] {
 	return kind === "live" ? catalog.channels : kind === "vod" ? catalog.movies : catalog.series;
-}
-
-function normalize(value: string) {
-	return value.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 async function withState(backend: IptvBackend, items: MediaItem[]) {
@@ -207,20 +205,25 @@ export async function iptvOverview(backend: IptvBackend): Promise<IptvOverview> 
 	};
 }
 
-export async function browseIptv(
-	backend: IptvBackend,
-	input: IptvBrowseInput,
-): Promise<IptvBrowseResult> {
-	const limit = Math.min(Math.max(input.limit ?? 48, 1), 200);
-	const offset = Math.max(input.offset ?? 0, 0);
-	const query = normalize(input.query?.trim() ?? "");
+type BrowseRow = { catalog: IptvCatalog; entry: CatalogEntry; score?: number };
+
+/** Filter and sort a kind of entry across sources, as the Live TV page shows them. */
+async function browseRows(backend: IptvBackend, input: IptvBrowseInput) {
+	const query = prepareQuery(input.query ?? "");
 	const all = await catalogs(backend);
-	let rows = all.flatMap((catalog) =>
+	let rows: BrowseRow[] = all.flatMap((catalog) =>
 		listFor(catalog, input.kind).map((entry) => ({ catalog, entry })),
 	);
 	const groups = [...new Set(rows.map((row) => row.entry.group).filter(Boolean))];
 	if (input.group) rows = rows.filter((row) => row.entry.group === input.group);
-	if (query) rows = rows.filter((row) => normalize(row.entry.title).includes(query));
+	if (input.guideOnly) rows = rows.filter((row) => row.entry.kind === "live" && row.entry.epgId);
+	if (query.text) {
+		rows = rows.flatMap((row) => {
+			const score = scoreText(query, normalizeSearchText(row.entry.title));
+			return score == null ? [] : [{ ...row, score }];
+		});
+		rows = dropTypoMatches(rows as (BrowseRow & { score: number })[]);
+	}
 	if (input.favoritesOnly) {
 		const states = await backend.state.get(
 			rows.map((row) => entryId(row.catalog.source, row.entry)),
@@ -235,6 +238,17 @@ export async function browseIptv(
 				("rating" in b.entry ? (b.entry.rating ?? 0) : 0) -
 				("rating" in a.entry ? (a.entry.rating ?? 0) : 0),
 		);
+	else if (query.text) rows.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+	return { all, rows, groups };
+}
+
+export async function browseIptv(
+	backend: IptvBackend,
+	input: IptvBrowseInput,
+): Promise<IptvBrowseResult> {
+	const limit = Math.min(Math.max(input.limit ?? 48, 1), 200);
+	const offset = Math.max(input.offset ?? 0, 0);
+	const { all, rows, groups } = await browseRows(backend, input);
 	const page = rows.slice(offset, offset + limit);
 	const items: MediaItem[] = [];
 	for (const catalog of all) {
@@ -244,6 +258,62 @@ export async function browseIptv(
 	const order = new Map(page.map((row, index) => [entryId(row.catalog.source, row.entry), index]));
 	items.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 	return { items, total: rows.length, groups };
+}
+
+export interface IptvGuideRow {
+	channel: MediaItem;
+	programmes: MediaProgramme[];
+}
+
+export interface IptvGuideResult {
+	rows: IptvGuideRow[];
+	total: number;
+	groups: string[];
+}
+
+/** Channels with their programmes in a time window, for the guide timeline. */
+export async function iptvGuideRows(
+	backend: IptvBackend,
+	input: Omit<IptvBrowseInput, "kind"> & { from: number; to: number },
+): Promise<IptvGuideResult> {
+	const limit = Math.min(Math.max(input.limit ?? 30, 1), 48);
+	const offset = Math.max(input.offset ?? 0, 0);
+	const { all, rows, groups } = await browseRows(backend, {
+		...input,
+		kind: "live",
+		guideOnly: true,
+	});
+	const page = rows.slice(offset, offset + limit);
+	const out: IptvGuideRow[] = [];
+	for (const catalog of all) {
+		const channels = page
+			.filter((row) => row.catalog === catalog)
+			.map((row) => row.entry as CatalogChannel);
+		if (!channels.length) continue;
+		const guide = await withEpg(backend, catalog, channels);
+		const states = await backend.state.get(
+			channels.map((channel) => entryId(catalog.source, channel)),
+		);
+		for (const channel of channels) {
+			const programmes = (guide.get(channel.pid) ?? []).filter(
+				(programme) => programme.end > input.from && programme.start < input.to,
+			);
+			const id = entryId(catalog.source, channel);
+			out.push({
+				channel: channelItem(
+					catalog.source,
+					channel,
+					backend.art,
+					states.get(id),
+					guide.get(channel.pid),
+				),
+				programmes: scheduleWithReplays(catalog.source, channel, programmes),
+			});
+		}
+	}
+	const order = new Map(page.map((row, index) => [entryId(row.catalog.source, row.entry), index]));
+	out.sort((a, b) => (order.get(a.channel.id) ?? 0) - (order.get(b.channel.id) ?? 0));
+	return { rows: out, total: rows.length, groups };
 }
 
 export interface IptvShelves {
