@@ -16,7 +16,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg", "nsis", "msi"],
+    "targets": [
+      "app",
+      "dmg",
+      "nsis",
+      "msi"
+    ],
     "category": "Entertainment",
     "shortDescription": "Jellyfin and IPTV in one app",
     "copyright": "Get Coral",
@@ -27,13 +32,17 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/aurora-node"],
+    "externalBin": [
+      "binaries/aurora-node"
+    ],
     "resources": {
       "resources/server/": "server/",
       "resources/ffmpeg/": "ffmpeg/"
     },
     "macOS": {
-      "minimumSystemVersion": "11.0"
+      "minimumSystemVersion": "11.0",
+      "entitlements": "Entitlements.plist",
+      "hardenedRuntime": true
     },
     "windows": {
       "webviewInstallMode": {

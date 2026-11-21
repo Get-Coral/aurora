@@ -435,7 +435,17 @@ pnpm desktop:build  # build the installers for this machine (.app/.dmg on macOS,
 
 You need [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ build tools. Before each build, [`scripts/desktop/prepare.mjs`](./scripts/desktop/prepare.mjs) builds the web app, bundles the server into one file, and downloads the matching official Node.js build (checked against nodejs.org's checksums). The Windows build also bundles ffmpeg (the LGPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds)); on macOS the app uses an installed ffmpeg (`brew install ffmpeg`) when there is one.
 
-The [Desktop workflow](./.github/workflows/desktop.yml) builds macOS and Windows installers on every change to the desktop code. They aren't signed yet: macOS needs a Developer ID certificate and notarization, Windows a code signing certificate, or users get a warning on first launch.
+The [Desktop workflow](./.github/workflows/desktop.yml) builds macOS and Windows installers on every change to the desktop code.
+
+To sign the Mac app, create a Developer ID Application certificate (Xcode → Settings → Accounts → your team → Manage Certificates → + → Developer ID Application). Locally, pass it to the build and add Apple ID details to notarize:
+
+```bash
+APPLE_SIGNING_IDENTITY="Developer ID Application: Your Team (TEAMID)" \
+APPLE_ID=you@example.com APPLE_PASSWORD=app-specific-password APPLE_TEAM_ID=TEAMID \
+pnpm desktop:build
+```
+
+The app runs with the hardened runtime; [`src-tauri/Entitlements.plist`](./src-tauri/Entitlements.plist) allows the JIT the bundled Node.js needs. In CI, set the secrets `APPLE_CERTIFICATE` (the certificate exported as a .p12, base64-encoded), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID`; without them the Mac build is unsigned. The Windows installers aren't signed yet, so Windows shows a SmartScreen warning on first launch.
 
 An Apple TV app isn't possible this way: tvOS has no web view, so it would need a separate native app.
 

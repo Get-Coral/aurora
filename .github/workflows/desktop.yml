@@ -64,8 +64,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Signs and notarizes the Mac app when the secrets are set (a Developer
+      # ID Application certificate as a base64 .p12, and an app-specific
+      # password for notarization); without them the build is unsigned.
+      - name: Use the Mac signing secrets
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -n "${!name}" ]; then
+              {
+                echo "$name<<AURORA_EOF"
+                echo "${!name}"
+                echo "AURORA_EOF"
+              } >> "$GITHUB_ENV"
+            fi
+          done
+
       # Builds the web app, bundles the server, downloads the matching Node.js
-      # (and ffmpeg on Windows) and packages the app. Unsigned for now.
+      # (and ffmpeg on Windows) and packages the app.
       - name: Build desktop app
         run: pnpm desktop:build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
