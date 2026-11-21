@@ -18,6 +18,7 @@ import {
 } from "../../lib/iptv-source-store";
 import { createIptvStateStore, iptvUserKey } from "../../lib/iptv-user-store";
 import { normalizeSearchText, type PreparedQuery, scoreText } from "../../lib/search";
+import { readCached, removeCached, writeCached } from "./disk-cache";
 import { iptvEnabled, providerFetchers } from "./network";
 import { signedImagePath } from "./tokens";
 import { xmltvGuide } from "./xmltv-cache";
@@ -64,6 +65,12 @@ class Cache<T> {
 		}
 	}
 
+	/** Put a value in without waiting on a load, e.g. after a background refresh. */
+	set(key: string, value: T) {
+		this.entries.delete(key);
+		this.entries.set(key, { value, expires: Date.now() + this.ttl });
+	}
+
 	peek(key: string) {
 		const hit = this.entries.get(key);
 		return hit && hit.expires > Date.now() ? hit.value : undefined;
@@ -86,18 +93,59 @@ function background() {
 
 export function forgetIptvCatalog(source: string) {
 	catalogs.delete(`${source}:`);
+	void removeCached(`${source}.`);
 	vodInfos.delete(`${source}:`);
 	seriesInfos.delete(`${source}:`);
 	guides.delete(`${source}:`);
 	schedules.delete(`${source}:`);
 }
 
+/** How long a catalog on disk is still served while a fresh one loads. */
+const STALE_CATALOG = 7 * 24 * 60 * 60 * 1000;
+const refreshing = new Set<string>();
+
+async function fetchCatalog(source: string, saved: NonNullable<ReturnType<typeof getIptvSource>>) {
+	const catalog = await loadSourceCatalog(
+		source,
+		saved.config,
+		providerFetchers(background()),
+		saved.name,
+	);
+	void writeCached(`${source}.catalog`, { updatedAt: saved.updatedAt, catalog }, true);
+	return catalog;
+}
+
+/**
+ * The source's catalog: from memory, else from disk (refreshing it in the
+ * background when old), else from the provider. After a restart Live TV is
+ * there at once instead of waiting on a reload of the whole catalog.
+ */
 export async function loadServerCatalog(source: string, force = false) {
 	const saved = getIptvSource(source);
 	if (!saved) throw new Error("Unknown IPTV source");
+	const key = `${source}:${saved.updatedAt}`;
 	return catalogs.get(
-		`${source}:${saved.updatedAt}`,
-		() => loadSourceCatalog(source, saved.config, providerFetchers(background()), saved.name),
+		key,
+		async () => {
+			if (!force) {
+				const disk = await readCached<{ updatedAt: number; catalog: IptvCatalog }>(
+					`${source}.catalog`,
+					true,
+				);
+				const age = disk ? Date.now() - disk.value.catalog.loadedAt : Number.POSITIVE_INFINITY;
+				if (disk && disk.value.updatedAt === saved.updatedAt && age < STALE_CATALOG) {
+					if (age > CATALOG_TTL && !refreshing.has(key)) {
+						refreshing.add(key);
+						void fetchCatalog(source, saved)
+							.then((fresh) => catalogs.set(key, fresh))
+							.catch(() => undefined)
+							.finally(() => refreshing.delete(key));
+					}
+					return disk.value.catalog;
+				}
+			}
+			return fetchCatalog(source, saved);
+		},
 		force,
 	);
 }

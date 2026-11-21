@@ -1,6 +1,7 @@
 import type { EpgProgramme, IptvCatalog } from "../../lib/iptv/catalog";
 import { httpUrl } from "../../lib/iptv/urls";
 import { createXmltvReader } from "../../lib/iptv/xmltv";
+import { readCached, writeCached } from "./disk-cache";
 import { upstream } from "./network";
 
 const XMLTV_TTL = 3 * 60 * 60 * 1000;
@@ -38,7 +39,25 @@ async function download(catalog: IptvCatalog, url: URL) {
  * loading in the background and returns null, so pages never wait on a
  * download that can run to tens of seconds.
  */
+const starting = new Map<string, Promise<Guide | null>>();
+
 export async function xmltvGuide(catalog: IptvCatalog, wait = false): Promise<Guide | null> {
+	// One caller at a time decides whether to read the disk or download.
+	const pending = starting.get(catalog.source);
+	if (pending) {
+		await pending;
+		return guides.get(catalog.source)?.guide ?? null;
+	}
+	const run = guideFor(catalog, wait);
+	starting.set(catalog.source, run);
+	try {
+		return await run;
+	} finally {
+		starting.delete(catalog.source);
+	}
+}
+
+async function guideFor(catalog: IptvCatalog, wait: boolean): Promise<Guide | null> {
 	if (!catalog.epgUrl) return null;
 	// Per source, so reloading the catalog doesn't throw away a loaded guide.
 	const key = catalog.source;
@@ -49,13 +68,27 @@ export async function xmltvGuide(catalog: IptvCatalog, wait = false): Promise<Gu
 		return guides.get(key)?.guide ?? entry.guide ?? null;
 	}
 	if (entry && !entry.guide && entry.expires > Date.now()) return null;
+	// After a restart, start from the guide saved on disk.
+	let fromDisk: Guide | undefined;
+	if (!entry) {
+		const disk = await readCached<[string, EpgProgramme[]][]>(`${catalog.source}.guide`, false);
+		const age = disk ? Date.now() - disk.savedAt : Number.POSITIVE_INFINITY;
+		if (disk && age < 24 * 3600_000) {
+			fromDisk = new Map(disk.value);
+			if (age < XMLTV_TTL) {
+				guides.set(key, { guide: fromDisk, expires: disk.savedAt + XMLTV_TTL });
+				return fromDisk;
+			}
+		}
+	}
 	const next: { guide?: Guide; loading?: Promise<void>; expires: number } = {
-		guide: entry?.guide,
+		guide: entry?.guide ?? fromDisk,
 		expires: Date.now() + XMLTV_RETRY,
 	};
 	next.loading = download(catalog, httpUrl(catalog.epgUrl))
 		.then((guide) => {
 			next.guide = guide;
+			void writeCached(`${catalog.source}.guide`, [...guide], false);
 			next.expires = Date.now() + XMLTV_TTL;
 		})
 		.catch(() => {

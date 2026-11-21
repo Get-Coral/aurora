@@ -216,4 +216,24 @@ describe("IPTV routes", () => {
 		expect(await response.text()).toBe("still streaming");
 		expect(signal?.aborted).toBe(false);
 	});
+
+	it("serves the catalog from disk after a restart, even when the provider is down", async () => {
+		const { id, catalog } = await addPlaylist(["#EXTINF:-1,Saved channel", "/live/saved.ts"]);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		const cacheDir = path.join(dataDir, "iptv-cache");
+		const file = fs.readdirSync(cacheDir).find((name) => name.startsWith(`${id}.catalog`));
+		expect(file).toBeDefined();
+		// Encrypted at rest: no provider URLs in the file.
+		expect(fs.readFileSync(path.join(cacheDir, file as string)).toString("latin1")).not.toContain(
+			"provider.example",
+		);
+		vi.resetModules();
+		fetchMock.mockRejectedValue(new Error("provider down"));
+		const { backend } = await modules();
+		const restored = await backend.loadServerCatalog(id);
+		expect(restored.channels.map((channel) => channel.title)).toEqual(
+			catalog.channels.map((channel) => channel.title),
+		);
+		fetchMock.mockReset();
+	});
 });
