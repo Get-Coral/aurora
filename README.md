@@ -216,6 +216,12 @@ Sources are shared by everyone using the Aurora server and can only be changed b
 
 Aurora plays HLS and MPEG-TS in supported browsers and falls back to the provider's HLS when an MPEG-TS channel fails. Films and episodes play when the browser supports their container and codecs. Set `AURORA_IPTV_FFMPEG` to an FFmpeg executable with H.264 and AAC encoding to convert MKV and AVI to browser-compatible MP4 on the fly, including resuming and seeking. This mode handles one conversion at a time per Aurora process, which matches most IPTV accounts' single-connection limit.
 
+Administrators can choose per source which categories appear (**Categories** next to a source); adult content stays hidden unless a source allows it. The source list also shows the subscription's expiry date and connection limit when the provider reports them.
+
+**Live TV** lists every channel with what's on now, a **TV guide** timeline, and the films and series of your sources. While watching a channel, step to the previous or next one with the arrow keys, page up/down, a remote's channel keys or the on-screen buttons. A channel's details show the day's guide; on Xtream channels with an archive, earlier programmes have **Watch back** and play from the provider's catch-up (timeshift), seekable.
+
+Search covers Jellyfin and IPTV together: films, series, episodes, collections and people from Jellyfin, and channels, titles, series cast and the TV guide from IPTV, ranked as one result and grouped by kind. Matching ignores accents and word order and tolerates small typos. Press Enter in the header search for the full results page.
+
 In the Android and iOS apps, sources are kept on the device and the app talks to the provider directly. Live channels use the provider's HLS. Raw MPEG-TS playlists and MKV files can't play there.
 
 ## User Profiles

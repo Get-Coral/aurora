@@ -350,9 +350,6 @@ export function IptvSourcesSection() {
 				<ul className="iptv-source-list">
 					{sources.map((source) => (
 						<li key={source.id}>
-							{categories === source.id ? (
-								<SourceCategories id={source.id} onDone={() => setCategories(null)} />
-							) : null}
 							{editing === source.id ? (
 								<SourceForm source={source} onDone={() => setEditing(null)} />
 							) : (
@@ -444,6 +441,9 @@ export function IptvSourcesSection() {
 									</div>
 								</div>
 							)}
+							{categories === source.id ? (
+								<SourceCategories id={source.id} onDone={() => setCategories(null)} />
+							) : null}
 						</li>
 					))}
 				</ul>
