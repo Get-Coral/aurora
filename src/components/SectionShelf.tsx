@@ -12,7 +12,14 @@ interface SectionShelfProps {
 	onSelect: (item: MediaItem) => void;
 	onPlay: (item: MediaItem) => void;
 	onToggleFavorite?: (item: MediaItem) => void;
-	browseTo?: "/library/movies" | "/library/series" | "/my-list" | "/history" | "/collections";
+	browseTo?:
+		| "/library/movies"
+		| "/library/series"
+		| "/my-list"
+		| "/history"
+		| "/collections"
+		| "/iptv";
+	browseSearch?: { tab?: "live" | "vod" | "series" };
 	emptyTitle?: string;
 	emptyCopy?: string;
 }
@@ -26,14 +33,17 @@ export function SectionShelf({
 	onPlay,
 	onToggleFavorite,
 	browseTo,
+	browseSearch,
 	emptyTitle,
 	emptyCopy,
 }: SectionShelfProps) {
 	const { t } = useI18n();
-	const browseSearch =
+	const linkSearch =
 		browseTo === "/library/movies" || browseTo === "/library/series"
 			? { sort: "DateCreated", order: "Descending", ratings: "", decade: "", minScore: 0 }
-			: undefined;
+			: browseTo === "/iptv"
+				? { tab: browseSearch?.tab ?? "live" }
+				: undefined;
 
 	return (
 		<section id={id} className="shelf-section">
@@ -45,7 +55,7 @@ export function SectionShelf({
 				{browseTo ? (
 					<Link
 						to={browseTo}
-						search={browseSearch}
+						search={linkSearch}
 						className="section-trailing section-trailing-button"
 						data-tv-focusable="true"
 					>
@@ -63,7 +73,15 @@ export function SectionShelf({
 							key={item.id}
 							item={item}
 							priority={index < 4}
-							variant={index === 0 ? "feature" : index < 3 ? "poster" : "standard"}
+							variant={
+								item.type === "channel"
+									? "standard"
+									: index === 0
+										? "feature"
+										: index < 3
+											? "poster"
+											: "standard"
+							}
 							onClick={() => onSelect(item)}
 							onPlay={onPlay}
 							onToggleFavorite={onToggleFavorite}
@@ -75,7 +93,7 @@ export function SectionShelf({
 						// lands in the next row instead of on a link between them.
 						<Link
 							to={browseTo}
-							search={browseSearch}
+							search={linkSearch}
 							className="shelf-more-card"
 							data-tv-focusable="true"
 						>

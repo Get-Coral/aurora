@@ -24,15 +24,20 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
 	const [locale, setLocaleState] = useState<Locale>("en");
+	// Saving waits until the stored choice has been read: saving the initial
+	// "en" first (as a double-run effect does) overwrote the viewer's language.
+	const [detected, setDetected] = useState(false);
 
 	useEffect(() => {
 		setLocaleState(detectLocale());
+		setDetected(true);
 	}, []);
 
 	useEffect(() => {
+		if (!detected) return;
 		if (typeof document !== "undefined") document.documentElement.lang = locale;
 		if (typeof window !== "undefined") window.localStorage.setItem("aurora-locale", locale);
-	}, [locale]);
+	}, [locale, detected]);
 
 	const value = useMemo<I18nContextValue>(() => {
 		function t(key: string, params?: Record<string, string | number | undefined>) {

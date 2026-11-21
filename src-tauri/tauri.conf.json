@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Aurora",
+  "version": "../package.json",
+  "identifier": "dev.getcoral.aurora",
+  "build": {
+    "frontendDist": "splash",
+    "beforeBuildCommand": "node scripts/desktop/prepare.mjs --ffmpeg",
+    "beforeDevCommand": "node scripts/desktop/prepare.mjs"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg",
+      "nsis",
+      "msi"
+    ],
+    "category": "Entertainment",
+    "shortDescription": "Jellyfin and IPTV in one app",
+    "copyright": "Get Coral",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/aurora-node"
+    ],
+    "resources": {
+      "resources/server/": "server/",
+      "resources/ffmpeg/": "ffmpeg/"
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "entitlements": "Entitlements.plist",
+      "hardenedRuntime": true
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    }
+  }
+}

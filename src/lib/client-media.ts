@@ -272,6 +272,16 @@ export async function fetchClientContinueWatching() {
 	return items.map(fromClientJellyfin);
 }
 
+export async function fetchClientLibraryGenres(type: "Movie" | "Series") {
+	const { getLibraryGenresWith } = await import("./jellyfin-search");
+	return getLibraryGenresWith(getClientJellyfin(), type);
+}
+
+export async function fetchClientNextUp() {
+	const { getNextUpWith } = await import("./jellyfin-search");
+	return (await getNextUpWith(getClientJellyfin())).map(fromClientJellyfin);
+}
+
 export async function fetchClientFeatured() {
 	const item = await getFeaturedItem(getClientJellyfin());
 	return item ? fromClientJellyfin(item) : null;
@@ -713,6 +723,23 @@ export async function fetchClientWatchHistory(page = 0) {
 		total: data.TotalRecordCount,
 		page,
 	};
+}
+
+export async function fetchClientLibrarySearch(query: string) {
+	if (query.trim().length < 2) return {};
+	const client = getClientJellyfin();
+	const { librarySearchParts, searchLibraryWith } = await import("./jellyfin-search");
+	return librarySearchParts(
+		await searchLibraryWith(client, query.trim()),
+		fromClientJellyfin,
+		(person) =>
+			withImageTag(personImageUrl(client, person.Id, 240), person.ImageTags?.Primary ?? ""),
+	);
+}
+
+export async function fetchClientPersonItems(personId: string) {
+	const { getPersonItemsWith } = await import("./jellyfin-search");
+	return (await getPersonItemsWith(getClientJellyfin(), personId)).map(fromClientJellyfin);
 }
 
 export async function fetchClientSearch(query: string) {

@@ -10,20 +10,21 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
-import type { MediaItem } from "../lib/media";
 import { useMultiUserMode } from "../lib/multi-user-mode";
 import {
 	clearActiveUserRuntime,
 	fetchAuthStatusRuntime,
 	fetchCurrentProfileRuntime,
-	fetchSearchRuntime,
+	fetchIptvStatusRuntime,
+	fetchSetupStatusRuntime,
 	fetchUsernameRuntime,
 	logoutRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 import { AuroraMark } from "./AuroraMark";
+import { SearchPanel } from "./SearchPanel";
 
 export default function Header() {
 	const { t } = useI18n();
@@ -43,26 +44,25 @@ export default function Header() {
 		queryKey: ["auth-status"],
 		queryFn: () => fetchAuthStatusRuntime(),
 	});
+	const { data: setupStatus } = useQuery({
+		queryKey: ["setup-status"],
+		queryFn: () => fetchSetupStatusRuntime(),
+		staleTime: 60_000,
+	});
+	const { data: iptvStatus } = useQuery({
+		queryKey: ["iptv-status"],
+		queryFn: () => fetchIptvStatusRuntime(),
+		staleTime: 60_000,
+	});
+	const hasJellyfin = setupStatus?.configured ?? true;
+	const hasIptv = Boolean(iptvStatus?.enabled && iptvStatus.sources > 0);
 	const loginRequired = authStatus?.required ?? false;
 	const canAdminister = authStatus?.isAdmin ?? true;
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [navOpen, setNavOpen] = useState(false);
 	const [profileOpen, setProfileOpen] = useState(false);
 	const [loggingOut, setLoggingOut] = useState(false);
-	const [query, setQuery] = useState("");
 	const headerRef = useRef<HTMLElement>(null);
-	const inputRef = useRef<HTMLInputElement>(null);
-	const deferredQuery = useDeferredValue(query.trim());
-
-	const { data: results = [], isFetching } = useQuery({
-		queryKey: ["search", deferredQuery],
-		queryFn: () => fetchSearchRuntime({ data: { query: deferredQuery } }),
-		enabled: deferredQuery.length > 1,
-	});
-
-	useEffect(() => {
-		if (searchOpen) inputRef.current?.focus();
-	}, [searchOpen]);
 
 	useEffect(() => {
 		if (!pathname) return;
@@ -90,12 +90,6 @@ export default function Header() {
 		};
 	}, []);
 
-	function selectItem(item: MediaItem) {
-		window.dispatchEvent(new CustomEvent("aurora:select-media", { detail: item }));
-		setSearchOpen(false);
-		setQuery("");
-	}
-
 	function toggleSearch() {
 		setSearchOpen((current) => {
 			const next = !current;
@@ -103,14 +97,12 @@ export default function Header() {
 				setNavOpen(false);
 				setProfileOpen(false);
 			}
-			if (!next) setQuery("");
 			return next;
 		});
 	}
 
 	function closeSearch() {
 		setSearchOpen(false);
-		setQuery("");
 	}
 
 	function toggleNav() {
@@ -290,47 +282,51 @@ export default function Header() {
 					>
 						{t("nav.home")}
 					</Link>
-					<Link
-						to="/library/movies"
-						search={{
-							sort: "DateCreated",
-							order: "Descending",
-							ratings: "",
-							decade: "",
-							minScore: 0,
-							watchStatus: undefined,
-						}}
-						className="nav-pill"
-						activeProps={{ className: "nav-pill nav-pill-active" }}
-						data-tv-focusable="true"
-					>
-						{t("nav.movies")}
-					</Link>
-					<Link
-						to="/library/series"
-						search={{
-							sort: "DateCreated",
-							order: "Descending",
-							ratings: "",
-							decade: "",
-							minScore: 0,
-							watchStatus: undefined,
-						}}
-						className="nav-pill"
-						activeProps={{ className: "nav-pill nav-pill-active" }}
-						data-tv-focusable="true"
-					>
-						{t("nav.series")}
-					</Link>
-					{!tvMode ? (
-						<Link
-							to="/collections"
-							className="nav-pill"
-							activeProps={{ className: "nav-pill nav-pill-active" }}
-							data-tv-focusable="true"
-						>
-							{t("nav.collections")}
-						</Link>
+					{hasJellyfin ? (
+						<>
+							<Link
+								to="/library/movies"
+								search={{
+									sort: "DateCreated",
+									order: "Descending",
+									ratings: "",
+									decade: "",
+									minScore: 0,
+									watchStatus: undefined,
+								}}
+								className="nav-pill"
+								activeProps={{ className: "nav-pill nav-pill-active" }}
+								data-tv-focusable="true"
+							>
+								{t("nav.movies")}
+							</Link>
+							<Link
+								to="/library/series"
+								search={{
+									sort: "DateCreated",
+									order: "Descending",
+									ratings: "",
+									decade: "",
+									minScore: 0,
+									watchStatus: undefined,
+								}}
+								className="nav-pill"
+								activeProps={{ className: "nav-pill nav-pill-active" }}
+								data-tv-focusable="true"
+							>
+								{t("nav.series")}
+							</Link>
+							{!tvMode ? (
+								<Link
+									to="/collections"
+									className="nav-pill"
+									activeProps={{ className: "nav-pill nav-pill-active" }}
+									data-tv-focusable="true"
+								>
+									{t("nav.collections")}
+								</Link>
+							) : null}
+						</>
 					) : null}
 					<Link
 						to="/my-list"
@@ -340,60 +336,23 @@ export default function Header() {
 					>
 						{t("nav.myList")}
 					</Link>
+					{hasIptv ? (
+						<Link
+							to="/iptv"
+							search={{ tab: "live" }}
+							className="nav-pill"
+							activeProps={{ className: "nav-pill nav-pill-active" }}
+							data-tv-focusable="true"
+						>
+							{t("nav.liveTv")}
+						</Link>
+					) : null}
 				</div>
 
 				<div
 					className={searchOpen ? "header-search-row header-search-row-open" : "header-search-row"}
 				>
-					{searchOpen ? (
-						<div className="search-shell">
-							<input
-								ref={inputRef}
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								onKeyDown={(e) => e.key === "Escape" && closeSearch()}
-								placeholder={t("search.placeholder")}
-								className="search-input"
-							/>
-							<button
-								type="button"
-								className="icon-button"
-								onClick={closeSearch}
-								aria-label={t("search.close")}
-							>
-								<X size={16} />
-							</button>
-
-							{deferredQuery.length > 1 ? (
-								<div className="search-results">
-									{isFetching ? <p className="search-state">{t("search.searching")}</p> : null}
-									{!isFetching && results.length === 0 ? (
-										<p className="search-state">{t("search.empty")}</p>
-									) : null}
-									{results.map((item) => (
-										<button
-											key={item.id}
-											type="button"
-											className="search-result"
-											onClick={() => selectItem(item)}
-										>
-											<div className="search-result-copy">
-												<strong>{item.title}</strong>
-												<span>
-													{[
-														item.type === "series" ? t("search.series") : t("search.movie"),
-														item.year,
-													]
-														.filter(Boolean)
-														.join(" • ")}
-												</span>
-											</div>
-										</button>
-									))}
-								</div>
-							) : null}
-						</div>
-					) : null}
+					{searchOpen ? <SearchPanel onClose={closeSearch} /> : null}
 				</div>
 			</nav>
 		</header>

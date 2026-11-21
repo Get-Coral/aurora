@@ -1,0 +1,21 @@
+[package]
+name = "aurora-desktop"
+version = "0.0.0"
+description = "Aurora for Jellyfin and IPTV, for macOS and Windows"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+getrandom = "0.3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

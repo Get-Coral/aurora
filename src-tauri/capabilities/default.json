@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The window shows the local Aurora server and needs no Tauri APIs.",
+  "windows": ["main"],
+  "permissions": []
+}

@@ -196,6 +196,34 @@ Aurora uses Jellyfin as the system of record.
 - `JELLYFIN_USER_ID` must be the actual Jellyfin user UUID, not the app name
 - If you use the onboarding flow, Aurora stores these values in local SQLite instead of requiring env vars
 
+## IPTV sources
+
+Aurora can show IPTV next to Jellyfin, or on its own. Live channels, films and series from IPTV appear on Home, in search, in My List and in history, open in the same details view and play in the same player as Jellyfin titles.
+
+Set `AURORA_IPTV_ORIGINS` on your Aurora server to enable IPTV. Use a comma-separated list of the origins your sources start from, for example `https://provider.example`. Include the scheme and any non-default port, with no path or credentials. Aurora only contacts a source through these origins.
+
+Xtream providers hand every stream to load balancers whose addresses change per request. Aurora follows those redirects, HLS segments and artwork to public internet addresses and never to private, loopback or link-local networks. Set `AURORA_IPTV_STRICT_ORIGINS=true` to require every hop to be on the allowed list instead.
+
+Add sources in **Settings → IPTV sources**. Without Jellyfin, choose **Use Aurora with IPTV only** on the setup screen. Choose:
+
+- **Xtream Codes** with the server URL, username and password. Aurora loads live TV, films, series with seasons and episodes, film details and the TV guide through the Xtream API. A pasted Xtream M3U link (`get.php?username=…&password=…`) is turned into an Xtream source automatically. If a panel has its API turned off, Aurora reads its M3U download instead.
+- **M3U playlist URL** for any other playlist. Channel numbers, logos, categories and the guide advertised in `url-tvg` are used.
+- **Direct stream URL** for a single HLS, MPEG-TS or video file.
+
+You can give a source its own XMLTV guide URL. Without one, Aurora uses the guide from the provider. Guides are read in the background, so the first page view may only show the provider's short guide.
+
+Sources are shared by everyone using the Aurora server and can only be changed by an administrator (or by anyone before Jellyfin is set up). Aurora stores them encrypted in SQLite, with a key file it creates beside the database. An optional 64-character hexadecimal `AURORA_IPTV_SOURCE_KEY` replaces that key. Passwords and full playlist URLs never reach the browser: streams and artwork go through Aurora with signed links that survive a restart. Watch progress, history and My List for IPTV are kept per Aurora user.
+
+Aurora plays HLS and MPEG-TS in supported browsers and falls back to the provider's HLS when an MPEG-TS channel fails. Films and episodes play when the browser supports their container and codecs. Set `AURORA_IPTV_FFMPEG` to an FFmpeg executable with H.264 and AAC encoding to play MKV and AVI, including resuming and seeking. Aurora looks inside each file with `ffprobe` (found beside FFmpeg, or set `AURORA_IPTV_FFPROBE`): H.264 video is repackaged rather than re-encoded, which costs little CPU and keeps the original quality, and other video is converted. The player then offers the file's audio tracks and its text subtitles (SubRip, ASS, WebVTT), which the same conversion writes out, so films with several languages or "MULTI SUB" releases play in the language you choose. This mode handles one conversion at a time per Aurora process, which matches most IPTV accounts' single-connection limit.
+
+Administrators can choose per source which categories appear (**Categories** next to a source); adult content stays hidden unless a source allows it. The source list also shows the subscription's expiry date and connection limit when the provider reports them.
+
+**Live TV** lists every channel with what's on now, a **TV guide** timeline, and the films and series of your sources. While watching a channel, step to the previous or next one with the arrow keys, page up/down, a remote's channel keys or the on-screen buttons. A channel's details show the day's guide; on Xtream channels with an archive, earlier programmes have **Watch back** and play from the provider's catch-up (timeshift), seekable.
+
+Search covers Jellyfin and IPTV together: films, series, episodes, collections and people from Jellyfin, and channels, titles, series cast and the TV guide from IPTV, ranked as one result and grouped by kind. Matching ignores accents and word order and tolerates small typos. Press Enter in the header search for the full results page.
+
+In the Android and iOS apps, sources are kept on the device and the app talks to the provider directly. Live channels use the provider's HLS. Raw MPEG-TS playlists and MKV files can't play there.
+
 ## User Profiles
 
 Aurora supports multiple profiles for shared households: everyone picks their own Jellyfin user on a profile screen when opening Aurora.
@@ -384,6 +412,7 @@ The public Android app is [Aurora for Jellyfin](https://play.google.com/store/ap
 - iOS packaging happens from Xcode after opening the generated project.
 - The same Android build runs on Android TV and Google TV. It appears in the TV launcher (`LEANBACK_LAUNCHER`, with the banner in `res/drawable-xhdpi/tv_banner.png`) and asks the system whether it runs on a TV, so TV mode switches on even when the WebView's user agent doesn't mention one. To ship it to TVs, opt in to the Android TV form factor in the Play Console and upload TV screenshots; the store banner is `fastlane/metadata/android/en-US/images/tvBanner.png`.
 - To try the TV build, create an Android TV device in Android Studio's Device Manager (Television, 1080p) and run `pnpm cap:run:android` with it selected. In a desktop browser, Settings → TV mode gives the same layout, driven with the arrow keys and Enter.
+- On a TV the remote does everything: the arrows move between controls, OK opens a text field's keyboard (fields reached with the arrows keep it closed, so it doesn't take over the remote), Back goes back, and in the player Up/Down and the channel keys zap through live channels.
 - Capacitor Android 8 requires JDK 21 for local and CI builds.
 - `pnpm cap:run:android` resolves `JAVA_HOME` automatically on macOS and prefers the Homebrew JDK 21 path when present, then falls back to system JDK 21 or 17.
 - CI validates the native Android path with `pnpm cap:sync` and `pnpm android:assemble:debug`.
@@ -392,6 +421,33 @@ Published images go to:
 
 - [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora) on Docker Hub
 - [`ghcr.io/get-coral/aurora`](https://github.com/Get-Coral/aurora/pkgs/container/aurora) on GHCR
+
+## Desktop App (macOS & Windows)
+
+The desktop app is built with [Tauri](https://tauri.app). It runs the Aurora server on `127.0.0.1` next to the app, on the Node.js build it ships with, and shows it in a native window (WKWebView on macOS, WebView2 on Windows). So it has everything a server install has: ffmpeg remuxing for MKV and raw MPEG-TS, audio and subtitle tracks, the TV guide cache, and IPTV providers without CORS limits. Settings and caches live in the app's data folder (`~/Library/Application Support/dev.getcoral.aurora` on macOS, `%APPDATA%\dev.getcoral.aurora` on Windows).
+
+The server only answers the app's own window: it checks the Host header, and the window gets a secret for each launch that the server sets as a SameSite=Strict cookie (see [`desktop-guard.mjs`](./desktop-guard.mjs)), so web pages in your browser can't use it. In the desktop app IPTV can reach any provider you add, also one on your own network, as in the mobile apps.
+
+```bash
+pnpm desktop:dev    # run it in development
+pnpm desktop:build  # build the installers for this machine (.app/.dmg on macOS, .exe/.msi on Windows)
+```
+
+You need [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ build tools. Before each build, [`scripts/desktop/prepare.mjs`](./scripts/desktop/prepare.mjs) builds the web app, bundles the server into one file, and downloads the matching official Node.js build (checked against nodejs.org's checksums). The Windows build also bundles ffmpeg (the LGPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds)); on macOS the app uses an installed ffmpeg (`brew install ffmpeg`) when there is one.
+
+The [Desktop workflow](./.github/workflows/desktop.yml) builds macOS and Windows installers on every change to the desktop code.
+
+To sign the Mac app, create a Developer ID Application certificate (Xcode → Settings → Accounts → your team → Manage Certificates → + → Developer ID Application). Locally, pass it to the build and add Apple ID details to notarize:
+
+```bash
+APPLE_SIGNING_IDENTITY="Developer ID Application: Your Team (TEAMID)" \
+APPLE_ID=you@example.com APPLE_PASSWORD=app-specific-password APPLE_TEAM_ID=TEAMID \
+pnpm desktop:build
+```
+
+The app runs with the hardened runtime; [`src-tauri/Entitlements.plist`](./src-tauri/Entitlements.plist) allows the JIT the bundled Node.js needs. In CI, set the secrets `APPLE_CERTIFICATE` (the certificate exported as a .p12, base64-encoded), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID`; without them the Mac build is unsigned. The Windows installers aren't signed yet, so Windows shows a SmartScreen warning on first launch.
+
+An Apple TV app isn't possible this way: tvOS has no web view, so it would need a separate native app.
 
 ## Contributing
 

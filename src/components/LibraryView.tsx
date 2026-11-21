@@ -175,6 +175,8 @@ export function LibraryView({
 				decade: next.decade !== undefined ? next.decade : decade,
 				minScore: next.minScore !== undefined ? next.minScore : minScore,
 				watchStatus: "watchStatus" in next ? next.watchStatus : watchStatus,
+				view: "grid" as const,
+				...(type === "Series" && genre ? { genre } : {}),
 			},
 		});
 	}

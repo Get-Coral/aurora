@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Aurora</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #070a14;
+        color: #e8ecf8;
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        height: 100%;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 1.25rem;
+        text-align: center;
+        padding: 2rem;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.6rem;
+        letter-spacing: 0.01em;
+      }
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(255, 255, 255, 0.15);
+        border-top-color: #8ab4ff;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      .error .spinner {
+        display: none;
+      }
+      #message {
+        color: #9aa3ba;
+        max-width: 28rem;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Aurora</h1>
+      <div class="spinner"></div>
+      <p id="message">Starting…</p>
+    </main>
+    <script>
+      // The app calls this when the local server doesn't come up.
+      window.showError = (text) => {
+        document.body.classList.add("error");
+        document.getElementById("message").textContent = text;
+      };
+    </script>
+  </body>
+</html>

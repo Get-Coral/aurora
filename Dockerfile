@@ -31,6 +31,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/server.mjs ./server.mjs
+COPY --from=build /app/desktop-guard.mjs ./desktop-guard.mjs
 
 VOLUME ["/data"]
 

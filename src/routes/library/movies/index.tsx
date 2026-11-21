@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { LibraryBrowse } from "../../../components/LibraryBrowse";
 import { LibraryView } from "../../../components/LibraryView";
 import { useI18n } from "../../../lib/i18n";
 import { fetchSetupStatusRuntime } from "../../../lib/runtime-functions";
@@ -28,6 +29,8 @@ export const Route = createFileRoute("/library/movies/")({
 			search.watchStatus === "inprogress"
 				? (search.watchStatus as "watched" | "unwatched" | "inprogress")
 				: undefined,
+		/** Opens as rows; "grid" lists every title with filters. */
+		...(search.view === "grid" ? { view: "grid" as const } : {}),
 	}),
 	loaderDeps: ({ search }) => search,
 	loader: async () => {
@@ -42,6 +45,7 @@ export const Route = createFileRoute("/library/movies/")({
 function MoviesLibraryPage() {
 	const { t } = useI18n();
 	const search = Route.useSearch();
+	if (search.view !== "grid") return <LibraryBrowse type="Movie" />;
 
 	return (
 		<LibraryView

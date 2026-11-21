@@ -55,7 +55,8 @@ function isVideoRequest(url) {
   return (
     url.pathname.includes('/Videos/') ||
     url.pathname.includes('/Audio/') ||
-    url.pathname === '/api/jellyfin-stream'
+    url.pathname === '/api/jellyfin-stream' ||
+    url.pathname === '/api/iptv'
   );
 }
 

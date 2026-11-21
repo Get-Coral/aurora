@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, CheckCircle, Circle, Play, Plus, Star, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, CheckCircle, Circle, Play, Plus, RotateCcw, Star, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import { type DetailedMediaItem, isResumable, type MediaItem } from "../lib/media";
 import {
@@ -120,13 +120,15 @@ export function MediaSpotlightDialog({
 	}
 
 	const playLabel =
-		activeItem.type === "series"
-			? isResumable(nextUp[0] ?? episodes[0] ?? detail)
-				? t("hero.resumeNow")
-				: t("hero.playNow")
-			: resumable
-				? t("hero.resumeNow")
-				: t("hero.playNow");
+		activeItem.type === "channel"
+			? t("dialog.watchLive")
+			: activeItem.type === "series"
+				? isResumable(nextUp[0] ?? episodes[0] ?? detail)
+					? t("hero.resumeNow")
+					: t("hero.playNow")
+				: resumable
+					? t("hero.resumeNow")
+					: t("hero.playNow");
 
 	// ── TV mode: full-screen detail view ──────────────────────────────────────
 	if (tvMode) {
@@ -173,7 +175,11 @@ export function MediaSpotlightDialog({
 							) : null}
 						</div>
 
-						{detail.overview ? <p className="tv-detail-overview">{detail.overview}</p> : null}
+						{detail.type === "channel" ? (
+							<ChannelGuide epg={detail.epg} />
+						) : detail.overview ? (
+							<p className="tv-detail-overview">{detail.overview}</p>
+						) : null}
 
 						<div className="tv-detail-actions">
 							<button
@@ -200,7 +206,7 @@ export function MediaSpotlightDialog({
 									</>
 								)}
 							</button>
-							{activeItem.type !== "series" ? (
+							{activeItem.type !== "series" && activeItem.type !== "channel" ? (
 								<button
 									type="button"
 									className="secondary-action"
@@ -231,6 +237,11 @@ export function MediaSpotlightDialog({
 					</div>
 
 					<div className="tv-detail-lower">
+						{/* The day's schedule goes below the actions, so Watch live
+						    is on screen when the page opens. */}
+						{detail.type === "channel" ? (
+							<ChannelSchedule channel={detail} onPlay={onPlay} />
+						) : null}
 						{item.type === "series" ? (
 							<div className="tv-episodes-section">
 								<div className="tv-episodes-head">
@@ -414,14 +425,20 @@ export function MediaSpotlightDialog({
 				<div className="dialog-body">
 					<div className="dialog-header-block">
 						{detail.posterUrl ? (
-							<img src={detail.posterUrl} alt={detail.title} className="dialog-poster-thumb" />
+							<img
+								src={detail.posterUrl}
+								alt={detail.title}
+								className={`dialog-poster-thumb${detail.type === "channel" ? " dialog-poster-logo" : ""}`}
+							/>
 						) : null}
 
 						<div className="dialog-copy-block">
 							<p className="eyebrow">
 								{detail.type === "series"
 									? t("dialog.seriesSpotlight")
-									: t("dialog.movieSpotlight")}
+									: detail.type === "channel"
+										? t("dialog.liveSpotlight")
+										: t("dialog.movieSpotlight")}
 							</p>
 							<h2 id="aurora-dialog-title" className="dialog-title">
 								{detail.title}
@@ -462,7 +479,7 @@ export function MediaSpotlightDialog({
 										</>
 									)}
 								</button>
-								{activeItem.type !== "series" ? (
+								{activeItem.type !== "series" && activeItem.type !== "channel" ? (
 									<button
 										type="button"
 										className="secondary-action"
@@ -481,7 +498,14 @@ export function MediaSpotlightDialog({
 								) : null}
 							</div>
 
-							<p className="dialog-overview">{detail.overview || t("dialog.noSynopsis")}</p>
+							{detail.type === "channel" ? (
+								<>
+									<ChannelGuide epg={detail.epg} loading={loadingState} />
+									<ChannelSchedule channel={detail} onPlay={onPlay} />
+								</>
+							) : (
+								<p className="dialog-overview">{detail.overview || t("dialog.noSynopsis")}</p>
+							)}
 
 							{detail.genres.length ? (
 								<div className="chip-row">
@@ -628,33 +652,35 @@ export function MediaSpotlightDialog({
 						</section>
 					) : null}
 
-					<section className="detail-section">
-						<div className="detail-section-head">
-							<p className="eyebrow">{t("dialog.castCrew")}</p>
-							{loadingState ? (
-								<span className="detail-loading">{t("dialog.loadingCredits")}</span>
-							) : null}
-						</div>
-						{detail.cast.length ? (
-							<div className="cast-grid">
-								{detail.cast.map((person) => (
-									<article key={person.id} className="cast-card">
-										{person.imageUrl ? (
-											<img src={person.imageUrl} alt={person.name} className="cast-photo" />
-										) : (
-											<div className="cast-photo cast-photo-fallback">
-												<span>{person.name.slice(0, 1)}</span>
-											</div>
-										)}
-										<strong>{person.name}</strong>
-										<span>{person.role ?? person.type ?? t("dialog.castFallback")}</span>
-									</article>
-								))}
+					{detail.type !== "channel" ? (
+						<section className="detail-section">
+							<div className="detail-section-head">
+								<p className="eyebrow">{t("dialog.castCrew")}</p>
+								{loadingState ? (
+									<span className="detail-loading">{t("dialog.loadingCredits")}</span>
+								) : null}
 							</div>
-						) : (
-							<p className="detail-empty">{t("dialog.noCast")}</p>
-						)}
-					</section>
+							{detail.cast.length ? (
+								<div className="cast-grid">
+									{detail.cast.map((person) => (
+										<article key={person.id} className="cast-card">
+											{person.imageUrl ? (
+												<img src={person.imageUrl} alt={person.name} className="cast-photo" />
+											) : (
+												<div className="cast-photo cast-photo-fallback">
+													<span>{person.name.slice(0, 1)}</span>
+												</div>
+											)}
+											<strong>{person.name}</strong>
+											<span>{person.role ?? person.type ?? t("dialog.castFallback")}</span>
+										</article>
+									))}
+								</div>
+							) : (
+								<p className="detail-empty">{t("dialog.noCast")}</p>
+							)}
+						</section>
+					) : null}
 
 					<section className="detail-section">
 						<div className="detail-section-head">
@@ -696,5 +722,147 @@ export function MediaSpotlightDialog({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function formatClock(time: number) {
+	return new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/** What's on a live channel now and next. */
+function ChannelGuide({ epg, loading }: { epg?: MediaItem["epg"]; loading?: boolean }) {
+	const { t } = useI18n();
+	const now = epg?.now;
+	const next = epg?.next;
+	if (!now && !next) {
+		return (
+			<p className="dialog-overview">{loading ? t("dialog.loadingGuide") : t("dialog.noGuide")}</p>
+		);
+	}
+	const progress = now
+		? Math.min(100, Math.max(0, ((Date.now() - now.start) / (now.end - now.start)) * 100))
+		: 0;
+	return (
+		<div className="channel-guide">
+			{now ? (
+				<div className="channel-guide-row channel-guide-now">
+					<span className="channel-guide-time">
+						{t("dialog.onNow")} · {formatClock(now.start)}–{formatClock(now.end)}
+					</span>
+					<strong>{now.title}</strong>
+					<div className="channel-guide-progress">
+						<span style={{ width: `${progress}%` }} />
+					</div>
+					{now.description ? <p>{now.description}</p> : null}
+				</div>
+			) : null}
+			{next ? (
+				<div className="channel-guide-row">
+					<span className="channel-guide-time">
+						{t("dialog.upNext")} · {formatClock(next.start)}
+					</span>
+					<strong>{next.title}</strong>
+				</div>
+			) : null}
+		</div>
+	);
+}
+
+/**
+ * The day's guide for a channel. Earlier programmes the provider keeps in
+ * its archive can be watched back from the start.
+ */
+function ChannelSchedule({
+	channel,
+	onPlay,
+}: {
+	channel: MediaItem;
+	onPlay?: (item: MediaItem, queue?: MediaItem[]) => void;
+}) {
+	const { t } = useI18n();
+	const listRef = useRef<HTMLOListElement>(null);
+	const schedule = channel.schedule ?? [];
+	const now = Date.now();
+	const currentIndex = schedule.findIndex((programme) => programme.end > now);
+
+	useEffect(() => {
+		const current = listRef.current?.querySelector<HTMLElement>(".channel-schedule-now");
+		if (current && listRef.current)
+			listRef.current.scrollTop = Math.max(0, current.offsetTop - listRef.current.offsetTop - 80);
+	}, [schedule.length]);
+
+	if (schedule.length < 3) return null;
+
+	function replay(programme: (typeof schedule)[number]) {
+		if (!programme.replayId) return;
+		onPlay?.({
+			id: programme.replayId,
+			source: "iptv",
+			type: "episode",
+			title: programme.title,
+			seriesTitle: channel.title,
+			overview: programme.description,
+			runtimeMinutes: Math.round((programme.end - programme.start) / 60_000),
+			genres: channel.genres,
+			posterUrl: channel.posterUrl,
+			logoUrl: channel.logoUrl,
+			airing: { title: programme.title, start: programme.start, end: programme.end },
+			streamUrl: programme.replayId,
+		});
+	}
+
+	let lastDay = "";
+	return (
+		<section className="channel-schedule">
+			<p className="eyebrow">{t("dialog.schedule")}</p>
+			<ol ref={listRef}>
+				{schedule.map((programme, index) => {
+					const day = new Date(programme.start).toLocaleDateString([], {
+						weekday: "long",
+						day: "numeric",
+						month: "long",
+					});
+					const showDay = day !== lastDay;
+					lastDay = day;
+					const state =
+						index < currentIndex
+							? "past"
+							: index === currentIndex && programme.start <= now
+								? "now"
+								: "later";
+					return (
+						<li key={programme.start} className={`channel-schedule-${state}`}>
+							{showDay ? <p className="channel-schedule-day">{day}</p> : null}
+							<div className="channel-schedule-row">
+								<span className="channel-schedule-time">{formatClock(programme.start)}</span>
+								<span className="channel-schedule-copy">
+									<strong>{programme.title}</strong>
+									{programme.description ? <span>{programme.description}</span> : null}
+								</span>
+								{state === "now" ? (
+									<button
+										type="button"
+										className="secondary-action channel-schedule-action"
+										onClick={() => onPlay?.(channel)}
+										data-tv-focusable="true"
+									>
+										<Play size={14} fill="currentColor" /> {t("dialog.watchLive")}
+									</button>
+								) : programme.replayId ? (
+									<button
+										type="button"
+										className="secondary-action channel-schedule-action"
+										onClick={() => replay(programme)}
+										data-tv-focusable="true"
+									>
+										<RotateCcw size={14} /> {t("dialog.watchBack")}
+									</button>
+								) : null}
+							</div>
+						</li>
+					);
+				})}
+			</ol>
+		</section>
 	);
 }

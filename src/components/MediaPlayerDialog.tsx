@@ -3,11 +3,17 @@ import {
 	Airplay,
 	Captions,
 	Cast,
+	ChevronDown,
+	ChevronUp,
 	Film,
+	Languages,
+	ListVideo,
 	Maximize,
 	Minimize,
 	Pause,
+	PictureInPicture2,
 	Play,
+	Radio,
 	RotateCcw,
 	RotateCw,
 	Search,
@@ -29,6 +35,16 @@ import {
 import type { MediaItem } from "../lib/media";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
+	type AttachedStream,
+	attachStream,
+	browserEngineSupport,
+	choosePlaybackEngine,
+	type StreamTrack,
+	trackLabel,
+	withStartOffset,
+	withStreamParams,
+} from "../lib/player/attach-stream";
+import {
 	clampProgress,
 	isTimeBuffered,
 	ratioFromPointer,
@@ -36,15 +52,22 @@ import {
 	watchedRatio,
 } from "../lib/player-timeline";
 import {
+	beginIptvPlaybackRuntime,
 	beginPlaybackSessionRuntime,
 	createStreamTokenRuntime,
+	fetchIptvBrowseRuntime,
+	fetchIptvGuideRuntime,
 	fetchOnlineSubtitleRuntime,
-	fetchOpenSubtitlesKeyRuntime,
+	fetchOpenSubtitlesAvailableRuntime,
+	type IptvPlayback,
+	reportIptvPlaybackRuntime,
 	reportPlaybackStateRuntime,
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
+import { isNativeShell } from "../lib/runtime-mode";
 import type { TrickplayPreview } from "../lib/trickplay";
 import { moveTvFocus } from "../lib/tv-spatial-navigation";
+import { LiveChannelPanel } from "./LiveChannelPanel";
 import { PlayerScrubPreview } from "./PlayerScrubPreview";
 import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useRemotePlayback } from "./useRemotePlayback";
@@ -242,7 +265,7 @@ export function MediaPlayerDialog({
 	queue,
 	onSelectQueueItem,
 }: MediaPlayerDialogProps) {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	useLockBodyScroll(open);
 	const playbackClient = getClientPlaybackContext();
 	const debugPlayback = process.env.NODE_ENV === "development";
@@ -269,8 +292,32 @@ export function MediaPlayerDialog({
 			language: string;
 			url: string;
 		}[];
+		/** Set for IPTV streams, which Aurora attaches itself (hls.js, mpegts.js). */
+		iptv?: IptvPlayback;
 		trickplay?: TrickplayPreview | null;
 	} | null>(null);
+	const [playbackError, setPlaybackError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
+	const limitRetryRef = useRef(false);
+	const itemId = item?.id;
+	useEffect(() => {
+		if (itemId) limitRetryRef.current = false;
+	}, [itemId]);
+	const [engineTracks, setEngineTracks] = useState<{
+		audio: StreamTrack[];
+		subtitles: StreamTrack[];
+	}>({ audio: [], subtitles: [] });
+	const [activeAudio, setActiveAudio] = useState<number | null>(null);
+	const [activeEngineSubtitle, setActiveEngineSubtitle] = useState<number | null>(null);
+	/** A subtitle stream inside an IPTV file, written out by Aurora's converter. */
+	const [embeddedSubtitle, setEmbeddedSubtitle] = useState<number | null>(null);
+	const [audioPickerOpen, setAudioPickerOpen] = useState(false);
+	const [isPictureInPicture, setIsPictureInPicture] = useState(false);
+	const attachedStreamRef = useRef<AttachedStream | null>(null);
+	const knownDurationRef = useRef(0);
+	// Where playback was last seen. By the time the closing report runs, the
+	// stream teardown has already reset the element to 0:00.
+	const lastMediaTimeRef = useRef({ time: 0, duration: 0 });
 	// Signed token that lets an AirPlay/Cast receiver fetch the stream without
 	// Aurora's session cookie. Null when login isn't enforced (the proxy is
 	// open anyway) or inside the native shell (direct Jellyfin URLs).
@@ -371,9 +418,9 @@ export function MediaPlayerDialog({
 	onlineCuesRef.current = onlineCues;
 
 	const { data: osApiKey } = useQuery({
-		queryKey: ["opensubtitles-key"],
-		queryFn: () => fetchOpenSubtitlesKeyRuntime(),
-		staleTime: Number.POSITIVE_INFINITY,
+		queryKey: ["opensubtitles-available"],
+		queryFn: () => fetchOpenSubtitlesAvailableRuntime(),
+		staleTime: 5 * 60_000,
 	});
 
 	const { data: onlineSubtitles = [], isFetching: searchingSubtitles } = useQuery({
@@ -391,8 +438,14 @@ export function MediaPlayerDialog({
 		staleTime: 0,
 	});
 
+	const isIptv = item?.source === "iptv";
+	const iptvSession = playbackSession?.iptv;
+	const isLive = Boolean(iptvSession?.live ?? item?.live);
+	// IPTV items carry their id in streamUrl; the real URL only exists once
+	// Aurora has resolved a playback session for it.
 	const baseStreamUrl =
-		playbackSession?.streamUrl ?? (playbackClient.prefersSafeVideo ? null : item?.streamUrl);
+		playbackSession?.streamUrl ??
+		(playbackClient.prefersSafeVideo || isIptv ? null : item?.streamUrl);
 	// Carry the signed token on every stream URL, not just while casting: a
 	// receiver is handed `video.currentSrc` as it stands the moment the user
 	// picks a device, so swapping it in afterwards is already too late. The
@@ -416,14 +469,20 @@ export function MediaPlayerDialog({
 		playbackSession?.playMethod === "Transcode" &&
 		streamUrl != null &&
 		isNativeHlsStreamUrl(streamUrl);
-	const canSelectQuality = playbackSession?.playMethod === "Transcode";
+	const canSelectQuality = playbackSession?.playMethod === "Transcode" && !iptvSession;
+	const iptvEngine = iptvSession
+		? choosePlaybackEngine(iptvSession.format, browserEngineSupport())
+		: null;
 	// A quality change rebuilds the stream URL, which remounts the <video> and
 	// so destroys the element holding the remote session. The local element also
 	// sits in `waiting` for the whole handoff, which would drive the ladder
 	// steadily downwards on its own.
 	const canAutoAdjustQuality = canSelectQuality && !isNativeHlsPlayback && !remote.active;
 	const isPreparingStream =
-		Boolean(item?.streamUrl) && playbackClient.prefersSafeVideo && playbackSession == null;
+		Boolean(item?.streamUrl) &&
+		(playbackClient.prefersSafeVideo || isIptv) &&
+		playbackSession == null &&
+		!playbackError;
 	const runtimeSeconds = getRuntimeSeconds(item);
 	// While dragging, the bar follows the pointer rather than the video.
 	const displayTime = scrubTime ?? currentTime;
@@ -435,6 +494,51 @@ export function MediaPlayerDialog({
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
+	// Zapping: live channels step through the list they were started from. A
+	// channel started on its own (from its details or a search) steps through
+	// its category instead, as a TV remote would.
+	const queuedChannels = isLive ? (queue ?? []).filter((entry) => entry.type === "channel") : [];
+	const zapGroup = isLive && queuedChannels.length < 2 ? item?.group : undefined;
+	const { data: groupChannels } = useQuery({
+		queryKey: ["zap-group", zapGroup],
+		queryFn: async () =>
+			(await fetchIptvBrowseRuntime({ kind: "live", group: zapGroup, limit: 200 })).items,
+		enabled: open && Boolean(zapGroup),
+		staleTime: 10 * 60_000,
+	});
+	const channelQueue =
+		queuedChannels.length > 1 || !groupChannels?.length ? queuedChannels : groupChannels;
+	const channelIndex = item ? channelQueue.findIndex((entry) => entry.id === item.id) : -1;
+	const canZap = channelIndex >= 0 && channelQueue.length > 1;
+	const [channelListOpen, setChannelListOpen] = useState(false);
+	// What's on, kept current while watching: the list the channel came from
+	// only knew the programme at the time it loaded.
+	const guideIds =
+		isLive && item ? [...new Set([item.id, ...channelQueue.map((c) => c.id)])].slice(0, 60) : [];
+	const { data: liveGuide } = useQuery({
+		queryKey: ["live-guide", guideIds.join(",")],
+		queryFn: () => fetchIptvGuideRuntime(guideIds),
+		enabled: open && guideIds.length > 0,
+		refetchInterval: 60_000,
+		staleTime: 30_000,
+	});
+	const liveNow = (item ? liveGuide?.[item.id]?.now : undefined) ?? item?.epg?.now;
+	const liveNext = (item ? liveGuide?.[item.id]?.next : undefined) ?? item?.epg?.next;
+	const [clock, setClock] = useState(() => Date.now());
+	useEffect(() => {
+		if (!isLive || !open) return;
+		const timer = setInterval(() => setClock(Date.now()), 30_000);
+		return () => clearInterval(timer);
+	}, [isLive, open]);
+	const liveProgress =
+		liveNow && liveNow.end > liveNow.start
+			? Math.min(100, Math.max(0, ((clock - liveNow.start) / (liveNow.end - liveNow.start)) * 100))
+			: null;
+	function zap(step: 1 | -1) {
+		if (!canZap) return;
+		const target = channelQueue[(channelIndex + step + channelQueue.length) % channelQueue.length];
+		if (target) onSelectQueueItem?.(target);
+	}
 	const displayedQualityLabel =
 		manualQualityIndex == null
 			? t("player.qualityAuto")
@@ -522,11 +626,61 @@ export function MediaPlayerDialog({
 		if (bufferingDowngradeTimerRef.current) clearTimeout(bufferingDowngradeTimerRef.current);
 		if (stablePlaybackUpgradeTimerRef.current) clearTimeout(stablePlaybackUpgradeTimerRef.current);
 		videoRef.current?.querySelector("track[data-online]")?.remove();
+		setPlaybackError(null);
+		setEngineTracks({ audio: [], subtitles: [] });
+		setActiveAudio(null);
+		setActiveEngineSubtitle(null);
+		setEmbeddedSubtitle(null);
+		setAudioPickerOpen(false);
+		knownDurationRef.current = (item?.runtimeMinutes ?? 0) * 60;
+		lastMediaTimeRef.current = { time: 0, duration: 0 };
 
 		if (!item?.streamUrl) return;
 
 		let cancelled = false;
 		const client = playbackClient;
+
+		if (item.source === "iptv") {
+			// Live MPEG-TS needs Media Source Extensions; without them (iOS,
+			// the native app) ask the provider for HLS instead.
+			const preferHls = isNativeShell() || !browserEngineSupport().mse;
+			void Promise.all([
+				beginIptvPlaybackRuntime(item.id, preferHls),
+				createStreamTokenRuntime({ data: { id: item.id } }).catch(() => ({
+					token: null as string | null,
+				})),
+			])
+				.then(([session, minted]) => {
+					if (cancelled) return;
+					setStreamToken(minted.token);
+					if (session.durationSeconds) {
+						knownDurationRef.current = session.durationSeconds;
+						setDuration(session.durationSeconds);
+					}
+					const resumeSeconds = session.live ? 0 : (item.playbackPositionTicks ?? 0) / 10_000_000;
+					let streamUrl = session.streamUrl;
+					if (session.transcoded && resumeSeconds > 0) {
+						// Aurora's converter seeks on the provider; the new stream starts there.
+						startTimeOffsetRef.current = 0;
+						seekPendingRef.current = true;
+						pendingSeekTargetRef.current = resumeSeconds;
+						streamUrl = withStartOffset(streamUrl, resumeSeconds);
+					}
+					setPlaybackSession({
+						streamUrl,
+						canSyncProgress: !session.live,
+						playMethod: session.transcoded ? "Transcode" : "DirectPlay",
+						subtitleTracks: [],
+						iptv: session,
+					});
+				})
+				.catch(() => {
+					if (!cancelled) setPlaybackError("player.iptvUnavailable");
+				});
+			return () => {
+				cancelled = true;
+			};
+		}
 		logPlayback("session:start", {
 			streamUrl: item.streamUrl,
 			client,
@@ -598,7 +752,7 @@ export function MediaPlayerDialog({
 			cancelled = true;
 			logPlayback("session:cleanup");
 		};
-	}, [debugPlayback, item]);
+	}, [debugPlayback, item, attempt]);
 
 	// Reload video when stream URL changes
 	useEffect(() => {
@@ -614,7 +768,10 @@ export function MediaPlayerDialog({
 			streamUrl,
 			videoState: snapshotMediaState(video),
 		});
-		video?.load();
+		// The element mounts per stream URL and starts loading on its own. A
+		// second load() would fetch IPTV streams twice, which restarts the
+		// converter and trips single-connection provider accounts.
+		if (!playbackSession?.iptv) video?.load();
 
 		return () => {
 			if (!video) return;
@@ -629,7 +786,153 @@ export function MediaPlayerDialog({
 			}
 			video.load();
 		};
-	}, [open, playbackSession?.playMethod, streamUrl]);
+	}, [open, playbackSession?.playMethod, playbackSession?.iptv, streamUrl]);
+
+	// IPTV: attach hls.js or mpegts.js where the browser can't play the stream
+	// itself, switch a failing MPEG-TS channel to the provider's HLS, and give
+	// up with a message instead of an endless spinner.
+	useEffect(() => {
+		const video = videoRef.current;
+		const session = playbackSession?.iptv;
+		if (!open || !video || !session || !streamUrl) return;
+		let disposed = false;
+		let failed = false;
+		const fail = (status?: number) => {
+			if (disposed || failed) return;
+			failed = true;
+			const fallbackUrl = session.fallbackUrl;
+			// Zapping: the provider may still count the previous channel for a
+			// moment. Try once more before telling the viewer.
+			if (status === 429 && !limitRetryRef.current) {
+				limitRetryRef.current = true;
+				setTimeout(() => setAttempt((value) => value + 1), 2500);
+				return;
+			}
+			if (fallbackUrl && status !== 421 && status !== 410 && status !== 429) {
+				setPlaybackSession((current) =>
+					current
+						? {
+								...current,
+								streamUrl: fallbackUrl,
+								iptv: { ...session, format: "hls", fallbackUrl: undefined },
+							}
+						: current,
+				);
+				return;
+			}
+			setIsBuffering(false);
+			setPlaybackError(
+				status === 429
+					? "iptv.connectionLimit"
+					: status === 421
+						? "iptv.blockedOrigin"
+						: status === 410
+							? "iptv.staleStream"
+							: status === 401 || status === 403
+								? "iptv.providerRefused"
+								: "iptv.playError",
+			);
+		};
+		const onError = () => fail();
+		video.addEventListener("error", onError);
+		const startup = setTimeout(() => {
+			if (!remoteActiveRef.current && video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) fail();
+		}, 25_000);
+		void attachStream(
+			video,
+			{ src: streamUrl, format: session.format, live: session.live },
+			{ onFatal: fail, onTracks: setEngineTracks },
+		)
+			.then((attached) => {
+				if (disposed) attached.destroy();
+				else attachedStreamRef.current = attached;
+			})
+			.catch(() => fail());
+		return () => {
+			disposed = true;
+			clearTimeout(startup);
+			video.removeEventListener("error", onError);
+			attachedStreamRef.current?.destroy();
+			attachedStreamRef.current = null;
+		};
+	}, [open, playbackSession?.iptv, streamUrl]);
+
+	// Audio streams inside an IPTV file: Aurora's converter switches between them.
+	const mediaAudio = iptvSession?.media?.audio;
+	useEffect(() => {
+		if (!mediaAudio || mediaAudio.length < 2) return;
+		setEngineTracks((current) => ({
+			...current,
+			audio: mediaAudio.map((track, index) => ({
+				id: track.id,
+				label: trackLabel(track, locale, t("player.trackNumber", { number: index + 1 })),
+				language: track.language,
+			})),
+		}));
+		const current = Number(new URL(streamUrl ?? "/", "http://x").searchParams.get("audio") ?? 0);
+		setActiveAudio(Number.isFinite(current) ? current : 0);
+	}, [mediaAudio, locale, t, streamUrl]);
+
+	// Embedded subtitles grow while the converter runs: fetch them again now and then.
+	useEffect(() => {
+		if (embeddedSubtitle == null || !iptvSession?.transcoded || !streamUrl) return;
+		let cancelled = false;
+		const url = withStreamParams(streamUrl, { subtitle: embeddedSubtitle, start: null });
+		const load = async () => {
+			try {
+				const response = await fetch(url);
+				if (!response.ok) return;
+				const cues = parseVtt(await response.text());
+				if (!cancelled && cues.length) setOnlineCues(cues);
+			} catch {
+				// Try again on the next tick.
+			}
+		};
+		const first = setTimeout(load, 1500);
+		const timer = setInterval(load, 15_000);
+		return () => {
+			cancelled = true;
+			clearTimeout(first);
+			clearInterval(timer);
+		};
+	}, [embeddedSubtitle, iptvSession?.transcoded, streamUrl]);
+
+	// Audio tracks the browser exposes itself (Safari, native HLS / MP4).
+	useEffect(() => {
+		const video = videoRef.current as
+			| (HTMLVideoElement & {
+					audioTracks?: {
+						length: number;
+						[index: number]: { label: string; language: string; enabled: boolean };
+						addEventListener?: (type: string, listener: () => void) => void;
+						removeEventListener?: (type: string, listener: () => void) => void;
+					};
+			  })
+			| null;
+		const list = video?.audioTracks;
+		if (!open || !list || iptvEngine === "hls.js" || (mediaAudio?.length ?? 0) > 1) return;
+		const read = () => {
+			const audio: StreamTrack[] = [];
+			for (let index = 0; index < list.length; index++) {
+				const track = list[index];
+				if (!track) continue;
+				audio.push({
+					id: index,
+					label: track.label || track.language || `Track ${index + 1}`,
+					language: track.language,
+				});
+				if (track.enabled) setActiveAudio(index);
+			}
+			setEngineTracks((current) => ({ ...current, audio }));
+		};
+		read();
+		list.addEventListener?.("addtrack", read);
+		list.addEventListener?.("removetrack", read);
+		return () => {
+			list.removeEventListener?.("addtrack", read);
+			list.removeEventListener?.("removetrack", read);
+		};
+	}, [open, streamUrl, iptvEngine]);
 
 	// Jellyfin progress sync
 	useEffect(() => {
@@ -675,6 +978,27 @@ export function MediaPlayerDialog({
 			}
 		}
 
+		// IPTV progress goes to Aurora's own store; live channels only land in
+		// history when they stop.
+		async function report(payload: ReturnType<typeof buildPayload>) {
+			try {
+				if (playbackSession?.iptv) {
+					if (playbackSession.iptv.live && !payload.isStopped) return;
+					const total = knownDurationRef.current || getBestDuration() || 0;
+					await reportIptvPlaybackRuntime({
+						id: payload.id,
+						positionTicks: playbackSession.iptv.live ? 0 : payload.positionTicks,
+						durationTicks: playbackSession.iptv.live ? 0 : Math.floor(total * 10_000_000),
+						played: payload.played,
+					});
+				} else {
+					await reportPlaybackStateRuntime({ data: payload });
+				}
+			} catch {
+				// Progress is best effort.
+			}
+		}
+
 		function buildPayload(overrides?: {
 			isPaused?: boolean;
 			isStopped?: boolean;
@@ -682,7 +1006,13 @@ export function MediaPlayerDialog({
 		}) {
 			return {
 				id: item!.id,
-				positionTicks: secondsToTicks(video!.currentTime + startTimeOffsetRef.current),
+				// While a seek or resume reload is still loading, the target is
+				// where the viewer is, not the element's placeholder 0:00.
+				positionTicks: secondsToTicks(
+					seekPendingRef.current && pendingSeekTargetRef.current != null
+						? pendingSeekTargetRef.current
+						: (video!.currentTime || lastMediaTimeRef.current.time) + startTimeOffsetRef.current,
+				),
 				playMethod: playbackSession?.playMethod,
 				playSessionId: playbackSession?.playSessionId,
 				mediaSourceId: playbackSession?.mediaSourceId,
@@ -704,7 +1034,7 @@ export function MediaPlayerDialog({
 			const currentSecond = Math.floor(video!.currentTime + startTimeOffsetRef.current);
 			if (!overrides?.force && Math.abs(currentSecond - lastReportedSecondRef.current) < 8) return;
 			lastReportedSecondRef.current = currentSecond;
-			void reportPlaybackStateRuntime({ data: buildPayload(overrides) }).catch(() => undefined);
+			void report(buildPayload(overrides));
 		}
 
 		function handleLoadedMetadata() {
@@ -766,6 +1096,12 @@ export function MediaPlayerDialog({
 			setIsBuffering(false);
 		}
 		function handleTimeUpdate() {
+			if (video!.currentTime > 0) {
+				lastMediaTimeRef.current = {
+					time: video!.currentTime,
+					duration: Number.isFinite(video!.duration) ? video!.duration : 0,
+				};
+			}
 			if (!seekPendingRef.current) {
 				lastKnownPositionRef.current = video!.currentTime + startTimeOffsetRef.current;
 			}
@@ -845,12 +1181,11 @@ export function MediaPlayerDialog({
 			const isFinalStop =
 				unmountingRef.current || !openRef.current || activeItemIdRef.current !== item?.id;
 			const played = isFinalStop && watchedRatio(position, length) >= 0.94 ? true : undefined;
-			void reportPlaybackStateRuntime({
-				data: {
-					...buildPayload({ isStopped: true, played }),
-					positionTicks: secondsToTicks(position),
-				},
-			}).catch(() => undefined);
+			// IPTV titles report to Aurora's own store, Jellyfin ones to Jellyfin.
+			void report({
+				...buildPayload({ isStopped: true, played }),
+				positionTicks: secondsToTicks(position),
+			});
 		};
 	}, [debugPlayback, item, open, playbackSession, streamUrl]);
 
@@ -975,7 +1310,8 @@ export function MediaPlayerDialog({
 				isTranscode: playbackSession?.playMethod === "Transcode",
 				videoDuration: video.duration,
 				offset: startTimeOffsetRef.current,
-				runtimeSeconds: getRuntimeSeconds(item),
+				// IPTV knows the runtime from the provider's film info.
+				runtimeSeconds: knownDurationRef.current || getRuntimeSeconds(item),
 			});
 			if (next > 0) setDuration(next);
 		};
@@ -1087,7 +1423,8 @@ export function MediaPlayerDialog({
 		if (!video || !open) return;
 
 		function handleEnded() {
-			if (nextItem) setAutoplayCountdown(10);
+			// A live stream that ends has dropped; never zap away on its own.
+			if (nextItem && !isLive) setAutoplayCountdown(10);
 		}
 
 		video.addEventListener("ended", handleEnded);
@@ -1116,7 +1453,7 @@ export function MediaPlayerDialog({
 	// Auto-hide controls — pinned while a picker is open, otherwise a long
 	// subtitle list fades to opacity 0 mid-scroll.
 	useEffect(() => {
-		if (!isPlaying || subtitlePickerOpen || qualityPickerOpen) {
+		if (!isPlaying || subtitlePickerOpen || qualityPickerOpen || channelListOpen) {
 			setControlsVisible(true);
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 			return;
@@ -1125,7 +1462,7 @@ export function MediaPlayerDialog({
 		return () => {
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 		};
-	}, [isPlaying, subtitlePickerOpen, qualityPickerOpen]);
+	}, [isPlaying, subtitlePickerOpen, qualityPickerOpen, channelListOpen]);
 
 	// Reopening a long list should land on the current selection, not the top.
 	useEffect(() => {
@@ -1142,7 +1479,7 @@ export function MediaPlayerDialog({
 			// Escape first: it has to work from inside the filter field, and it
 			// must not be gated on the <video> element existing.
 			if (e.key === "Escape") {
-				if (subtitlePickerOpen || qualityPickerOpen) {
+				if (subtitlePickerOpen || qualityPickerOpen || audioPickerOpen || channelListOpen) {
 					e.preventDefault();
 					closePickers();
 					return;
@@ -1179,6 +1516,12 @@ export function MediaPlayerDialog({
 			if (e.key === " " || e.key === "k") {
 				e.preventDefault();
 				video.paused ? void video.play() : video.pause();
+			} else if (
+				isLive &&
+				["ArrowUp", "ArrowDown", "PageUp", "PageDown", "ChannelUp", "ChannelDown"].includes(e.key)
+			) {
+				e.preventDefault();
+				zap(e.key === "ArrowUp" || e.key === "PageUp" || e.key === "ChannelUp" ? -1 : 1);
 			} else if (e.key === "ArrowLeft") {
 				seekToMovieTime(currentTime - 15);
 			} else if (e.key === "ArrowRight") {
@@ -1187,6 +1530,10 @@ export function MediaPlayerDialog({
 				void toggleFullscreen();
 			} else if (e.key === "m") {
 				video.muted = !video.muted;
+			} else if (e.key === "p") {
+				void togglePictureInPicture();
+			} else if (e.key === "c" && canZap) {
+				setChannelListOpen((value) => !value);
 			} else if (e.key === "z") {
 				subtitleOffsetRef.current = Math.round((subtitleOffsetRef.current - 0.1) * 10) / 10;
 			} else if (e.key === "x") {
@@ -1204,19 +1551,25 @@ export function MediaPlayerDialog({
 		onSelectQueueItem,
 		subtitlePickerOpen,
 		qualityPickerOpen,
+		audioPickerOpen,
+		isLive,
+		channelIndex,
+		channelQueue.length,
+		channelListOpen,
+		canZap,
 	]);
 
 	// The Android back button closes an open picker before the player itself.
 	useEffect(() => {
 		if (!open) return;
 		function handleBack(event: Event) {
-			if (!subtitlePickerOpen && !qualityPickerOpen) return;
+			if (!subtitlePickerOpen && !qualityPickerOpen && !audioPickerOpen && !channelListOpen) return;
 			event.preventDefault();
 			closePickers();
 		}
 		window.addEventListener(AURORA_BACK_EVENT, handleBack);
 		return () => window.removeEventListener(AURORA_BACK_EVENT, handleBack);
-	}, [open, subtitlePickerOpen, qualityPickerOpen]);
+	}, [open, subtitlePickerOpen, qualityPickerOpen, audioPickerOpen, channelListOpen]);
 
 	// Media Session: the OS media controls (macOS Now Playing, media keys,
 	// Bluetooth headsets, the Android TV system remote) drive the player.
@@ -1286,6 +1639,17 @@ export function MediaPlayerDialog({
 
 	/** Play/pause/seek keys from a remote or keyboard. Returns whether it acted. */
 	function handleMediaKey(key: string, video: HTMLVideoElement) {
+		// Channel keys on a remote (and track keys while watching live) zap.
+		if (isLive && canZap) {
+			if (["ChannelUp", "PageUp", "MediaTrackPrevious"].includes(key)) {
+				zap(-1);
+				return true;
+			}
+			if (["ChannelDown", "PageDown", "MediaTrackNext"].includes(key)) {
+				zap(1);
+				return true;
+			}
+		}
 		switch (key) {
 			case "MediaPlayPause":
 				video.paused ? void video.play() : video.pause();
@@ -1340,6 +1704,18 @@ export function MediaPlayerDialog({
 			container.contains(active);
 
 		if (!controlsWereVisible || !focusInControls) {
+			// Live TV: up/down change channel like a TV remote; there is
+			// nothing to seek, so left/right just show the controls.
+			if (isLive && canZap && (direction === "up" || direction === "down")) {
+				e.preventDefault();
+				zap(direction === "up" ? -1 : 1);
+				return true;
+			}
+			if (isLive && (direction === "left" || direction === "right")) {
+				e.preventDefault();
+				playButtonRef.current?.focus({ preventScroll: true });
+				return true;
+			}
 			if (e.key === "Enter" || direction === "up" || direction === "down") {
 				e.preventDefault();
 				playButtonRef.current?.focus({ preventScroll: true });
@@ -1364,9 +1740,126 @@ export function MediaPlayerDialog({
 	}
 
 	function closePickers() {
+		setChannelListOpen(false);
 		setSubtitlePickerOpen(false);
 		setQualityPickerOpen(false);
+		setAudioPickerOpen(false);
 		setSubtitleFilter("");
+	}
+
+	// Picture-in-picture: the standard API, or Safari's presentation modes.
+	const pictureInPictureSupported =
+		typeof document !== "undefined" &&
+		(document.pictureInPictureEnabled || "webkitSetPresentationMode" in HTMLVideoElement.prototype);
+
+	async function togglePictureInPicture() {
+		const video = videoRef.current as
+			| (HTMLVideoElement & {
+					webkitSetPresentationMode?: (mode: string) => void;
+					webkitPresentationMode?: string;
+			  })
+			| null;
+		if (!video) return;
+		try {
+			if (document.pictureInPictureEnabled) {
+				if (document.pictureInPictureElement) await document.exitPictureInPicture();
+				else await video.requestPictureInPicture();
+			} else if (video.webkitSetPresentationMode) {
+				video.webkitSetPresentationMode(
+					video.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture",
+				);
+			}
+		} catch {
+			// The browser refused (no user gesture, or the video isn't ready).
+		}
+	}
+
+	useEffect(() => {
+		const video = videoRef.current;
+		if (!open || !video) return;
+		const enter = () => setIsPictureInPicture(true);
+		const leave = () => setIsPictureInPicture(false);
+		const webkit = () =>
+			setIsPictureInPicture(
+				(video as HTMLVideoElement & { webkitPresentationMode?: string }).webkitPresentationMode ===
+					"picture-in-picture",
+			);
+		video.addEventListener("enterpictureinpicture", enter);
+		video.addEventListener("leavepictureinpicture", leave);
+		video.addEventListener("webkitpresentationmodechanged", webkit);
+		return () => {
+			video.removeEventListener("enterpictureinpicture", enter);
+			video.removeEventListener("leavepictureinpicture", leave);
+			video.removeEventListener("webkitpresentationmodechanged", webkit);
+		};
+	}, [open, streamUrl]);
+
+	/**
+	 * Restart an IPTV file through Aurora's converter at the current position,
+	 * with other parameters (an audio track, or to get its subtitles out).
+	 */
+	function switchIptvStream(params: Record<string, string | number | null>) {
+		const session = playbackSession;
+		const video = videoRef.current;
+		if (!session?.iptv || !video) return;
+		const position = video.currentTime + startTimeOffsetRef.current;
+		startTimeOffsetRef.current = 0;
+		seekPendingRef.current = position > 0;
+		pendingSeekTargetRef.current = position > 0 ? position : null;
+		lastReportedSecondRef.current = 0;
+		setIsBuffering(true);
+		setPlaybackSession({
+			...session,
+			playMethod: "Transcode",
+			streamUrl: withStreamParams(session.streamUrl, {
+				...params,
+				remux: session.iptv.transcoded ? null : "1",
+				start: position > 0 ? Math.floor(position) : null,
+			}),
+			iptv: { ...session.iptv, transcoded: true },
+		});
+	}
+
+	function selectAudioTrack(id: number) {
+		setAudioPickerOpen(false);
+		setActiveAudio(id);
+		if ((iptvSession?.media?.audio.length ?? 0) > 1) {
+			switchIptvStream({ audio: id });
+			return;
+		}
+		if (iptvEngine === "hls.js") {
+			attachedStreamRef.current?.setAudioTrack(id);
+			return;
+		}
+		const tracks = (
+			videoRef.current as
+				| (HTMLVideoElement & {
+						audioTracks?: { length: number; [index: number]: { enabled: boolean } };
+				  })
+				| null
+		)?.audioTracks;
+		if (!tracks) return;
+		for (let index = 0; index < tracks.length; index++) {
+			const track = tracks[index];
+			if (track) track.enabled = index === id;
+		}
+	}
+
+	function selectEngineSubtitle(id: number | null) {
+		setOnlineCues([]);
+		setEmbeddedSubtitle(null);
+		setActiveSubtitle(null);
+		setActiveEngineSubtitle(id);
+		attachedStreamRef.current?.setSubtitleTrack(id);
+		const video = videoRef.current;
+		if (video && id !== null) {
+			// hls.js renders into a text track named after the playlist track.
+			const label = engineTracks.subtitles.find((track) => track.id === id)?.label;
+			for (const track of Array.from(video.textTracks)) {
+				track.mode = track.label === label ? "showing" : "disabled";
+			}
+		}
+		closePickers();
 	}
 
 	function scheduleControlsHide() {
@@ -1381,7 +1874,14 @@ export function MediaPlayerDialog({
 	function revealControls() {
 		setControlsVisible(true);
 		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-		if (isPlaying && !subtitlePickerOpen && !qualityPickerOpen) scheduleControlsHide();
+		if (
+			isPlaying &&
+			!subtitlePickerOpen &&
+			!qualityPickerOpen &&
+			!audioPickerOpen &&
+			!channelListOpen
+		)
+			scheduleControlsHide();
 	}
 
 	function togglePlay() {
@@ -1392,7 +1892,7 @@ export function MediaPlayerDialog({
 
 	function handleVideoClick() {
 		if (Date.now() < ignoreVideoClickUntilRef.current) return;
-		if (subtitlePickerOpen || qualityPickerOpen) {
+		if (subtitlePickerOpen || qualityPickerOpen || channelListOpen) {
 			closePickers();
 			return;
 		}
@@ -1423,6 +1923,14 @@ export function MediaPlayerDialog({
 		}
 
 		const requestId = ++seekReloadRequestIdRef.current;
+		if (playbackSession?.iptv) {
+			// Aurora's converter restarts on the provider at the new position.
+			setPlaybackSession({
+				...playbackSession,
+				streamUrl: withStartOffset(playbackSession.streamUrl, targetMovieTime),
+			});
+			return;
+		}
 		const client = getClientPlaybackContext();
 		const qualityProfile =
 			options?.qualityProfile ??
@@ -1529,8 +2037,24 @@ export function MediaPlayerDialog({
 		}
 	}
 
+	function selectEmbeddedSubtitle(id: number) {
+		setActiveSubtitle(null);
+		setActiveEngineSubtitle(null);
+		setOnlineCues([]);
+		subtitleOffsetRef.current = 0;
+		setEmbeddedSubtitle(id);
+		// Subtitles come out of the converter, so a direct file switches to it.
+		if (!iptvSession?.transcoded) switchIptvStream({});
+		closePickers();
+	}
+
 	function selectSubtitle(index: number | null) {
 		setOnlineCues([]);
+		setEmbeddedSubtitle(null);
+		if (activeEngineSubtitle !== null) {
+			attachedStreamRef.current?.setSubtitleTrack(null);
+			setActiveEngineSubtitle(null);
+		}
 		const video = videoRef.current;
 		if (video) {
 			for (const track of Array.from(video.textTracks)) track.mode = "disabled";
@@ -1602,6 +2126,7 @@ export function MediaPlayerDialog({
 			resumeIfPlaying: options?.resumeIfPlaying ?? false,
 			videoState: snapshotMediaState(video),
 		});
+		if (isLive) return;
 		const d = getBestDuration();
 		const clamped =
 			d != null ? Math.max(0, Math.min(d, targetMovieTime)) : Math.max(0, targetMovieTime);
@@ -1816,7 +2341,7 @@ export function MediaPlayerDialog({
 						autoPlay
 						playsInline
 						preload="metadata"
-						src={streamUrl}
+						src={iptvEngine && iptvEngine !== "native" ? undefined : streamUrl}
 						onClick={handleVideoClick}
 					>
 						{(playbackSession?.subtitleTracks ?? []).map((track) => (
@@ -1832,9 +2357,38 @@ export function MediaPlayerDialog({
 
 					{/* The local element never leaves `waiting` once a receiver has
 					    the stream, so the spinner would run forever. */}
-					{isBuffering && !remote.active ? (
+					{isBuffering && !remote.active && !playbackError ? (
 						<div className="player-buffering-overlay" aria-hidden="true">
 							<div className="player-buffering-spinner" />
+						</div>
+					) : null}
+
+					{channelListOpen && canZap && item ? (
+						<LiveChannelPanel
+							channels={channelQueue}
+							currentId={item.id}
+							guide={liveGuide}
+							onSelect={(channel) => {
+								setChannelListOpen(false);
+								if (channel.id !== item.id) onSelectQueueItem?.(channel);
+							}}
+							onClose={() => setChannelListOpen(false)}
+						/>
+					) : null}
+
+					{playbackError ? (
+						<div className="player-error-overlay" role="alert">
+							<p>{t(playbackError)}</p>
+							<button
+								type="button"
+								className="secondary-action"
+								onClick={() => {
+									setPlaybackError(null);
+									setAttempt((value) => value + 1);
+								}}
+							>
+								{t("iptv.retry")}
+							</button>
 						</div>
 					) : null}
 
@@ -1890,8 +2444,11 @@ export function MediaPlayerDialog({
 					<div className={`player-controls-overlay${controlsVisible ? " visible" : ""}`}>
 						<div className="player-controls-top">
 							<div className="player-controls-title">
-								<p className="eyebrow">{t("player.nowPlaying")}</p>
+								<p className="eyebrow">
+									{item.type === "channel" ? t("player.live") : t("player.nowPlaying")}
+								</p>
 								<h2>{item.title}</h2>
+								{item.type === "channel" && liveNow ? <span>{liveNow.title}</span> : null}
 								{item.type === "episode" && item.seriesTitle ? (
 									<span>
 										{item.seriesTitle}
@@ -1911,45 +2468,110 @@ export function MediaPlayerDialog({
 						</div>
 
 						<div className="player-controls-bottom">
-							<div
-								className={`player-progress${scrubTime != null ? " scrubbing" : ""}`}
-								onPointerDown={handleProgressPointerDown}
-								onPointerMove={handleProgressPointerMove}
-								onPointerUp={handleProgressPointerUp}
-								onPointerCancel={handleProgressPointerCancel}
-								onLostPointerCapture={handleProgressPointerCancel}
-								onPointerLeave={() => setHoverTime(null)}
-								onFocus={() => setSeekBarFocused(true)}
-								onBlur={() => setSeekBarFocused(false)}
-								onKeyDown={handleProgressKeyDown}
-								role="slider"
-								tabIndex={0}
-								aria-label={t("player.seek")}
-								aria-valuenow={Math.floor(displayTime)}
-								aria-valuemin={0}
-								aria-valuemax={Math.floor(getBestDuration() ?? 0)}
-								aria-valuetext={t("player.seekPosition", {
-									current: formatTime(displayTime),
-									total: formatTime(duration),
-								})}
-							>
-								{previewTime != null && duration > 0 ? (
-									<PlayerScrubPreview
-										time={previewTime}
-										duration={duration}
-										label={formatTime(previewTime)}
-										trickplay={playbackSession?.trickplay}
-									/>
-								) : null}
-								<div className="player-progress-track">
-									<div
-										className="player-progress-buffered"
-										style={{ width: `${bufferedProgress}%` }}
-									/>
-									<div className="player-progress-fill" style={{ width: `${progress}%` }} />
-									<div className="player-progress-thumb" style={{ left: `${progress}%` }} />
+							{isLive ? (
+								<div className="player-live-row">
+									<span className="player-live-badge">
+										<Radio size={14} /> {t("player.live")}
+									</span>
+									{liveNow ? (
+										<span className="player-live-programme">
+											<strong>{liveNow.title}</strong>
+											<small>
+												{new Date(liveNow.start).toLocaleTimeString([], {
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+												–
+												{new Date(liveNow.end).toLocaleTimeString([], {
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+												{liveNext ? ` · ${t("dialog.upNext")}: ${liveNext.title}` : ""}
+											</small>
+											{liveProgress != null ? (
+												<i className="player-live-progress">
+													<i style={{ width: `${liveProgress}%` }} />
+												</i>
+											) : null}
+										</span>
+									) : null}
+									{canZap ? (
+										<span className="player-zap">
+											<button
+												type="button"
+												className="icon-button"
+												onClick={() => zap(-1)}
+												aria-label={t("player.previousChannel")}
+												title={t("player.previousChannel")}
+											>
+												<ChevronUp size={18} />
+											</button>
+											<button
+												type="button"
+												className={`icon-button${channelListOpen ? " nav-pill-active" : ""}`}
+												onClick={() => setChannelListOpen((value) => !value)}
+												aria-label={t("player.channels")}
+												title={t("player.channels")}
+												aria-expanded={channelListOpen}
+											>
+												<ListVideo size={18} />
+											</button>
+											<span className="player-zap-position">
+												{channelIndex + 1} / {channelQueue.length}
+											</span>
+											<button
+												type="button"
+												className="icon-button"
+												onClick={() => zap(1)}
+												aria-label={t("player.nextChannel")}
+												title={t("player.nextChannel")}
+											>
+												<ChevronDown size={18} />
+											</button>
+										</span>
+									) : null}
 								</div>
-							</div>
+							) : (
+								<div
+									className={`player-progress${scrubTime != null ? " scrubbing" : ""}`}
+									onPointerDown={handleProgressPointerDown}
+									onPointerMove={handleProgressPointerMove}
+									onPointerUp={handleProgressPointerUp}
+									onPointerCancel={handleProgressPointerCancel}
+									onLostPointerCapture={handleProgressPointerCancel}
+									onPointerLeave={() => setHoverTime(null)}
+									onFocus={() => setSeekBarFocused(true)}
+									onBlur={() => setSeekBarFocused(false)}
+									onKeyDown={handleProgressKeyDown}
+									role="slider"
+									tabIndex={0}
+									aria-label={t("player.seek")}
+									aria-valuenow={Math.floor(displayTime)}
+									aria-valuemin={0}
+									aria-valuemax={Math.floor(getBestDuration() ?? 0)}
+									aria-valuetext={t("player.seekPosition", {
+										current: formatTime(displayTime),
+										total: formatTime(duration),
+									})}
+								>
+									{previewTime != null && duration > 0 ? (
+										<PlayerScrubPreview
+											time={previewTime}
+											duration={duration}
+											label={formatTime(previewTime)}
+											trickplay={playbackSession?.trickplay}
+										/>
+									) : null}
+									<div className="player-progress-track">
+										<div
+											className="player-progress-buffered"
+											style={{ width: `${bufferedProgress}%` }}
+										/>
+										<div className="player-progress-fill" style={{ width: `${progress}%` }} />
+										<div className="player-progress-thumb" style={{ left: `${progress}%` }} />
+									</div>
+								</div>
+							)}
 
 							<div className="player-controls-row">
 								<div className="player-controls-left">
@@ -1967,24 +2589,28 @@ export function MediaPlayerDialog({
 											<Play size={22} fill="currentColor" strokeWidth={0} />
 										)}
 									</button>
-									<button
-										type="button"
-										className="icon-button player-skip-btn"
-										onClick={seekBack}
-										aria-label={t("player.skipBack")}
-									>
-										<RotateCcw size={18} />
-										<span className="player-skip-label">{t("player.skipBack")}</span>
-									</button>
-									<button
-										type="button"
-										className="icon-button player-skip-btn"
-										onClick={seekForward}
-										aria-label={t("player.skipForward")}
-									>
-										<RotateCw size={18} />
-										<span className="player-skip-label">{t("player.skipForward")}</span>
-									</button>
+									{!isLive ? (
+										<>
+											<button
+												type="button"
+												className="icon-button player-skip-btn"
+												onClick={seekBack}
+												aria-label={t("player.skipBack")}
+											>
+												<RotateCcw size={18} />
+												<span className="player-skip-label">{t("player.skipBack")}</span>
+											</button>
+											<button
+												type="button"
+												className="icon-button player-skip-btn"
+												onClick={seekForward}
+												aria-label={t("player.skipForward")}
+											>
+												<RotateCw size={18} />
+												<span className="player-skip-label">{t("player.skipForward")}</span>
+											</button>
+										</>
+									) : null}
 									<button
 										type="button"
 										className="icon-button"
@@ -1993,9 +2619,11 @@ export function MediaPlayerDialog({
 									>
 										{isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
 									</button>
-									<span className="player-time">
-										{formatTime(displayTime)} / {formatTime(duration)}
-									</span>
+									{!isLive ? (
+										<span className="player-time">
+											{formatTime(displayTime)} / {formatTime(duration)}
+										</span>
+									) : null}
 								</div>
 								<div className="player-controls-right">
 									{showNextButton ? (
@@ -2055,7 +2683,43 @@ export function MediaPlayerDialog({
 											</button>
 										</div>
 									) : null}
-									{nativeSubtitleTracks.length > 0 || osApiKey ? (
+									{engineTracks.audio.length > 1 ? (
+										<div className="player-subtitle-wrap">
+											{audioPickerOpen ? (
+												<div className="player-subtitle-picker">
+													<div className="player-subtitle-list">
+														{engineTracks.audio.map((track) => (
+															<button
+																key={track.id}
+																type="button"
+																className={`player-subtitle-option${activeAudio === track.id ? " active" : ""}`}
+																onClick={() => selectAudioTrack(track.id)}
+															>
+																{track.label}
+															</button>
+														))}
+													</div>
+												</div>
+											) : null}
+											<button
+												type="button"
+												className="icon-button"
+												onClick={() => {
+													setQualityPickerOpen(false);
+													setSubtitlePickerOpen(false);
+													setAudioPickerOpen((value) => !value);
+												}}
+												aria-label={t("player.audioTrack")}
+												title={t("player.audioTrack")}
+											>
+												<Languages size={20} />
+											</button>
+										</div>
+									) : null}
+									{nativeSubtitleTracks.length > 0 ||
+									engineTracks.subtitles.length > 0 ||
+									(iptvSession?.media?.subtitles.length ?? 0) > 0 ||
+									(osApiKey && !isLive) ? (
 										<div className="player-subtitle-wrap">
 											{subtitlePickerOpen ? (
 												<div className="player-subtitle-picker">
@@ -2084,12 +2748,36 @@ export function MediaPlayerDialog({
 													    must stay one click away at any scroll position. */}
 													<button
 														type="button"
-														className={`player-subtitle-option${activeSubtitle === null && onlineCues.length === 0 ? " active" : ""}`}
+														className={`player-subtitle-option${activeSubtitle === null && activeEngineSubtitle === null && embeddedSubtitle === null && onlineCues.length === 0 ? " active" : ""}`}
 														onClick={() => selectSubtitle(null)}
 													>
 														{t("player.subtitlesOff")}
 													</button>
 													<div className="player-subtitle-list" ref={subtitleListRef}>
+														{(iptvSession?.media?.subtitles ?? []).map((track, index) => (
+															<button
+																key={`embedded-${track.id}`}
+																type="button"
+																className={`player-subtitle-option${embeddedSubtitle === track.id ? " active" : ""}`}
+																onClick={() => selectEmbeddedSubtitle(track.id)}
+															>
+																{trackLabel(
+																	track,
+																	locale,
+																	t("player.trackNumber", { number: index + 1 }),
+																)}
+															</button>
+														))}
+														{engineTracks.subtitles.map((track) => (
+															<button
+																key={`engine-${track.id}`}
+																type="button"
+																className={`player-subtitle-option${activeEngineSubtitle === track.id ? " active" : ""}`}
+																onClick={() => selectEngineSubtitle(track.id)}
+															>
+																{track.label}
+															</button>
+														))}
 														{visibleSubtitleTracks.map((track) => (
 															<button
 																key={track.index}
@@ -2100,7 +2788,7 @@ export function MediaPlayerDialog({
 																{track.label}
 															</button>
 														))}
-														{osApiKey && showOnlineSubtitleSection ? (
+														{osApiKey && !isLive && showOnlineSubtitleSection ? (
 															<>
 																<p className="player-subtitle-section">
 																	{t("player.subtitlesOnline")}
@@ -2150,9 +2838,10 @@ export function MediaPlayerDialog({
 											) : null}
 											<button
 												type="button"
-												className={`icon-button${activeSubtitle !== null || onlineCues.length > 0 ? " nav-pill-active" : ""}`}
+												className={`icon-button${activeSubtitle !== null || activeEngineSubtitle !== null || onlineCues.length > 0 ? " nav-pill-active" : ""}`}
 												onClick={() => {
 													setQualityPickerOpen(false);
+													setAudioPickerOpen(false);
 													setSubtitleFilter("");
 													setSubtitlePickerOpen((o) => !o);
 												}}
@@ -2171,6 +2860,18 @@ export function MediaPlayerDialog({
 											aria-label={remote.active ? t("player.remoteActive") : t("player.remote")}
 										>
 											{isAirplayPlatform ? <Airplay size={20} /> : <Cast size={20} />}
+										</button>
+									) : null}
+									{pictureInPictureSupported ? (
+										<button
+											type="button"
+											className={`icon-button${isPictureInPicture ? " nav-pill-active" : ""}`}
+											onClick={() => void togglePictureInPicture()}
+											aria-pressed={isPictureInPicture}
+											aria-label={t("player.pip")}
+											title={t("player.pip")}
+										>
+											<PictureInPicture2 size={20} />
 										</button>
 									) : null}
 									<button
@@ -2205,8 +2906,11 @@ export function MediaPlayerDialog({
 					<div className="player-controls-overlay visible">
 						<div className="player-controls-top">
 							<div className="player-controls-title">
-								<p className="eyebrow">{t("player.nowPlaying")}</p>
+								<p className="eyebrow">
+									{item.type === "channel" ? t("player.live") : t("player.nowPlaying")}
+								</p>
 								<h2>{item.title}</h2>
+								{item.type === "channel" && liveNow ? <span>{liveNow.title}</span> : null}
 								{item.type === "episode" && item.seriesTitle ? (
 									<span>
 										{item.seriesTitle}
@@ -2229,7 +2933,19 @@ export function MediaPlayerDialog({
 			) : (
 				<div className="player-empty-fullscreen">
 					<Film size={32} />
-					<p>{t("player.notPlayable")}</p>
+					<p>{t(playbackError ?? "player.notPlayable")}</p>
+					{playbackError ? (
+						<button
+							type="button"
+							className="secondary-action"
+							onClick={() => {
+								setPlaybackError(null);
+								setAttempt((value) => value + 1);
+							}}
+						>
+							{t("iptv.retry")}
+						</button>
+					) : null}
 					<button type="button" className="secondary-action" onClick={onClose}>
 						{t("player.close")}
 					</button>

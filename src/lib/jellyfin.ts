@@ -65,6 +65,7 @@ import {
 } from "./auth-store";
 import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
+import { getNextUpWith, getPersonItemsWith, searchLibraryWith } from "./jellyfin-search";
 import type { AvatarCandidates, UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
 import type { JellyfinTrickplayManifest } from "./trickplay";
@@ -232,6 +233,15 @@ export async function getContinueWatching(): Promise<JellyfinItem[]> {
 	return getContinueWatchingBase(getJellyfinClient());
 }
 
+/** The client acting for this request's user, for helpers that take one. */
+export function getJellyfinClientForRequest() {
+	return getJellyfinClient();
+}
+
+export async function getNextUp(limit = 12): Promise<JellyfinItem[]> {
+	return getNextUpWith(getJellyfinClient(), limit);
+}
+
 export async function getFavoriteItems(type: JellyfinMediaType = "Movie"): Promise<JellyfinItem[]> {
 	return getFavoriteItemsBase(getJellyfinClient(), type);
 }
@@ -286,6 +296,16 @@ export async function getNextUpForSeries(seriesId: string): Promise<JellyfinItem
 
 export async function searchItems(query: string): Promise<JellyfinItem[]> {
 	return searchItemsBase(getJellyfinClient(), query);
+}
+
+/** Titles (films, series, episodes, collections) and people for search. */
+export async function searchLibrary(query: string) {
+	return searchLibraryWith(getJellyfinClient(), query);
+}
+
+/** Everything a person appears in, newest first. */
+export async function getPersonItems(personId: string): Promise<JellyfinItem[]> {
+	return getPersonItemsWith(getJellyfinClient(), personId);
 }
 
 export async function createCollection(

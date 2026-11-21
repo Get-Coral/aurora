@@ -11,7 +11,7 @@ import type { MediaItem } from "../../lib/media";
 import {
 	addToCollectionRuntime,
 	fetchCollectionItemsRuntime,
-	fetchSearchRuntime,
+	fetchLibrarySearchItemsRuntime,
 	fetchSetupStatusRuntime,
 	removeFromCollectionRuntime,
 } from "../../lib/runtime-functions";
@@ -52,8 +52,8 @@ function CollectionDetailPage() {
 	const existingIds = new Set(items.map((i) => i.id));
 
 	const { data: searchResults = [], isFetching: searching } = useQuery({
-		queryKey: ["search", deferredQuery],
-		queryFn: () => fetchSearchRuntime({ data: { query: deferredQuery } }),
+		queryKey: ["library-search", deferredQuery],
+		queryFn: () => fetchLibrarySearchItemsRuntime(deferredQuery),
 		enabled: deferredQuery.length > 1,
 	});
 
