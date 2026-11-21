@@ -72,6 +72,26 @@ function label(track: { name?: string; lang?: string }, index: number) {
 	return track.name || track.lang?.toUpperCase() || `Track ${index + 1}`;
 }
 
+/**
+ * Live MPEG-TS. IPTV providers open a channel with a burst of the last
+ * seconds they have buffered, then send in real time. mpegts.js's latency
+ * chasing jumps to the newest data whenever more than 1.5 s is buffered, so
+ * it skipped through that burst (a dozen jumps in the first seconds) and kept
+ * jumping and stalling on half a second of buffer after that. Instead play
+ * the burst as a buffer and, only if playback drifts far behind, catch up by
+ * playing slightly faster, never by jumping.
+ */
+export const LIVE_MPEGTS_CONFIG = {
+	enableStashBuffer: true,
+	lazyLoad: false,
+	liveBufferLatencyChasing: false,
+	liveSync: true,
+	liveSyncMaxLatency: 30,
+	liveSyncTargetLatency: 15,
+	liveSyncPlaybackRate: 1.05,
+	autoCleanupSourceBuffer: true,
+} as const;
+
 export async function attachStream(
 	video: HTMLVideoElement,
 	options: { src: string; format: StreamFormat; live: boolean },
@@ -146,7 +166,7 @@ export async function attachStream(
 	}
 	const player = mpegts.createPlayer(
 		{ type: "mpegts", isLive: options.live, url: options.src },
-		{ enableStashBuffer: !options.live, liveBufferLatencyChasing: options.live },
+		options.live ? LIVE_MPEGTS_CONFIG : {},
 	);
 	player.on(mpegts.Events.ERROR, (_type: unknown, _detail: unknown, info?: { code?: number }) =>
 		callbacks.onFatal(info?.code),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { choosePlaybackEngine, withStartOffset } from "./attach-stream";
+import { choosePlaybackEngine, LIVE_MPEGTS_CONFIG, withStartOffset } from "./attach-stream";
 
 const chrome = { canPlayType: () => "", mse: true };
 const safari = {
@@ -51,5 +51,15 @@ describe("track labels and stream params", async () => {
 		expect(withStreamParams("/api/iptv?id=a&start=5", { audio: 1, remux: "1", start: null })).toBe(
 			"/api/iptv?id=a&audio=1&remux=1",
 		);
+	});
+});
+
+describe("live MPEG-TS", () => {
+	it("never jumps to catch up with the live edge, it only plays slightly faster", () => {
+		expect(LIVE_MPEGTS_CONFIG.liveBufferLatencyChasing).toBe(false);
+		expect(LIVE_MPEGTS_CONFIG.liveSync).toBe(true);
+		expect(LIVE_MPEGTS_CONFIG.liveSyncPlaybackRate).toBeLessThanOrEqual(1.1);
+		// The provider's opening burst fits under the catch-up threshold.
+		expect(LIVE_MPEGTS_CONFIG.liveSyncMaxLatency).toBeGreaterThanOrEqual(25);
 	});
 });

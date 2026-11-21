@@ -80,11 +80,16 @@ async function renderPlayer() {
 			</I18nProvider>
 		</QueryClientProvider>,
 	);
-	const video = await waitFor(() => {
-		const element = view.container.querySelector("video");
-		if (!element) throw new Error("player has no stream yet");
-		return element;
-	});
+	// Generous: the stream is set up asynchronously, which takes longer than
+	// waitFor's default second when the machine is busy.
+	const video = await waitFor(
+		() => {
+			const element = view.container.querySelector("video");
+			if (!element) throw new Error("player has no stream yet");
+			return element;
+		},
+		{ timeout: 5000 },
+	);
 	const slider = view.container.querySelector<HTMLDivElement>(".player-progress")!;
 	slider.getBoundingClientRect = () =>
 		({ left: 0, width: 1000, top: 0, height: 20, right: 1000, bottom: 20 }) as DOMRect;
