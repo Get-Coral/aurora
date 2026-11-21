@@ -24,6 +24,7 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AURORA_BACK_EVENT } from "../lib/back-navigation";
 import { useI18n } from "../lib/i18n";
 import {
 	prepareSeekReloadUrl,
@@ -44,6 +45,13 @@ import {
 	withStreamParams,
 } from "../lib/player/attach-stream";
 import {
+	clampProgress,
+	isTimeBuffered,
+	ratioFromPointer,
+	resolveDuration,
+	watchedRatio,
+} from "../lib/player-timeline";
+import {
 	beginIptvPlaybackRuntime,
 	beginPlaybackSessionRuntime,
 	createStreamTokenRuntime,
@@ -56,7 +64,10 @@ import {
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
 import { isNativeShell } from "../lib/runtime-mode";
+import type { TrickplayPreview } from "../lib/trickplay";
+import { moveTvFocus } from "../lib/tv-spatial-navigation";
 import { LiveChannelPanel } from "./LiveChannelPanel";
+import { PlayerScrubPreview } from "./PlayerScrubPreview";
 import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useRemotePlayback } from "./useRemotePlayback";
 
@@ -66,18 +77,6 @@ interface MediaPlayerDialogProps {
 	onClose: () => void;
 	queue?: MediaItem[];
 	onSelectQueueItem?: (item: MediaItem) => void;
-}
-
-interface ProgressPayload {
-	id: string;
-	positionTicks: number;
-	playMethod: "DirectPlay" | "Transcode" | undefined;
-	playSessionId: string | undefined;
-	mediaSourceId: string | undefined;
-	sessionId: string | undefined;
-	isPaused?: boolean;
-	isStopped?: boolean;
-	played?: boolean;
 }
 
 interface VttCue {
@@ -104,6 +103,18 @@ const TRANSCODE_QUALITY_LADDER: TranscodeQualityProfile[] = [
 
 const BUFFER_DOWNGRADE_DELAY_MS = 1500;
 const STABLE_PLAYBACK_UPGRADE_DELAY_MS = 45000;
+const CONTROLS_HIDE_DELAY_MS = 3000;
+// While a seek is on its way, timeupdates further than this from the target
+// come from the old position (or the stream that is being replaced) and must
+// not drag the bar back.
+const SEEK_LANDING_TOLERANCE_S = 2;
+// Give up on a seek that never lands (stalled transcode, rejected seek) so the
+// bar can't stay frozen on the target.
+const SEEK_LANDING_TIMEOUT_MS = 10000;
+// Live seeking while dragging is limited to downloaded content; this keeps it
+// from issuing a seek for every pointermove.
+const SCRUB_LIVE_SEEK_INTERVAL_MS = 200;
+const KEYBOARD_SEEK_STEP_S = 10;
 
 function readTranscodeUrl(streamUrl: string) {
 	try {
@@ -137,6 +148,10 @@ function getTranscodeQualityIndex(streamUrl: string) {
 	}
 
 	return nearestIndex;
+}
+
+function getRuntimeSeconds(item: MediaItem | null | undefined) {
+	return item?.runtimeSeconds ?? (item?.runtimeMinutes ? item.runtimeMinutes * 60 : undefined);
 }
 
 /** The buffered range covering `time`, in stream time, if there is one. */
@@ -278,6 +293,7 @@ export function MediaPlayerDialog({
 		}[];
 		/** Set for IPTV streams, which Aurora attaches itself (hls.js, mpegts.js). */
 		iptv?: IptvPlayback;
+		trickplay?: TrickplayPreview | null;
 	} | null>(null);
 	const [playbackError, setPlaybackError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -301,11 +317,6 @@ export function MediaPlayerDialog({
 	// Where playback was last seen. By the time the closing report runs, the
 	// stream teardown has already reset the element to 0:00.
 	const lastMediaTimeRef = useRef({ time: 0, duration: 0 });
-	const lastProgressRef = useRef<{
-		itemId: string;
-		payload: ProgressPayload;
-		report: (payload: ProgressPayload) => Promise<void>;
-	} | null>(null);
 	// Signed token that lets an AirPlay/Cast receiver fetch the stream without
 	// Aurora's session cookie. Null when login isn't enforced (the proxy is
 	// open anyway) or inside the native shell (direct Jellyfin URLs).
@@ -324,16 +335,61 @@ export function MediaPlayerDialog({
 	// We only promote this into startTimeOffsetRef after the new stream proves it
 	// actually starts at that offset.
 	const pendingSeekTargetRef = useRef<number | null>(null);
+	// Movie time the bar is pinned to while a seek is on its way. Safari's HLS
+	// and a restarting transcode can take seconds to report the new position;
+	// without this the bar would jump back to where playback was.
 	const optimisticSeekTargetRef = useRef<number | null>(null);
+	const optimisticSeekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	// Native/fullscreen media controls can change video.currentTime directly.
 	// Track programmatic seeks so we only intercept user-driven native seeking.
 	const internalSeekCountRef = useRef(0);
 	const seekReloadRequestIdRef = useRef(0);
-	// Tracks the drag ratio so handleProgressPointerUp can commit the final seek.
-	const lastDragRatioRef = useRef(0);
 	const pendingUserSeekRef = useRef<number | null>(null);
+	// Movie time being dragged to; mirrors scrubTime for the pointer handlers.
+	const scrubTimeRef = useRef<number | null>(null);
+	const lastScrubSeekAtRef = useRef(0);
+	// Last movie time the element actually played, for the stop report: by the
+	// time an effect cleanup runs the element may already be reset to 0.
+	const lastKnownPositionRef = useRef(0);
+
+	// What the latest render shows, for effect cleanups to tell a stream swap
+	// apart from closing the player or moving to another item.
+	const openRef = useRef(open);
+	openRef.current = open;
+	const activeItemIdRef = useRef(item?.id);
+	activeItemIdRef.current = item?.id;
+	const unmountingRef = useRef(false);
+	// Declared before the playback effects so its cleanup runs first on
+	// unmount (navigating away while playing), which is also a final stop.
+	useEffect(() => {
+		unmountingRef.current = false;
+		return () => {
+			unmountingRef.current = true;
+		};
+	}, []);
+
+	const playButtonRef = useRef<HTMLButtonElement>(null);
+	// Latest seek functions for the Media Session handlers, which are only
+	// registered once per item.
+	const mediaControlsRef = useRef<{ seekBy(delta: number): void; seekTo(time: number): void }>({
+		seekBy: () => undefined,
+		seekTo: () => undefined,
+	});
 
 	const [currentTime, setCurrentTime] = useState(0);
+	const [scrubTime, setScrubTime] = useState<number | null>(null);
+	// Movie time under the mouse while it hovers the bar without dragging.
+	const [hoverTime, setHoverTime] = useState<number | null>(null);
+	const [seekBarFocused, setSeekBarFocused] = useState(false);
+	// Same signal as the remote handling below: the class the TV-mode setting
+	// and detection put on <html>.
+	const tvMode =
+		typeof document !== "undefined" && document.documentElement.classList.contains("tv-mode");
+	// Movie time up to which the stream is downloaded, from the playing spot.
+	const [bufferedEnd, setBufferedEnd] = useState(0);
+	// A pause the player makes itself (the old stream during a reload) is not
+	// the user pausing, so it must not be reported to Jellyfin as one.
+	const suppressPauseReportRef = useRef(false);
 	const [duration, setDuration] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isBuffering, setIsBuffering] = useState(true);
@@ -341,6 +397,8 @@ export function MediaPlayerDialog({
 	const [autoplayMuted, setAutoplayMuted] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [controlsVisible, setControlsVisible] = useState(true);
+	const controlsVisibleRef = useRef(controlsVisible);
+	controlsVisibleRef.current = controlsVisible;
 	const [qualityPickerOpen, setQualityPickerOpen] = useState(false);
 	const [subtitlePickerOpen, setSubtitlePickerOpen] = useState(false);
 	const [subtitleFilter, setSubtitleFilter] = useState("");
@@ -407,7 +465,9 @@ export function MediaPlayerDialog({
 	const isAirplayPlatform =
 		playbackClient.prefersSafeVideo && playbackClient.platform !== "android-tv";
 	const isNativeHlsPlayback =
-		playbackSession?.playMethod === "Transcode" && streamUrl?.includes(".m3u8");
+		playbackSession?.playMethod === "Transcode" &&
+		streamUrl != null &&
+		isNativeHlsStreamUrl(streamUrl);
 	const canSelectQuality = playbackSession?.playMethod === "Transcode" && !iptvSession;
 	const iptvEngine = iptvSession
 		? choosePlaybackEngine(iptvSession.format, browserEngineSupport())
@@ -422,7 +482,14 @@ export function MediaPlayerDialog({
 		(playbackClient.prefersSafeVideo || isIptv) &&
 		playbackSession == null &&
 		!playbackError;
-	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+	const runtimeSeconds = getRuntimeSeconds(item);
+	// While dragging, the bar follows the pointer rather than the video.
+	const displayTime = scrubTime ?? currentTime;
+	const progress = clampProgress(displayTime, duration);
+	const bufferedProgress = clampProgress(bufferedEnd, duration);
+	// On a TV the remote seeks the focused bar in steps, so show where each
+	// step lands (the optimistic target while it loads).
+	const previewTime = scrubTime ?? hoverTime ?? (tvMode && seekBarFocused ? displayTime : null);
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
@@ -519,11 +586,18 @@ export function MediaPlayerDialog({
 		startTimeOffsetRef.current = 0;
 		seekPendingRef.current = false;
 		pendingSeekTargetRef.current = null;
+		clearOptimisticSeek();
+		seekDraggingRef.current = false;
+		scrubTimeRef.current = null;
+		setScrubTime(null);
+		setHoverTime(null);
+		setBufferedEnd(0);
+		lastKnownPositionRef.current = (item?.playbackPositionTicks ?? 0) / 10_000_000;
 		setIsBuffering(true);
 		setPlaybackSession(null);
 		setStreamToken(null);
 		setCurrentTime(0);
-		setDuration((item?.runtimeMinutes ?? 0) * 60);
+		setDuration(getRuntimeSeconds(item) ?? 0);
 		setIsPlaying(false);
 		setQualityPickerOpen(false);
 		setActiveSubtitle(null);
@@ -674,6 +748,9 @@ export function MediaPlayerDialog({
 		qualityIndexRef.current =
 			playbackSession?.playMethod === "Transcode" ? getTranscodeQualityIndex(streamUrl) : null;
 		const video = videoRef.current;
+		// `key={streamUrl}` gives every stream a fresh element, which never
+		// fires `seeking` for seeks counted against the old one.
+		internalSeekCountRef.current = 0;
 		logPlayback("stream:load", {
 			streamUrl,
 			videoState: snapshotMediaState(video),
@@ -938,8 +1015,11 @@ export function MediaPlayerDialog({
 			force?: boolean;
 		}) {
 			if (!item) return;
-			const currentSecond = Math.floor(video!.currentTime);
-			if (!overrides?.force && currentSecond - lastReportedSecondRef.current < 8) return;
+			// Movie time, and a distance rather than a difference: after seeking
+			// back the position is behind the last report, and a plain
+			// difference would hold reports back until playback caught up again.
+			const currentSecond = Math.floor(video!.currentTime + startTimeOffsetRef.current);
+			if (!overrides?.force && Math.abs(currentSecond - lastReportedSecondRef.current) < 8) return;
 			lastReportedSecondRef.current = currentSecond;
 			void report(buildPayload(overrides));
 		}
@@ -948,6 +1028,23 @@ export function MediaPlayerDialog({
 			logPlayback("media:loadedmetadata", {
 				videoState: snapshotMediaState(video),
 			});
+			if (seekPendingRef.current && streamUrl && isNativeHlsStreamUrl(streamUrl)) {
+				// An HLS reload (quality change) gets a playlist that covers the
+				// whole film from 0:00 (see prepareSeekReloadUrl), so seek the
+				// element itself; the bar stays pinned to the target until the
+				// seek lands.
+				const pendingTarget = pendingSeekTargetRef.current ?? 0;
+				startTimeOffsetRef.current = 0;
+				seekPendingRef.current = false;
+				pendingSeekTargetRef.current = null;
+				if (pendingTarget > 0) setVideoCurrentTime(pendingTarget);
+				logPlayback("media:hls-reload-seek", {
+					pendingTarget,
+					videoState: snapshotMediaState(video),
+				});
+				void attemptAutoplay();
+				return;
+			}
 			if (seekPendingRef.current) {
 				const pendingTarget = pendingSeekTargetRef.current ?? startTimeOffsetRef.current;
 
@@ -960,7 +1057,7 @@ export function MediaPlayerDialog({
 
 				seekPendingRef.current = false;
 				pendingSeekTargetRef.current = null;
-				optimisticSeekTargetRef.current = null;
+				clearOptimisticSeek();
 				logPlayback("media:resume-offset-applied", {
 					pendingTarget,
 					videoState: snapshotMediaState(video),
@@ -973,7 +1070,9 @@ export function MediaPlayerDialog({
 					resumeSeconds: item!.playbackPositionTicks / 10_000_000,
 					videoState: snapshotMediaState(video),
 				});
-				setVideoCurrentTime(item!.playbackPositionTicks / 10_000_000);
+				const resumeAt = item!.playbackPositionTicks / 10_000_000;
+				beginOptimisticSeek(resumeAt);
+				setVideoCurrentTime(resumeAt);
 			}
 			void attemptAutoplay();
 		}
@@ -989,12 +1088,17 @@ export function MediaPlayerDialog({
 					time: video!.currentTime,
 					duration: Number.isFinite(video!.duration) ? video!.duration : 0,
 				};
-				if (playbackSession)
-					lastProgressRef.current = { itemId: item!.id, payload: buildPayload(), report };
+			}
+			if (!seekPendingRef.current) {
+				lastKnownPositionRef.current = video!.currentTime + startTimeOffsetRef.current;
 			}
 			if (playbackSession?.canSyncProgress) syncProgress();
 		}
 		function handlePause() {
+			if (suppressPauseReportRef.current) {
+				suppressPauseReportRef.current = false;
+				return;
+			}
 			syncProgress({ isPaused: true, force: true });
 		}
 		function handleEnded() {
@@ -1040,27 +1144,37 @@ export function MediaPlayerDialog({
 			video.removeEventListener("emptied", handleEmptied);
 			video.removeEventListener("abort", handleAbort);
 			video.removeEventListener("error", handleError);
+
+			// Every stream ends its own Jellyfin play session, so a seek reload or
+			// quality change stops the old transcode. This must not mark the item
+			// as stopped for good: the new stream reports progress, its end
+			// marks the item played, and closing the player stops it again.
+			// The Chrome pre-session stream (playbackSession null) has no
+			// session to stop.
+			if (stopReportedRef.current || !playbackSession) return;
+			// Read from refs: the stream-load cleanup above has already reset
+			// the element, so video.currentTime is 0 by now.
+			const position = pendingSeekTargetRef.current ?? lastKnownPositionRef.current;
+			const length =
+				getRuntimeSeconds(item) ??
+				resolveDuration({
+					isTranscode: playbackSession.playMethod === "Transcode",
+					videoDuration: video.duration,
+					offset: startTimeOffsetRef.current,
+					runtimeSeconds: undefined,
+				});
+			// Only the final stop may mark the item played; a reload stop that
+			// happens near the end (a seek to the credits) must not.
+			const isFinalStop =
+				unmountingRef.current || !openRef.current || activeItemIdRef.current !== item?.id;
+			const played = isFinalStop && watchedRatio(position, length) >= 0.94 ? true : undefined;
+			// IPTV titles report to Aurora's own store, Jellyfin ones to Jellyfin.
+			void report({
+				...buildPayload({ isStopped: true, played }),
+				positionTicks: secondsToTicks(position),
+			});
 		};
 	}, [debugPlayback, item, open, playbackSession, streamUrl]);
-
-	// The closing report belongs to the title, not to a stream: it goes out
-	// once, when the player closes or moves on, with the last position seen.
-	// Reporting from every stream teardown sent "stopped at 0:00" as soon as
-	// the session started, which Jellyfin took as watched, and then
-	// suppressed the real report.
-	const closingItemId = open ? item?.id : undefined;
-	useEffect(() => {
-		if (!closingItemId) return;
-		return () => {
-			const latest = lastProgressRef.current;
-			lastProgressRef.current = null;
-			if (!latest || latest.itemId !== closingItemId || stopReportedRef.current) return;
-			stopReportedRef.current = true;
-			const last = lastMediaTimeRef.current;
-			const played = last.duration && last.time / last.duration >= 0.94 ? true : undefined;
-			void latest.report({ ...latest.payload, isStopped: true, played });
-		};
-	}, [closingItemId]);
 
 	// Player UI state tracking
 	useEffect(() => {
@@ -1086,10 +1200,8 @@ export function MediaPlayerDialog({
 			qualityIndexRef.current = index;
 			qualitySwitchInFlightRef.current = true;
 			pendingSeekTargetRef.current = currentMovieTime;
-			optimisticSeekTargetRef.current = currentMovieTime;
-			lastReportedSecondRef.current = 0;
+			beginOptimisticSeek(currentMovieTime);
 			seekPendingRef.current = true;
-			setCurrentTime(currentMovieTime);
 			setIsBuffering(true);
 			void reloadStreamAtMovieTime(currentMovieTime, {
 				qualityProfile: TRANSCODE_QUALITY_LADDER[index],
@@ -1128,11 +1240,35 @@ export function MediaPlayerDialog({
 			}, BUFFER_DOWNGRADE_DELAY_MS);
 		}
 
+		const updateBuffered = () => {
+			// Only the stretch the playhead is in matters: that is what plays
+			// without waiting. Nothing is shown while a new stream loads.
+			if (seekPendingRef.current) {
+				setBufferedEnd(0);
+				return;
+			}
+			const range = findBufferedRangeAt(video, video.currentTime);
+			setBufferedEnd(range ? range.end + startTimeOffsetRef.current : 0);
+		};
 		const onTimeUpdate = () => {
+			updateBuffered();
 			const nextTime = video.currentTime + startTimeOffsetRef.current;
 			const optimisticTarget = optimisticSeekTargetRef.current;
-			if (optimisticTarget != null && nextTime < optimisticTarget - 1) return;
+			if (optimisticTarget != null) {
+				// Both directions: a backward seek must not be pulled forward by
+				// the old position any more than a forward seek pulled back.
+				if (Math.abs(nextTime - optimisticTarget) > SEEK_LANDING_TOLERANCE_S) return;
+				clearOptimisticSeek();
+			}
 			setCurrentTime(nextTime);
+		};
+		const onSeeked = () => {
+			// The element is where it settled (HLS lands on a segment boundary,
+			// not always exactly on the target). A stream that is still being
+			// replaced keeps the bar pinned until the new one has loaded.
+			if (seekPendingRef.current || optimisticSeekTargetRef.current == null) return;
+			clearOptimisticSeek();
+			setCurrentTime(video.currentTime + startTimeOffsetRef.current);
 		};
 		const onSeeking = () => {
 			if (internalSeekCountRef.current > 0) {
@@ -1153,22 +1289,18 @@ export function MediaPlayerDialog({
 			seekToMovieTime(pendingUserSeek);
 		};
 		const onDurationChange = () => {
-			const d = video.duration;
-			// Only trust the video's reported duration when it's finite and plausible.
-			// Transcoded streams served progressively often report a fluctuating or
-			// near-zero duration until the full moov atom is received — fall back to
-			// the known runtime from Jellyfin metadata instead.
-			// When the stream starts at an offset (StartTimeTicks seek), the reported
-			// duration is only the remaining portion, so add the offset back.
-			const knownRuntime = knownDurationRef.current || (item?.runtimeMinutes ?? 0) * 60;
-			const offset = startTimeOffsetRef.current;
-			if (Number.isFinite(d) && d > 60) {
-				setDuration(d + offset);
-			} else if (knownRuntime > 0) {
-				setDuration(knownRuntime);
-			} else if (Number.isFinite(d) && d > 0) {
-				setDuration(d + offset);
-			}
+			// Transcodes report a duration that is Infinity (Safari HLS), only the
+			// part after StartTimeTicks, or still growing while it downloads, and
+			// durationchange fires before loadedmetadata has updated the offset.
+			// resolveDuration keeps Jellyfin's exact runtime for those.
+			const next = resolveDuration({
+				isTranscode: playbackSession?.playMethod === "Transcode",
+				videoDuration: video.duration,
+				offset: startTimeOffsetRef.current,
+				// IPTV knows the runtime from the provider's film info.
+				runtimeSeconds: knownDurationRef.current || getRuntimeSeconds(item),
+			});
+			if (next > 0) setDuration(next);
 		};
 		const onPlay = () => {
 			setIsPlaying(true);
@@ -1200,7 +1332,9 @@ export function MediaPlayerDialog({
 		};
 
 		video.addEventListener("timeupdate", onTimeUpdate);
+		video.addEventListener("progress", updateBuffered);
 		video.addEventListener("seeking", onSeeking);
+		video.addEventListener("seeked", onSeeked);
 		video.addEventListener("durationchange", onDurationChange);
 		video.addEventListener("play", onPlay);
 		video.addEventListener("pause", onPause);
@@ -1211,7 +1345,9 @@ export function MediaPlayerDialog({
 		return () => {
 			clearAdaptiveTimers();
 			video.removeEventListener("timeupdate", onTimeUpdate);
+			video.removeEventListener("progress", updateBuffered);
 			video.removeEventListener("seeking", onSeeking);
+			video.removeEventListener("seeked", onSeeked);
 			video.removeEventListener("durationchange", onDurationChange);
 			video.removeEventListener("play", onPlay);
 			video.removeEventListener("pause", onPause);
@@ -1222,6 +1358,7 @@ export function MediaPlayerDialog({
 	}, [
 		canAutoAdjustQuality,
 		isNativeHlsPlayback,
+		item,
 		manualQualityIndex,
 		open,
 		playbackSession?.playMethod,
@@ -1308,7 +1445,7 @@ export function MediaPlayerDialog({
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 			return;
 		}
-		hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
+		scheduleControlsHide();
 		return () => {
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 		};
@@ -1322,7 +1459,7 @@ export function MediaPlayerDialog({
 			?.scrollIntoView({ block: "nearest" });
 	}, [subtitlePickerOpen]);
 
-	// Keyboard shortcuts
+	// Keyboard shortcuts and the TV remote
 	useEffect(() => {
 		if (!open) return;
 		function handleKeydown(e: KeyboardEvent) {
@@ -1337,10 +1474,32 @@ export function MediaPlayerDialog({
 				onClose();
 				return;
 			}
-			if (isEditableTarget(e.target)) return;
 
 			const video = videoRef.current;
 			if (!video) return;
+
+			// Remote and keyboard media keys, whatever has focus.
+			const mediaKeyHandled = handleMediaKey(e.key, video);
+			if (mediaKeyHandled) {
+				e.preventDefault();
+				revealControls();
+				return;
+			}
+
+			if (isEditableTarget(e.target)) return;
+
+			const controlsWereVisible = controlsVisibleRef.current;
+			// Any key brings the controls back, so a remote user sees what
+			// they are doing; the hide timer restarts with every press.
+			revealControls();
+
+			if (
+				document.documentElement.classList.contains("tv-mode") &&
+				handleRemoteKey(e, controlsWereVisible)
+			) {
+				return;
+			}
+
 			if (e.key === " " || e.key === "k") {
 				e.preventDefault();
 				video.paused ? void video.play() : video.pause();
@@ -1372,8 +1531,11 @@ export function MediaPlayerDialog({
 		return () => window.removeEventListener("keydown", handleKeydown);
 	}, [
 		currentTime,
+		isPlaying,
+		nextItem,
 		open,
 		onClose,
+		onSelectQueueItem,
 		subtitlePickerOpen,
 		qualityPickerOpen,
 		audioPickerOpen,
@@ -1383,6 +1545,186 @@ export function MediaPlayerDialog({
 		channelListOpen,
 		canZap,
 	]);
+
+	// The Android back button closes an open picker before the player itself.
+	useEffect(() => {
+		if (!open) return;
+		function handleBack(event: Event) {
+			if (!subtitlePickerOpen && !qualityPickerOpen && !audioPickerOpen && !channelListOpen) return;
+			event.preventDefault();
+			closePickers();
+		}
+		window.addEventListener(AURORA_BACK_EVENT, handleBack);
+		return () => window.removeEventListener(AURORA_BACK_EVENT, handleBack);
+	}, [open, subtitlePickerOpen, qualityPickerOpen, audioPickerOpen, channelListOpen]);
+
+	// Media Session: the OS media controls (macOS Now Playing, media keys,
+	// Bluetooth headsets, the Android TV system remote) drive the player.
+	useEffect(() => {
+		if (!open || !item || typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+			return;
+		}
+		const session = navigator.mediaSession;
+		const artwork = item.backdropUrl ?? item.posterUrl;
+		try {
+			if (typeof MediaMetadata !== "undefined") {
+				session.metadata = new MediaMetadata({
+					title: item.title,
+					artist: item.seriesTitle ?? "",
+					artwork: artwork ? [{ src: new URL(artwork, window.location.href).href }] : [],
+				});
+			}
+		} catch {
+			// Metadata is cosmetic; the action handlers still work without it.
+		}
+
+		const handlers: [MediaSessionAction, MediaSessionActionHandler | null][] = [
+			["play", () => void videoRef.current?.play()],
+			["pause", () => videoRef.current?.pause()],
+			["seekbackward", (details) => mediaControlsRef.current.seekBy(-(details.seekOffset ?? 15))],
+			["seekforward", (details) => mediaControlsRef.current.seekBy(details.seekOffset ?? 30)],
+			[
+				"seekto",
+				(details) => {
+					if (details.seekTime != null) mediaControlsRef.current.seekTo(details.seekTime);
+				},
+			],
+			["nexttrack", nextItem ? () => onSelectQueueItem?.(nextItem) : null],
+		];
+		for (const [action, handler] of handlers) {
+			try {
+				session.setActionHandler(action, handler);
+			} catch {
+				// Not every browser supports every action.
+			}
+		}
+		return () => {
+			for (const [action] of handlers) {
+				try {
+					session.setActionHandler(action, null);
+				} catch {
+					// See above.
+				}
+			}
+			session.metadata = null;
+		};
+	}, [open, item, nextItem, onSelectQueueItem]);
+
+	useEffect(() => {
+		if (!open || typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+		if (!(duration > 0) || !Number.isFinite(duration)) return;
+		try {
+			navigator.mediaSession.setPositionState({
+				duration,
+				position: Math.max(0, Math.min(duration, currentTime)),
+				playbackRate: 1,
+			});
+		} catch {
+			// Older implementations reject position state; it's optional.
+		}
+	}, [open, currentTime, duration]);
+
+	/** Play/pause/seek keys from a remote or keyboard. Returns whether it acted. */
+	function handleMediaKey(key: string, video: HTMLVideoElement) {
+		// Channel keys on a remote (and track keys while watching live) zap.
+		if (isLive && canZap) {
+			if (["ChannelUp", "PageUp", "MediaTrackPrevious"].includes(key)) {
+				zap(-1);
+				return true;
+			}
+			if (["ChannelDown", "PageDown", "MediaTrackNext"].includes(key)) {
+				zap(1);
+				return true;
+			}
+		}
+		switch (key) {
+			case "MediaPlayPause":
+				video.paused ? void video.play() : video.pause();
+				return true;
+			case "MediaPlay":
+				void video.play();
+				return true;
+			case "MediaPause":
+				video.pause();
+				return true;
+			case "MediaFastForward":
+				seekToMovieTime(currentTime + 30, { resumeIfPlaying: !video.paused });
+				return true;
+			case "MediaRewind":
+				seekToMovieTime(currentTime - 15, { resumeIfPlaying: !video.paused });
+				return true;
+			case "MediaTrackNext":
+				if (!nextItem) return false;
+				onSelectQueueItem?.(nextItem);
+				return true;
+			case "MediaStop":
+				onClose();
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * The D-pad in TV mode. With the controls hidden, Left/Right seek and any
+	 * other press brings up the controls with Play focused. With the controls
+	 * showing, the arrows move between them and OK presses the focused one
+	 * (the browser does that part). The seek bar handles Left/Right itself.
+	 */
+	function handleRemoteKey(e: KeyboardEvent, controlsWereVisible: boolean) {
+		const direction =
+			e.key === "ArrowLeft"
+				? "left"
+				: e.key === "ArrowRight"
+					? "right"
+					: e.key === "ArrowUp"
+						? "up"
+						: e.key === "ArrowDown"
+							? "down"
+							: null;
+		const container = containerRef.current;
+		const active = document.activeElement;
+		const focusInControls =
+			container != null &&
+			active instanceof HTMLElement &&
+			active !== container &&
+			container.contains(active);
+
+		if (!controlsWereVisible || !focusInControls) {
+			// Live TV: up/down change channel like a TV remote; there is
+			// nothing to seek, so left/right just show the controls.
+			if (isLive && canZap && (direction === "up" || direction === "down")) {
+				e.preventDefault();
+				zap(direction === "up" ? -1 : 1);
+				return true;
+			}
+			if (isLive && (direction === "left" || direction === "right")) {
+				e.preventDefault();
+				playButtonRef.current?.focus({ preventScroll: true });
+				return true;
+			}
+			if (e.key === "Enter" || direction === "up" || direction === "down") {
+				e.preventDefault();
+				playButtonRef.current?.focus({ preventScroll: true });
+				return true;
+			}
+			if (direction === "left" || direction === "right") {
+				e.preventDefault();
+				seekToMovieTime(currentTime + (direction === "left" ? -15 : 30), {
+					resumeIfPlaying: !videoRef.current?.paused,
+				});
+				return true;
+			}
+			return false;
+		}
+
+		if (direction) {
+			e.preventDefault();
+			moveTvFocus(direction, container);
+			return true;
+		}
+		return false;
+	}
 
 	function closePickers() {
 		setChannelListOpen(false);
@@ -1507,12 +1849,26 @@ export function MediaPlayerDialog({
 		closePickers();
 	}
 
+	function scheduleControlsHide() {
+		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+		hideTimerRef.current = setTimeout(() => {
+			// Never fade the bar out from under a drag; the drag's end
+			// schedules the hide again.
+			if (!seekDraggingRef.current) setControlsVisible(false);
+		}, CONTROLS_HIDE_DELAY_MS);
+	}
+
 	function revealControls() {
 		setControlsVisible(true);
 		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-		if (isPlaying && !subtitlePickerOpen && !qualityPickerOpen && !channelListOpen) {
-			hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
-		}
+		if (
+			isPlaying &&
+			!subtitlePickerOpen &&
+			!qualityPickerOpen &&
+			!audioPickerOpen &&
+			!channelListOpen
+		)
+			scheduleControlsHide();
 	}
 
 	function togglePlay() {
@@ -1544,6 +1900,14 @@ export function MediaPlayerDialog({
 		options?: { qualityProfile?: TranscodeQualityProfile },
 	) {
 		if (!item) return;
+
+		// The old stream would otherwise keep playing (and pull the picture
+		// and sound away from the target) until the new one has loaded.
+		const outgoing = videoRef.current;
+		if (outgoing && !outgoing.paused) {
+			suppressPauseReportRef.current = true;
+			outgoing.pause();
+		}
 
 		const requestId = ++seekReloadRequestIdRef.current;
 		if (playbackSession?.iptv) {
@@ -1600,8 +1964,34 @@ export function MediaPlayerDialog({
 	function setVideoCurrentTime(nextTime: number) {
 		const video = videoRef.current;
 		if (!video) return;
-		internalSeekCountRef.current += 1;
+		// Without metadata the assignment only sets the start position and no
+		// `seeking` event follows to consume the count.
+		if (video.readyState >= HTMLMediaElement.HAVE_METADATA) internalSeekCountRef.current += 1;
 		video.currentTime = nextTime;
+	}
+
+	function clearOptimisticSeek() {
+		optimisticSeekTargetRef.current = null;
+		if (optimisticSeekTimerRef.current) {
+			clearTimeout(optimisticSeekTimerRef.current);
+			optimisticSeekTimerRef.current = null;
+		}
+	}
+
+	/** Moves the bar to `target` now, ahead of the video catching up. */
+	function beginOptimisticSeek(target: number) {
+		clearOptimisticSeek();
+		optimisticSeekTargetRef.current = target;
+		setCurrentTime(target);
+		optimisticSeekTimerRef.current = setTimeout(() => {
+			optimisticSeekTimerRef.current = null;
+			// A reload that is still loading keeps the target; loadedmetadata
+			// clears it.
+			if (seekPendingRef.current) return;
+			optimisticSeekTargetRef.current = null;
+			const video = videoRef.current;
+			if (video) setCurrentTime(video.currentTime + startTimeOffsetRef.current);
+		}, SEEK_LANDING_TIMEOUT_MS);
 	}
 
 	function toggleMute() {
@@ -1690,21 +2080,25 @@ export function MediaPlayerDialog({
 		qualityIndexRef.current = index;
 		qualitySwitchInFlightRef.current = true;
 		pendingSeekTargetRef.current = currentMovieTime;
-		optimisticSeekTargetRef.current = currentMovieTime;
-		lastReportedSecondRef.current = 0;
+		beginOptimisticSeek(currentMovieTime);
 		seekPendingRef.current = true;
-		setCurrentTime(currentMovieTime);
 		setIsBuffering(true);
 		void reloadStreamAtMovieTime(currentMovieTime, {
 			qualityProfile: TRANSCODE_QUALITY_LADDER[index],
 		});
 	}
 
-	// Returns the best available duration: React state first, then video element, then null
+	// Returns the best available duration: React state first, then the runtime
+	// or video element, then null
 	function getBestDuration(): number | null {
 		if (duration > 0) return duration;
-		const d = videoRef.current?.duration;
-		return d != null && Number.isFinite(d) && d > 0 ? d + startTimeOffsetRef.current : null;
+		const d = resolveDuration({
+			isTranscode: playbackSession?.playMethod === "Transcode",
+			videoDuration: videoRef.current?.duration,
+			offset: startTimeOffsetRef.current,
+			runtimeSeconds,
+		});
+		return d > 0 ? d : null;
 	}
 
 	// Seeks to an absolute movie-time position (seconds). For transcode streams,
@@ -1725,6 +2119,9 @@ export function MediaPlayerDialog({
 			d != null ? Math.max(0, Math.min(d, targetMovieTime)) : Math.max(0, targetMovieTime);
 
 		if (isNativeHlsPlayback) {
+			// Safari reports the new position only once Jellyfin has the
+			// segment ready, which can take seconds; show the target meanwhile.
+			beginOptimisticSeek(clamped);
 			setVideoCurrentTime(clamped);
 			pendingUserSeekRef.current = null;
 			if (options?.resumeIfPlaying) resumePlaybackAfterSeek();
@@ -1738,15 +2135,7 @@ export function MediaPlayerDialog({
 			// Check whether streamTime falls within an already-downloaded range.
 			// Both bounds must be checked: only checking the end can pass for gaps
 			// between ranges or for positions before the first buffered range.
-			let buffered = false;
-			if (streamTime >= 0) {
-				for (let i = 0; i < video.buffered.length; i++) {
-					if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) {
-						buffered = true;
-						break;
-					}
-				}
-			}
+			const buffered = isTimeBuffered(video.buffered, streamTime);
 			if ((!buffered || streamTime < 0) && remoteActiveRef.current) {
 				// Reloading the stream would remount the <video> and drop the
 				// receiver. Clamp into the range being played instead, so the
@@ -1763,91 +2152,130 @@ export function MediaPlayerDialog({
 				return;
 			}
 			if (!buffered || streamTime < 0) {
-				if (seekPendingRef.current) return; // reload already in flight
+				// A reload that is already in flight is retargeted rather than
+				// ignored: reloadStreamAtMovieTime only applies the latest
+				// request, and the bar already shows this target.
+				pendingUserSeekRef.current = null;
 				pendingSeekTargetRef.current = clamped;
-				optimisticSeekTargetRef.current = clamped;
-				setCurrentTime(clamped);
-				// After reload, video.currentTime resets to ~0. Reset the throttle
-				// baseline so syncProgress doesn't suppress reports until stream time
-				// catches up to the pre-seek value (which could take minutes).
-				lastReportedSecondRef.current = 0;
+				beginOptimisticSeek(clamped);
 				seekPendingRef.current = true;
 				setIsBuffering(true);
 				void reloadStreamAtMovieTime(clamped);
 				return;
 			}
+			beginOptimisticSeek(clamped);
 			setVideoCurrentTime(streamTime);
 			pendingUserSeekRef.current = null;
 			if (options?.resumeIfPlaying) resumePlaybackAfterSeek();
 		} else {
+			beginOptimisticSeek(clamped);
 			setVideoCurrentTime(clamped);
 			pendingUserSeekRef.current = null;
 			if (options?.resumeIfPlaying) resumePlaybackAfterSeek();
 		}
 	}
 
-	function handleProgressPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-		e.preventDefault();
-		e.stopPropagation();
-		e.currentTarget.setPointerCapture(e.pointerId);
-		seekDraggingRef.current = true;
-		const rect = e.currentTarget.getBoundingClientRect();
-		const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-		lastDragRatioRef.current = ratio;
-		// During drag only seek within already-buffered content for smooth feedback.
-		// The final commit happens on pointerUp.
+	function updateScrub(clientX: number, rect: DOMRect) {
 		const d = getBestDuration();
-		if (d != null) {
-			const video = videoRef.current;
-			const targetMovieTime = ratio * d;
-			const streamTime = targetMovieTime - startTimeOffsetRef.current;
-			if (video && streamTime >= 0) {
-				let buffered = false;
-				for (let i = 0; i < video.buffered.length; i++) {
-					if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) {
-						buffered = true;
-						break;
-					}
-				}
-				if (buffered) setVideoCurrentTime(streamTime);
-			}
+		if (d == null) return;
+		const target = ratioFromPointer(clientX, rect) * d;
+		scrubTimeRef.current = target;
+		setScrubTime(target);
+
+		// Show the frame under the pointer when that is cheap: only for
+		// content that is already downloaded, never on HLS (every seek there
+		// is a segment request), and at most every few hundred ms. The real
+		// seek happens once, on release.
+		if (isNativeHlsPlayback) return;
+		const video = videoRef.current;
+		const now = Date.now();
+		if (!video || now - lastScrubSeekAtRef.current < SCRUB_LIVE_SEEK_INTERVAL_MS) return;
+		const streamTime = target - startTimeOffsetRef.current;
+		if (!isTimeBuffered(video.buffered, streamTime)) return;
+		lastScrubSeekAtRef.current = now;
+		setVideoCurrentTime(streamTime);
+	}
+
+	function endScrub(element: HTMLElement, pointerId: number, commit: boolean) {
+		if (!seekDraggingRef.current) return;
+		seekDraggingRef.current = false;
+		if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+		const target = scrubTimeRef.current;
+		scrubTimeRef.current = null;
+		setScrubTime(null);
+		// Commit the final seek position — may trigger a URL reload if not buffered.
+		if (commit && target != null) {
+			seekToMovieTime(target, { resumeIfPlaying: !videoRef.current?.paused });
 		}
 		revealControls();
 	}
 
-	function handleProgressPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-		if (!seekDraggingRef.current) return;
+	function handleProgressPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+		if (e.pointerType === "mouse" && e.button !== 0) return;
 		e.preventDefault();
 		e.stopPropagation();
-		const rect = e.currentTarget.getBoundingClientRect();
-		const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-		lastDragRatioRef.current = ratio;
-		const d = getBestDuration();
-		if (d != null) {
-			const video = videoRef.current;
-			const targetMovieTime = ratio * d;
-			const streamTime = targetMovieTime - startTimeOffsetRef.current;
-			if (video && streamTime >= 0) {
-				let buffered = false;
-				for (let i = 0; i < video.buffered.length; i++) {
-					if (streamTime >= video.buffered.start(i) && streamTime <= video.buffered.end(i) + 1) {
-						buffered = true;
-						break;
-					}
-				}
-				if (buffered) setVideoCurrentTime(streamTime);
+		e.currentTarget.setPointerCapture(e.pointerId);
+		seekDraggingRef.current = true;
+		lastScrubSeekAtRef.current = 0;
+		revealControls();
+		updateScrub(e.clientX, e.currentTarget.getBoundingClientRect());
+	}
+
+	function handleProgressPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+		if (!seekDraggingRef.current) {
+			// A mouse hovering the bar previews the spot under it.
+			if (e.pointerType === "mouse") {
+				const d = getBestDuration();
+				if (d != null)
+					setHoverTime(ratioFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()) * d);
 			}
+			return;
 		}
+		e.preventDefault();
+		e.stopPropagation();
+		// The button was released somewhere we never heard about (outside the
+		// window, during a system gesture): finish the drag where it was.
+		if (e.pointerType === "mouse" && e.buttons === 0) {
+			endScrub(e.currentTarget, e.pointerId, true);
+			return;
+		}
+		updateScrub(e.clientX, e.currentTarget.getBoundingClientRect());
 	}
 
 	function handleProgressPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+		// Only a drag that started on the bar ends on it; a press elsewhere
+		// released over the bar is not a seek.
+		if (!seekDraggingRef.current) return;
 		e.preventDefault();
 		e.stopPropagation();
-		seekDraggingRef.current = false;
-		e.currentTarget.releasePointerCapture(e.pointerId);
-		// Commit the final seek position — may trigger a URL reload if not buffered.
+		endScrub(e.currentTarget, e.pointerId, true);
+	}
+
+	function handleProgressPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+		// The browser took the pointer away (scroll gesture, fullscreen change,
+		// alert): drop the drag instead of seeking somewhere unintended.
+		endScrub(e.currentTarget, e.pointerId, false);
+	}
+
+	function handleProgressKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
 		const d = getBestDuration();
-		if (d != null) seekToMovieTime(lastDragRatioRef.current * d, { resumeIfPlaying: true });
+		let target: number | null = null;
+		// On a TV, Up/Down leave the bar for the buttons around it.
+		const verticalSeeks = !document.documentElement.classList.contains("tv-mode");
+		if (e.key === "ArrowLeft" || (verticalSeeks && e.key === "ArrowDown"))
+			target = currentTime - KEYBOARD_SEEK_STEP_S;
+		else if (e.key === "ArrowRight" || (verticalSeeks && e.key === "ArrowUp"))
+			target = currentTime + KEYBOARD_SEEK_STEP_S;
+		else if (e.key === "PageDown") target = currentTime - 60;
+		else if (e.key === "PageUp") target = currentTime + 60;
+		else if (e.key === "Home") target = 0;
+		else if (e.key === "End" && d != null) target = d;
+		if (target == null) return;
+		// Keep the window-level shortcuts (±15/30 s) from seeking as well.
+		e.preventDefault();
+		e.stopPropagation();
+		revealControls();
+		seekToMovieTime(target, { resumeIfPlaying: !videoRef.current?.paused });
 	}
 
 	function seekBack() {
@@ -1858,6 +2286,12 @@ export function MediaPlayerDialog({
 		seekToMovieTime(currentTime + 30, { resumeIfPlaying: !videoRef.current?.paused });
 	}
 
+	mediaControlsRef.current = {
+		seekBy: (delta) =>
+			seekToMovieTime(currentTime + delta, { resumeIfPlaying: !videoRef.current?.paused }),
+		seekTo: (time) => seekToMovieTime(time, { resumeIfPlaying: !videoRef.current?.paused }),
+	};
+
 	if (!open || !item) return null;
 
 	return (
@@ -1866,6 +2300,12 @@ export function MediaPlayerDialog({
 			className={`player-fullscreen${controlsVisible ? " controls-visible" : ""}`}
 			onMouseMove={revealControls}
 			onTouchStart={revealControls}
+			role="dialog"
+			aria-modal="true"
+			aria-label={item.title}
+			// The remote's arrows seek and move between the player's own
+			// controls (handleRemoteKey), not the page-wide TV navigation.
+			data-tv-arrows="manual"
 		>
 			{streamUrl ? (
 				<>
@@ -2080,17 +2520,40 @@ export function MediaPlayerDialog({
 								</div>
 							) : (
 								<div
-									className="player-progress"
+									className={`player-progress${scrubTime != null ? " scrubbing" : ""}`}
 									onPointerDown={handleProgressPointerDown}
 									onPointerMove={handleProgressPointerMove}
 									onPointerUp={handleProgressPointerUp}
+									onPointerCancel={handleProgressPointerCancel}
+									onLostPointerCapture={handleProgressPointerCancel}
+									onPointerLeave={() => setHoverTime(null)}
+									onFocus={() => setSeekBarFocused(true)}
+									onBlur={() => setSeekBarFocused(false)}
+									onKeyDown={handleProgressKeyDown}
 									role="slider"
-									aria-label="Seek"
-									aria-valuenow={Math.floor(currentTime)}
+									tabIndex={0}
+									aria-label={t("player.seek")}
+									aria-valuenow={Math.floor(displayTime)}
 									aria-valuemin={0}
 									aria-valuemax={Math.floor(getBestDuration() ?? 0)}
+									aria-valuetext={t("player.seekPosition", {
+										current: formatTime(displayTime),
+										total: formatTime(duration),
+									})}
 								>
+									{previewTime != null && duration > 0 ? (
+										<PlayerScrubPreview
+											time={previewTime}
+											duration={duration}
+											label={formatTime(previewTime)}
+											trickplay={playbackSession?.trickplay}
+										/>
+									) : null}
 									<div className="player-progress-track">
+										<div
+											className="player-progress-buffered"
+											style={{ width: `${bufferedProgress}%` }}
+										/>
 										<div className="player-progress-fill" style={{ width: `${progress}%` }} />
 										<div className="player-progress-thumb" style={{ left: `${progress}%` }} />
 									</div>
@@ -2100,10 +2563,12 @@ export function MediaPlayerDialog({
 							<div className="player-controls-row">
 								<div className="player-controls-left">
 									<button
+										ref={playButtonRef}
 										type="button"
 										className="icon-button"
 										onClick={togglePlay}
 										aria-label={isPlaying ? "Pause" : "Play"}
+										data-tv-autofocus
 									>
 										{isPlaying ? (
 											<Pause size={22} fill="currentColor" strokeWidth={0} />
@@ -2143,7 +2608,7 @@ export function MediaPlayerDialog({
 									</button>
 									{!isLive ? (
 										<span className="player-time">
-											{formatTime(currentTime)} / {formatTime(duration)}
+											{formatTime(displayTime)} / {formatTime(duration)}
 										</span>
 									) : null}
 								</div>

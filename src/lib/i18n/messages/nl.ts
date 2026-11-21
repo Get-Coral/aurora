@@ -152,6 +152,8 @@ export const nlMessages: MessageDictionary = {
 	"player.series": "Serie",
 	"player.movie": "Film",
 	"player.episode": "Aflevering",
+	"player.seek": "Positie",
+	"player.seekPosition": (params) => `${params?.current} van ${params?.total}`,
 	"player.skipBack": "−15s",
 	"player.skipForward": "+30s",
 	"player.autoplayCountdown": (params) => `Volgende afspelen over ${params?.count}s`,

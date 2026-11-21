@@ -35,6 +35,10 @@ export function setStreamStartTicks(streamUrl: string, ticks: number): string {
 	return url.toString();
 }
 
+function isHlsTranscodePath(url: URL): boolean {
+	return url.pathname.endsWith(".m3u8") || url.searchParams.get("SegmentContainer") === "ts";
+}
+
 function mutateInnerStreamUrl(streamUrl: string, mutate: (url: URL) => void): string {
 	if (streamUrl.startsWith("/api/jellyfin-stream")) {
 		const outer = new URL(streamUrl, "http://x");
@@ -61,8 +65,7 @@ export function setTranscodeQuality(
 ): string {
 	return mutateInnerStreamUrl(streamUrl, (url) => {
 		const isProgressiveTranscode = url.pathname.endsWith("/stream.mp4");
-		const isHlsTranscode =
-			url.pathname.endsWith(".m3u8") || url.searchParams.get("SegmentContainer") === "ts";
+		const isHlsTranscode = isHlsTranscodePath(url);
 		if (!isProgressiveTranscode && !isHlsTranscode) return;
 
 		const maxStreamingBitrate =
@@ -76,9 +79,22 @@ export function setTranscodeQuality(
 	});
 }
 
+/**
+ * Builds the URL for reloading a transcode at `ticks` (a seek past the buffer
+ * or a quality change).
+ *
+ * A progressive transcode starts at StartTimeTicks, so the player offsets its
+ * clock by that amount. A Jellyfin HLS playlist always describes the whole
+ * film, so there the offset is left off and the player seeks the element to
+ * the target instead; otherwise the two would disagree about where 0:00 is.
+ */
 export function prepareSeekReloadUrl(streamUrl: string, ticks: number): string {
 	return mutateInnerStreamUrl(streamUrl, (url) => {
-		url.searchParams.set("StartTimeTicks", String(ticks));
+		if (isHlsTranscodePath(url)) {
+			url.searchParams.delete("StartTimeTicks");
+		} else {
+			url.searchParams.set("StartTimeTicks", String(ticks));
+		}
 		// Force Jellyfin/browser to treat unbuffered seeks as a fresh transcode
 		// request instead of reusing a cached segment.
 		url.searchParams.set("_ts", String(Date.now()));

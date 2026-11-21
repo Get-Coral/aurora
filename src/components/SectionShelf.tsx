@@ -38,6 +38,12 @@ export function SectionShelf({
 	emptyCopy,
 }: SectionShelfProps) {
 	const { t } = useI18n();
+	const linkSearch =
+		browseTo === "/library/movies" || browseTo === "/library/series"
+			? { sort: "DateCreated", order: "Descending", ratings: "", decade: "", minScore: 0 }
+			: browseTo === "/iptv"
+				? { tab: browseSearch?.tab ?? "live" }
+				: undefined;
 
 	return (
 		<section id={id} className="shelf-section">
@@ -49,13 +55,7 @@ export function SectionShelf({
 				{browseTo ? (
 					<Link
 						to={browseTo}
-						search={
-							browseTo === "/library/movies" || browseTo === "/library/series"
-								? { sort: "DateCreated", order: "Descending", ratings: "", decade: "", minScore: 0 }
-								: browseTo === "/iptv"
-									? { tab: browseSearch?.tab ?? "live" }
-									: undefined
-						}
+						search={linkSearch}
 						className="section-trailing section-trailing-button"
 						data-tv-focusable="true"
 					>
@@ -65,7 +65,9 @@ export function SectionShelf({
 			</div>
 
 			{items.length ? (
-				<div className="shelf-grid">
+				// A row for TV navigation: coming back to it lands on the card
+				// that was focused last, not the one geometrically nearest.
+				<div className="shelf-grid" data-tv-row>
 					{items.map((item, index) => (
 						<MediaCard
 							key={item.id}
@@ -85,6 +87,20 @@ export function SectionShelf({
 							onToggleFavorite={onToggleFavorite}
 						/>
 					))}
+					{browseTo ? (
+						// On a TV, "Browse more" is the last stop of the row
+						// (CSS shows it only there), so Down from a card always
+						// lands in the next row instead of on a link between them.
+						<Link
+							to={browseTo}
+							search={linkSearch}
+							className="shelf-more-card"
+							data-tv-focusable="true"
+						>
+							<ChevronRight size={28} />
+							<span>{t("section.browseMore")}</span>
+						</Link>
+					) : null}
 				</div>
 			) : (
 				<div className="empty-shelf">

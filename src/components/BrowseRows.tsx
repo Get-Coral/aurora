@@ -118,6 +118,7 @@ export function BrowseRow({ row }: { row: BrowseRowSpec }) {
 					ref={trackRef}
 					className={`browse-row-track${row.wide ? " browse-row-wide" : ""}`}
 					onScroll={updateEdges}
+					data-tv-row
 				>
 					{items.length
 						? items.map((item) => (

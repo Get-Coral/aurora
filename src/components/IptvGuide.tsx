@@ -183,7 +183,7 @@ export function IptvGuide({
 					</div>
 
 					{rows.map(({ channel, programmes }) => (
-						<div key={channel.id} className="iptv-guide-row">
+						<div key={channel.id} className="iptv-guide-row" data-tv-row>
 							<div className="iptv-guide-channel">
 								<button
 									type="button"
