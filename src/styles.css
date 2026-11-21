@@ -3739,8 +3739,10 @@ html.tv-mode .hero-copy-in {
   max-width: 52rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding-top: 40vh;
+  gap: 1rem;
+  /* Room for the backdrop above, while title, synopsis and actions still fit
+     on a 1080p TV (a page 540 px high); 40vh pushed Play off the screen. */
+  padding-top: 22vh;
 }
 
 .tv-detail-lower {
@@ -4073,7 +4075,7 @@ html.tv-mode .hero-copy-in {
 
 .tv-detail-title {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-size: clamp(2.2rem, 10vh, 4rem);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -4084,6 +4086,12 @@ html.tv-mode .hero-copy-in {
   line-height: 1.7;
   color: var(--ink-muted);
   max-width: 44rem;
+  /* A long synopsis pushed the actions below the edge of a 1080p TV. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 .tv-detail-actions {
@@ -4400,6 +4408,18 @@ html.tv-mode .library-summary {
   display: none;
 }
 
+/* Cards in a row are narrow on a TV: the round play button took the room of
+   the title, which then wrapped a letter per line. OK on a card already
+   opens it, so the button can go. */
+html.tv-mode .browse-row-track .card-action {
+  display: none;
+}
+
+html.tv-mode .card-copy {
+  min-width: 0;
+  flex: 1;
+}
+
 /* The mobile breakpoint forces the toggle on; a TV never needs it. */
 html.tv-mode .mobile-nav-toggle {
   display: none !important;
@@ -4433,6 +4453,36 @@ html.tv-mode .hero-content {
 
 html.tv-mode .hero-copy {
   padding-bottom: 0;
+}
+
+/* A 1080p TV lays the page out 540 px high: a full-size logo and a long
+   synopsis pushed Play below the edge of the screen. Keep the title to a
+   quarter of the height and the synopsis to two lines. */
+html.tv-mode .hero-logo {
+  max-height: 24vh;
+  max-width: min(30rem, 60%);
+}
+
+html.tv-mode .hero-title {
+  font-size: clamp(2.4rem, 11vh, 5rem);
+}
+
+html.tv-mode .hero-meta {
+  margin-top: 0.9rem;
+}
+
+html.tv-mode .hero-overview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 38rem;
+  margin-top: 0.8rem;
+}
+
+html.tv-mode .hero-actions {
+  margin-top: 1.3rem;
 }
 
 /* Skip buttons — show label in TV mode */
@@ -7542,6 +7592,19 @@ html.tv-mode .player-autoplay-cancel {
 
 html.tv-mode .browse-row-track {
   grid-auto-columns: 13vw;
+}
+
+/* Wide cards (episodes, things in progress) shrank to poster width too. */
+html.tv-mode .browse-row-track.browse-row-wide {
+  grid-auto-columns: 24vw;
+}
+
+/* One line per title on a TV card, cut with an ellipsis: two lines on a
+   narrow poster broke words in half. */
+html.tv-mode .browse-row-track .card-title {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .browse-row-track .card-format:not(.card-format-live) {

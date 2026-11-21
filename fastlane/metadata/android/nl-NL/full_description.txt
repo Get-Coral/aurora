@@ -1,22 +1,30 @@
-Aurora is een mooie, open-source front-end voor je eigen Jellyfin-mediaserver. Jellyfin blijft de bron van alles; Aurora legt er een filmische ervaring bovenop die thuishoort in de woonkamer.
+Aurora is een mooie, open-source app voor je eigen Jellyfin-mediaserver en het IPTV-abonnement dat je al hebt. Je server blijft de bron van alles; Aurora legt er een filmische ervaring bovenop die thuishoort in de woonkamer, op je gsm, je tablet en je Android TV of Google TV.
 
 WAT JE KRIJGT
 • Een startscherm om te ontdekken: uitgelichte titels, Verder kijken, favorieten en aanbevelingen
+• Films en series in rijen per genre, nieuw toegevoegd en best beoordeeld, zoals bij een streamingdienst
 • Uitgebreide detailpagina's met cast, verwante titels en volledige afleveringslijsten voor series
-• Film- en seriebibliotheken met genres en sorteeropties
 • Mijn lijst, gesynchroniseerd met je Jellyfin-favorieten
-• Snel zoeken in je volledige bibliotheek
-• Ingebouwde speler die je kijkvoortgang terugstuurt naar je server
+• Zoeken in alles tegelijk, gegroepeerd per soort en vergevingsgezind voor typfouten
+• Ingebouwde speler die je kijkvoortgang terugstuurt naar je server, met keuze van audiospoor en ondertitels
 • Ondertitels via OpenSubtitles (met je eigen gratis API-sleutel)
 • Meerdere profielen voor gedeelde huishoudens, met optionele aanmelding per gebruiker
-• Een tv-modus met grote, afstandsbedieningvriendelijke bediening
 • Beschikbaar in het Nederlands en het Engels
 
+OP JE TV
+Aurora werkt op Android TV en Google TV en is gemaakt voor de afstandsbediening: navigeer met de pijltjes, open alles met OK en ga terug met Terug. Live-zenders wissel je met de zenderknoppen, en de speler toont vooraf waar een sprong uitkomt.
+
+OP JE TABLET
+De indeling benut de ruimte van een groot scherm, liggend en staand.
+
+JE EIGEN IPTV
+Voeg de M3U-playlist, Xtream Codes-account of stream-URL toe die je van je tv-aanbieder krijgt. De zenders, films en series verschijnen naast je Jellyfin-bibliotheek, met een tv-gids, terugkijken voor zenders die dat aanbieden, en favorieten. Aurora bevat, verkoopt of raadt geen zenders of playlists aan: je hebt je eigen nodig, van een aanbieder waarbij je recht hebt om te kijken.
+
 JOUW SERVER, JOUW GEGEVENS
-Aurora heeft geen accounts, geen advertenties en geen tracking. De app praat alleen met de Jellyfin-server waarmee je verbindt, en je instellingen blijven op je toestel.
+Aurora heeft geen accounts, geen advertenties en geen tracking. De app praat alleen met de Jellyfin-server en de IPTV-aanbieder waarmee je verbindt, en je instellingen blijven op je toestel.
 
 VEREISTEN
-Je hebt toegang nodig tot een Jellyfin-server, met een server-URL, een API-sleutel en een gebruikersaccount. Aurora levert zelf geen media-inhoud.
+Voor Jellyfin: toegang tot een Jellyfin-server en een gebruikersaccount. Voor IPTV: een playlist of account van je aanbieder. Aurora levert zelf geen media-inhoud.
 
 OPEN SOURCE
 Aurora is MIT-gelicentieerd en wordt in de open ontwikkeld. Meld bugs, vraag functies aan of draag bij via github.com/Get-Coral/aurora, of sluit je aan bij de community op Discord.

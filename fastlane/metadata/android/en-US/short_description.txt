@@ -1,1 +1,1 @@
-A cinematic, TV-friendly way to browse and watch your Jellyfin library.
+Your Jellyfin library and own IPTV in one cinematic app, on phone, tablet and TV
