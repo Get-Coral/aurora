@@ -191,6 +191,8 @@ export function SearchPanel({ onClose }: { onClose: () => void }) {
 			<Search size={16} className="search-shell-icon" aria-hidden="true" />
 			<input
 				ref={inputRef}
+				// Opened on purpose, so on a TV the keyboard comes up right away.
+				data-tv-keyboard="open"
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
 				onKeyDown={(event) => {

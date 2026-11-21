@@ -55,6 +55,7 @@ import {
 	beginIptvPlaybackRuntime,
 	beginPlaybackSessionRuntime,
 	createStreamTokenRuntime,
+	fetchIptvBrowseRuntime,
 	fetchIptvGuideRuntime,
 	fetchOnlineSubtitleRuntime,
 	fetchOpenSubtitlesAvailableRuntime,
@@ -493,8 +494,20 @@ export function MediaPlayerDialog({
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
-	// Zapping: live channels step through the list they were started from.
-	const channelQueue = isLive ? (queue ?? []).filter((entry) => entry.type === "channel") : [];
+	// Zapping: live channels step through the list they were started from. A
+	// channel started on its own (from its details or a search) steps through
+	// its category instead, as a TV remote would.
+	const queuedChannels = isLive ? (queue ?? []).filter((entry) => entry.type === "channel") : [];
+	const zapGroup = isLive && queuedChannels.length < 2 ? item?.group : undefined;
+	const { data: groupChannels } = useQuery({
+		queryKey: ["zap-group", zapGroup],
+		queryFn: async () =>
+			(await fetchIptvBrowseRuntime({ kind: "live", group: zapGroup, limit: 200 })).items,
+		enabled: open && Boolean(zapGroup),
+		staleTime: 10 * 60_000,
+	});
+	const channelQueue =
+		queuedChannels.length > 1 || !groupChannels?.length ? queuedChannels : groupChannels;
 	const channelIndex = item ? channelQueue.findIndex((entry) => entry.id === item.id) : -1;
 	const canZap = channelIndex >= 0 && channelQueue.length > 1;
 	const [channelListOpen, setChannelListOpen] = useState(false);

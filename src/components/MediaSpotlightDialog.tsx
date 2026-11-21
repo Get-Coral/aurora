@@ -176,10 +176,7 @@ export function MediaSpotlightDialog({
 						</div>
 
 						{detail.type === "channel" ? (
-							<>
-								<ChannelGuide epg={detail.epg} />
-								<ChannelSchedule channel={detail} onPlay={onPlay} />
-							</>
+							<ChannelGuide epg={detail.epg} />
 						) : detail.overview ? (
 							<p className="tv-detail-overview">{detail.overview}</p>
 						) : null}
@@ -240,6 +237,11 @@ export function MediaSpotlightDialog({
 					</div>
 
 					<div className="tv-detail-lower">
+						{/* The day's schedule goes below the actions, so Watch live
+						    is on screen when the page opens. */}
+						{detail.type === "channel" ? (
+							<ChannelSchedule channel={detail} onPlay={onPlay} />
+						) : null}
 						{item.type === "series" ? (
 							<div className="tv-episodes-section">
 								<div className="tv-episodes-head">

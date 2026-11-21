@@ -203,6 +203,57 @@ function rememberedInRow(target: HTMLElement, from: HTMLElement): HTMLElement | 
 		: null;
 }
 
+const TEXT_INPUT_TYPES = new Set([
+	"",
+	"text",
+	"search",
+	"url",
+	"email",
+	"password",
+	"tel",
+	"number",
+]);
+/** Marks a field made read-only while the on-screen keyboard is held back. */
+const KEYBOARD_HELD = "data-tv-keyboard-held";
+
+function isTextField(
+	element: EventTarget | null,
+): element is HTMLInputElement | HTMLTextAreaElement {
+	if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement))
+		return false;
+	if (element.readOnly && !element.hasAttribute(KEYBOARD_HELD)) return false;
+	return (
+		element instanceof HTMLTextAreaElement ||
+		TEXT_INPUT_TYPES.has(element.getAttribute("type") ?? "")
+	);
+}
+
+function isKeyboardHeld(element: EventTarget | null) {
+	return element instanceof HTMLElement && element.hasAttribute(KEYBOARD_HELD);
+}
+
+/**
+ * On a TV, focusing a text field opens the on-screen keyboard, which then
+ * takes the D-pad: moving down a page would get stuck in every search box.
+ * A field reached with the remote stays read-only, so the keyboard stays
+ * closed and OK and the arrows still reach the page, until OK is pressed on
+ * it, as native TV apps do. (Android swallows OK on an editable field, so
+ * inputmode="none" isn't enough.) A field inside `data-tv-keyboard="open"`
+ * opens the keyboard straight away.
+ */
+function holdKeyboard(field: HTMLInputElement | HTMLTextAreaElement) {
+	if (field.hasAttribute(KEYBOARD_HELD)) return;
+	field.setAttribute(KEYBOARD_HELD, "");
+	field.readOnly = true;
+}
+
+function releaseKeyboard(field: HTMLInputElement | HTMLTextAreaElement) {
+	if (!field.hasAttribute(KEYBOARD_HELD)) return false;
+	field.removeAttribute(KEYBOARD_HELD);
+	field.readOnly = false;
+	return true;
+}
+
 function directionForKey(key: string): TvDirection | null {
 	switch (key) {
 		case "ArrowLeft":
@@ -219,17 +270,36 @@ function directionForKey(key: string): TvDirection | null {
 }
 
 export function installTvSpatialNavigation() {
+	// The field the user asked to type in (OK or a tap): its focus opens the
+	// keyboard instead of holding it back.
+	let typingIn: HTMLElement | null = null;
+
+	function openKeyboard(field: HTMLInputElement | HTMLTextAreaElement) {
+		if (!releaseKeyboard(field)) return;
+		// Android shows the keyboard when a field gains focus, so focus it anew.
+		typingIn = field;
+		field.blur();
+		field.focus({ preventScroll: true });
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.defaultPrevented || !isTvModeActive()) return;
 		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
+		if (event.key === "Enter" && isTextField(event.target) && isKeyboardHeld(event.target)) {
+			event.preventDefault();
+			openKeyboard(event.target);
+			return;
+		}
+
 		const direction = directionForKey(event.key);
 		if (!direction) return;
 
-		// Left/Right move the caret in a text field; Up/Down leave it, since a
-		// remote has no other way out.
+		// Left/Right move the caret in a field being typed in; Up/Down leave
+		// it, since a remote has no other way out.
 		if (
 			isEditableElement(event.target as Element | null) &&
+			!isKeyboardHeld(event.target) &&
 			(direction === "left" || direction === "right")
 		) {
 			return;
@@ -294,15 +364,36 @@ export function installTvSpatialNavigation() {
 		attributeFilter: ["aria-modal", "data-tv-scope", "inert"],
 	});
 
-	const handleFocusIn = (event: FocusEvent) => rememberRowFocus(event.target as Element | null);
+	const handleFocusIn = (event: FocusEvent) => {
+		rememberRowFocus(event.target as Element | null);
+		const field = event.target;
+		if (!isTvModeActive() || !isTextField(field)) return;
+		if (field === typingIn) typingIn = null;
+		// A field opened on purpose (the search panel) types right away.
+		else if (!field.closest('[data-tv-keyboard="open"]')) holdKeyboard(field);
+	};
+	const handleFocusOut = (event: FocusEvent) => {
+		if (isTextField(event.target)) releaseKeyboard(event.target);
+	};
+	// A tap means typing, so the keyboard comes up as usual.
+	const handlePointerDown = (event: PointerEvent) => {
+		const field = event.target;
+		if (!isTvModeActive() || !isTextField(field)) return;
+		if (document.activeElement === field) openKeyboard(field);
+		else typingIn = field;
+	};
 
 	window.addEventListener("keydown", handleKeyDown);
 	document.addEventListener("focusin", handleFocusIn);
+	document.addEventListener("focusout", handleFocusOut);
+	document.addEventListener("pointerdown", handlePointerDown, true);
 
 	return () => {
 		observer.disconnect();
 		if (frame) cancelAnimationFrame(frame);
 		window.removeEventListener("keydown", handleKeyDown);
 		document.removeEventListener("focusin", handleFocusIn);
+		document.removeEventListener("focusout", handleFocusOut);
+		document.removeEventListener("pointerdown", handlePointerDown, true);
 	};
 }

@@ -201,3 +201,62 @@ describe("moveTvFocus", () => {
 		expect(document.activeElement).toBe(first[3]);
 	});
 });
+
+describe("on-screen keyboard", () => {
+	function field(box: DOMRect, parent: Element = document.body) {
+		const input = document.createElement("input");
+		input.type = "search";
+		place(input, box);
+		parent.appendChild(input);
+		return input;
+	}
+
+	it("keeps it closed on a field reached with the remote until OK is pressed", () => {
+		const above = button("above", rect(0, 0, 100, 50));
+		const search = field(rect(0, 100, 300, 50));
+		above.focus();
+
+		press("ArrowDown");
+		expect(document.activeElement).toBe(search);
+		expect(search.readOnly).toBe(true);
+
+		const ok = press("Enter");
+		expect(ok.defaultPrevented).toBe(true);
+		expect(document.activeElement).toBe(search);
+		expect(search.readOnly).toBe(false);
+	});
+
+	it("moves on with Left/Right from a quiet field and makes it editable again", () => {
+		const search = field(rect(0, 100, 300, 50));
+		const next = button("next", rect(400, 100, 100, 50));
+		search.focus();
+
+		expect(press("ArrowRight").defaultPrevented).toBe(true);
+		expect(document.activeElement).toBe(next);
+		expect(search.readOnly).toBe(false);
+	});
+
+	it("leaves fields that are read-only of their own alone", () => {
+		const fixed = field(rect(0, 100, 300, 50));
+		fixed.readOnly = true;
+		fixed.focus();
+		button("elsewhere", rect(0, 300, 100, 50)).focus();
+
+		expect(fixed.readOnly).toBe(true);
+		expect(fixed.hasAttribute("data-tv-keyboard-held")).toBe(false);
+	});
+
+	it("opens it straight away where a field asks for that, and outside TV mode", () => {
+		const wrapper = document.createElement("div");
+		wrapper.dataset.tvKeyboard = "open";
+		document.body.appendChild(wrapper);
+		const panelSearch = field(rect(0, 0, 300, 50), wrapper);
+		panelSearch.focus();
+		expect(panelSearch.readOnly).toBe(false);
+
+		document.documentElement.classList.remove("tv-mode");
+		const plain = field(rect(0, 100, 300, 50));
+		plain.focus();
+		expect(plain.readOnly).toBe(false);
+	});
+});

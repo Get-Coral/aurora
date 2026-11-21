@@ -4368,7 +4368,7 @@ html.tv-mode .header-top-row {
 }
 
 /* Keep desktop flex ordering */
-html.tv-mode .brand-mark   { order: 1; flex-shrink: 0; }
+html.tv-mode .brand-mark   { order: 1; flex: 0 0 auto; }
 html.tv-mode .header-nav   { order: 2; flex: 1; justify-content: center; overflow: hidden; }
 html.tv-mode .header-actions { order: 3; flex-shrink: 0; margin-left: 0; }
 html.tv-mode .header-search-row { order: 4; flex-basis: 100%; }
@@ -4382,6 +4382,39 @@ html.tv-mode .mobile-nav-toggle {
 html.tv-mode .header-nav {
   display: flex !important;
   flex-wrap: nowrap;
+  /* Centred while it fits; otherwise it starts at the left and scrolls to
+     the focused link instead of clipping both ends. */
+  justify-content: safe center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+html.tv-mode .header-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* On a TV the remote's Back key does what the back link does, and the page
+   blurb pushes the titles below the fold. */
+html.tv-mode .library-backlink,
+html.tv-mode .library-summary {
+  display: none;
+}
+
+/* The mobile breakpoint forces the toggle on; a TV never needs it. */
+html.tv-mode .mobile-nav-toggle {
+  display: none !important;
+}
+
+/* A 1080p TV lays the page out 960 px wide: keep the brand to "Aurora" there
+   so the nav fits. */
+@media (max-width: 1279px) {
+  html.tv-mode .brand-mark em {
+    display: none;
+  }
+
+  html.tv-mode .nav-pill {
+    padding-inline: 0.8rem;
+  }
 }
 
 /* ── TV mode: hero ───────────────────────────────────────────────────────── */
@@ -6205,8 +6238,24 @@ html.tv-mode .player-autoplay-cancel {
   gap: 0.45rem;
 }
 
-.iptv-toolbar .toolbar-controls {
+/* Categories and controls share a line while they fit; on a narrow screen
+   (or a TV, which lays out 960 px wide) the controls move to their own line
+   instead of squeezing the categories to nothing. */
+.iptv-toolbar {
   flex-wrap: wrap;
+  row-gap: 0.75rem;
+}
+
+.iptv-toolbar .genre-strip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.iptv-toolbar .toolbar-controls {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .iptv-toolbar .toolbar-sort-select {
