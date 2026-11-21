@@ -270,6 +270,11 @@ export async function fetchClientContinueWatching() {
 	return items.map(fromClientJellyfin);
 }
 
+export async function fetchClientLibraryGenres(type: "Movie" | "Series") {
+	const { getLibraryGenresWith } = await import("./jellyfin-search");
+	return getLibraryGenresWith(getClientJellyfin(), type);
+}
+
 export async function fetchClientNextUp() {
 	const { getNextUpWith } = await import("./jellyfin-search");
 	return (await getNextUpWith(getClientJellyfin())).map(fromClientJellyfin);

@@ -11,6 +11,7 @@ import {
 	type CatalogChannel,
 	type CatalogEntry,
 	type CatalogMovie,
+	type CatalogSeries,
 	catalogEntries,
 	type EpgProgramme,
 	findEntry,
@@ -81,6 +82,8 @@ export interface IptvBrowseInput {
 	favoritesOnly?: boolean;
 	/** Only channels that have a TV guide. */
 	guideOnly?: boolean;
+	/** Series of this genre. */
+	genre?: string;
 	offset?: number;
 	limit?: number;
 }
@@ -216,6 +219,14 @@ async function browseRows(backend: IptvBackend, input: IptvBrowseInput) {
 	);
 	const groups = [...new Set(rows.map((row) => row.entry.group).filter(Boolean))];
 	if (input.group) rows = rows.filter((row) => row.entry.group === input.group);
+	if (input.genre) {
+		const genre = input.genre.toLowerCase();
+		rows = rows.filter(
+			(row) =>
+				row.entry.kind === "series" &&
+				row.entry.genres.some((name) => name.toLowerCase() === genre),
+		);
+	}
 	if (input.guideOnly) rows = rows.filter((row) => row.entry.kind === "live" && row.entry.epgId);
 	if (query.text) {
 		rows = rows.flatMap((row) => {
@@ -314,6 +325,221 @@ export async function iptvGuideRows(
 	const order = new Map(page.map((row, index) => [entryId(row.catalog.source, row.entry), index]));
 	out.sort((a, b) => (order.get(a.channel.id) ?? 0) - (order.get(b.channel.id) ?? 0));
 	return { rows: out, total: rows.length, groups };
+}
+
+export interface IptvBrowseRow {
+	id: string;
+	/** An i18n key for Aurora's own rows; categories and genres use `title`. */
+	titleKey?: "continue" | "added" | "rated" | "favorites";
+	title?: string;
+	items: MediaItem[];
+	/** How "see all" opens the full grid. */
+	filter: { group?: string; genre?: string; sort?: "added" | "rating"; favorites?: boolean };
+}
+
+export interface IptvBrowseRows {
+	hero: MediaItem[];
+	rows: IptvBrowseRow[];
+}
+
+/** `|EN| ACTION/THRILLER` → `ACTION/THRILLER`: language tags read as noise in a row title. */
+export function displayGroup(name: string) {
+	const cleaned = name
+		.replace(/^\|?\s*[A-Z]{2,4}\s*\|\s*/, "")
+		.replace(/^[A-Z]{2,4}\s*[-:]\s+/, "")
+		.replace(/\s*[[(][A-Z]{2,4}[\])]\s*$/, "")
+		.trim();
+	return cleaned || name;
+}
+
+/** The language tag of a category (`|EN| …`, `… [FR]`), if it has one. */
+export function groupTag(name: string) {
+	return (
+		name.match(/^\|?\s*([A-Z]{2,4})\s*\|/)?.[1] ??
+		name.match(/^([A-Z]{2,4})\s*[-:]\s+/)?.[1] ??
+		name.match(/[[(]([A-Z]{2,4})[\])]\s*$/)?.[1]
+	);
+}
+
+/** A category in another language keeps its tag, so two "NETFLIX" rows differ. */
+export function labelledGroup(name: string) {
+	const tag = groupTag(name);
+	const title = displayGroup(name);
+	return tag && title !== name ? `${title} · ${tag}` : title;
+}
+
+/** Category names that read as the viewer's own language or country. */
+const LOCAL_GROUPS: Record<string, RegExp> = {
+	nl: /\b(nl|be|vl|vlaams|dutch|nederlands|belg\w*|flemish)\b/i,
+	en: /\b(en|uk|us|english)\b/i,
+};
+
+/**
+ * Films or series as rows, the way streaming services lay them out: what
+ * you're watching, what's new, what's rated best, your list, then provider
+ * categories (the viewer's language first) and, for series, genres.
+ */
+export async function iptvBrowseRows(
+	backend: IptvBackend,
+	input: { kind: "vod" | "series"; locale?: string; rows?: number; size?: number },
+): Promise<IptvBrowseRows> {
+	const size = Math.min(input.size ?? 20, 40);
+	const maxRows = Math.min(input.rows ?? 18, 30);
+	const all = await catalogs(backend);
+	type Row = { catalog: IptvCatalog; entry: CatalogMovie | CatalogSeries };
+	const entries: Row[] = all.flatMap((catalog) =>
+		(input.kind === "vod" ? catalog.movies : catalog.series).map((entry) => ({ catalog, entry })),
+	);
+	const withArt = entries.filter(({ entry }) => entry.poster);
+	const pool = withArt.length >= size ? withArt : entries;
+	const byAdded = (a: Row, b: Row) => (b.entry.added ?? 0) - (a.entry.added ?? 0);
+	// Several language versions of a title: show one per row.
+	const distinct = (list: Row[]) => {
+		const seen = new Set<string>();
+		return list.filter(({ entry }) => {
+			const key = `${normalizeSearchText(entry.title)}|${entry.year ?? ""}`;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	};
+	const toMedia = (list: Row[]) =>
+		withState(
+			backend,
+			list.map(({ catalog, entry }) => catalogItem(catalog.source, entry, backend.art)),
+		);
+
+	const rows: IptvBrowseRow[] = [];
+	const kindOf = (id: string) => parseIptvId(id)?.kind;
+	const [continueRows, favoriteRows] = await Promise.all([
+		backend.state.list("continue", 60),
+		backend.state.list("favorites", 200),
+	]);
+	const wanted = input.kind === "vod" ? ["vod"] : ["ep", "series"];
+	const continuing = continueRows
+		.filter(({ id }) => wanted.includes(kindOf(id) ?? ""))
+		.map(({ snapshot, state }) => ({ ...snapshot, ...stateFields(state) }));
+	if (continuing.length)
+		rows.push({
+			id: "continue",
+			titleKey: "continue",
+			items: continuing.slice(0, size),
+			filter: {},
+		});
+
+	const added = distinct([...pool].sort(byAdded)).slice(0, size);
+	rows.push({
+		id: "added",
+		titleKey: "added",
+		items: await toMedia(added),
+		filter: { sort: "added" },
+	});
+
+	const rated = distinct(
+		pool
+			// A perfect 10 is usually a placeholder for titles nobody rated yet.
+			.filter(({ entry }) => (entry.rating ?? 0) >= 7 && (entry.rating ?? 0) < 9.95)
+			.sort((a, b) => (b.entry.rating ?? 0) - (a.entry.rating ?? 0) || byAdded(a, b)),
+	).slice(0, size);
+	if (rated.length >= 6)
+		rows.push({
+			id: "rated",
+			titleKey: "rated",
+			items: await toMedia(rated),
+			filter: { sort: "rating" },
+		});
+
+	const favorites = favoriteRows
+		.filter(({ id }) => kindOf(id) === (input.kind === "vod" ? "vod" : "series"))
+		.map(({ snapshot, state }) => ({ ...snapshot, ...stateFields(state) }));
+	if (favorites.length)
+		rows.push({
+			id: "favorites",
+			titleKey: "favorites",
+			items: favorites.slice(0, size),
+			filter: { favorites: true },
+		});
+
+	// Categories: the viewer's language first, then the freshest and fullest.
+	const local = LOCAL_GROUPS[(input.locale ?? "en").slice(0, 2)] ?? LOCAL_GROUPS.en;
+	const groups = new Map<string, Row[]>();
+	for (const row of pool) {
+		if (!row.entry.group) continue;
+		groups.set(row.entry.group, [...(groups.get(row.entry.group) ?? []), row]);
+	}
+	const rankedGroups = [...groups.entries()]
+		.filter(([, list]) => list.length >= 6)
+		.map(([name, list]) => ({
+			name,
+			list,
+			local: local?.test(name) ?? false,
+			newest: Math.max(...list.map(({ entry }) => entry.added ?? 0)),
+		}))
+		.sort(
+			(a, b) =>
+				Number(b.local) - Number(a.local) || b.newest - a.newest || b.list.length - a.list.length,
+		);
+
+	// Series also come with genres; mix those in after the first categories.
+	const genreRows: { name: string; list: Row[] }[] = [];
+	if (input.kind === "series") {
+		const genres = new Map<string, Row[]>();
+		for (const row of pool) {
+			for (const genre of (row.entry as CatalogSeries).genres) {
+				const name = genre.trim();
+				if (name.length < 3) continue;
+				genres.set(name, [...(genres.get(name) ?? []), row]);
+			}
+		}
+		genreRows.push(
+			...[...genres.entries()]
+				.filter(([, list]) => list.length >= 8)
+				.sort((a, b) => b[1].length - a[1].length)
+				.slice(0, 8)
+				.map(([name, list]) => ({ name, list })),
+		);
+	}
+
+	const extra: IptvBrowseRow[] = [];
+	for (const [index, group] of rankedGroups.entries()) {
+		extra.push({
+			id: `group:${group.name}`,
+			title: group.local ? displayGroup(group.name) : labelledGroup(group.name),
+			items: await toMedia(distinct([...group.list].sort(byAdded)).slice(0, size)),
+			filter: { group: group.name },
+		});
+		const genre = index >= 3 ? genreRows.shift() : undefined;
+		if (genre)
+			extra.push({
+				id: `genre:${genre.name}`,
+				title: genre.name,
+				items: await toMedia(distinct([...genre.list].sort(byAdded)).slice(0, size)),
+				filter: { genre: genre.name },
+			});
+		if (rows.length + extra.length >= maxRows) break;
+	}
+	rows.push(...extra);
+
+	// The hero wants a wide image: series often have one, films get theirs
+	// from the provider's film info.
+	const heroPool = added.slice(0, 8);
+	const withTimeout = <T>(promise: Promise<T>, ms: number) =>
+		Promise.race([promise, new Promise<undefined>((resolve) => setTimeout(resolve, ms))]);
+	const candidates = await Promise.all(
+		heroPool.map(async ({ catalog, entry }) => {
+			if (entry.kind === "series")
+				return entry.backdrop ? catalogItem(catalog.source, entry, backend.art) : undefined;
+			const info = await withTimeout(
+				backend.vodInfo(catalog, entry.pid).catch(() => undefined),
+				2500,
+			);
+			return info?.backdrop
+				? movieItem(catalog.source, entry, backend.art, undefined, info)
+				: undefined;
+		}),
+	);
+	const hero = candidates.filter((item): item is MediaItem => Boolean(item)).slice(0, 5);
+	return { hero: await withState(backend, hero), rows: rows.slice(0, maxRows) };
 }
 
 export interface IptvShelves {

@@ -215,6 +215,11 @@ export async function getContinueWatching(): Promise<JellyfinItem[]> {
 	return getContinueWatchingBase(getJellyfinClient());
 }
 
+/** The client acting for this request's user, for helpers that take one. */
+export function getJellyfinClientForRequest() {
+	return getJellyfinClient();
+}
+
 export async function getNextUp(limit = 12): Promise<JellyfinItem[]> {
 	return getNextUpWith(getJellyfinClient(), limit);
 }

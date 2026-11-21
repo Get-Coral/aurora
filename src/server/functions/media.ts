@@ -21,6 +21,17 @@ export const fetchContinueWatching = createServerFn({ method: "GET" })
 		return items.map(fromJellyfin);
 	});
 
+export const fetchLibraryGenres = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { type: "Movie" | "Series" }) => input)
+	.handler(async ({ data }) => {
+		const [{ getJellyfinClientForRequest }, { getLibraryGenresWith }] = await Promise.all([
+			import("@/lib/jellyfin"),
+			import("@/lib/jellyfin-search"),
+		]);
+		return getLibraryGenresWith(getJellyfinClientForRequest(), data.type);
+	});
+
 export const fetchNextUp = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => {

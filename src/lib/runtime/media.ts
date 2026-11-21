@@ -10,6 +10,7 @@ import {
 	fetchClientItemDetails,
 	fetchClientLatestMedia,
 	fetchClientLibrary,
+	fetchClientLibraryGenres,
 	fetchClientLibrarySearch,
 	fetchClientMostPlayed,
 	fetchClientMyList,
@@ -45,6 +46,7 @@ import {
 	fetchLatestMovies,
 	fetchLatestSeries,
 	fetchLibrary,
+	fetchLibraryGenres,
 	fetchLibrarySearch,
 	fetchMostPlayed,
 	fetchMyList,
@@ -383,4 +385,11 @@ export async function markPlayedRuntime(input: { data: { id: string; played: boo
 		return { id: input.data.id, played: input.data.played };
 	}
 	return jellyfinMarkPlayedRuntime(input);
+}
+
+export async function fetchLibraryGenresRuntime(type: "Movie" | "Series") {
+	return callRuntime(
+		() => fetchClientLibraryGenres(type),
+		() => fetchLibraryGenres({ data: { type } }),
+	);
 }

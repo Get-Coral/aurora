@@ -22,6 +22,7 @@ export const Route = createFileRoute("/library/movies/genre/$genre")({
 		ratings: typeof search.ratings === "string" ? search.ratings : "",
 		decade: typeof search.decade === "string" ? search.decade : "",
 		minScore: typeof search.minScore === "number" ? search.minScore : 0,
+		...(search.view === "grid" ? { view: "grid" as const } : {}),
 	}),
 	loaderDeps: ({ search }) => search,
 	loader: async () => {

@@ -192,6 +192,11 @@ export const fetchIptvGuideRows = createServerFn({ method: "GET" })
 	.validator((input: Omit<IptvBrowseInput, "kind"> & { from: number; to: number }) => input)
 	.handler(async ({ data }) => (await service()).iptvGuideRows(await backend(), data));
 
+export const fetchIptvBrowseRows = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { kind: "vod" | "series"; locale?: string }) => input)
+	.handler(async ({ data }) => (await service()).iptvBrowseRows(await backend(), data));
+
 export const fetchIptvShelves = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => (await service()).iptvShelves(await backend()));

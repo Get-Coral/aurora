@@ -81,3 +81,15 @@ export async function getNextUpWith(client: JellyfinClient, limit = 12) {
 	});
 	return data.Items ?? [];
 }
+
+/** The genres that occur in the library for films or series. */
+export async function getLibraryGenresWith(client: JellyfinClient, type: "Movie" | "Series") {
+	const data = await client.fetch<{ Items?: { Name?: string }[] }>("/Genres", {
+		UserId: client.config.userId,
+		IncludeItemTypes: type,
+		Recursive: "true",
+		SortBy: "SortName",
+		EnableTotalRecordCount: "false",
+	});
+	return (data.Items ?? []).flatMap((item) => (item.Name ? [item.Name] : []));
+}

@@ -5,6 +5,7 @@ import {
 	beginIptvPlayback,
 	deleteIptvSourceFn,
 	fetchIptvBrowse,
+	fetchIptvBrowseRows,
 	fetchIptvGuide,
 	fetchIptvGuideRows,
 	fetchIptvItemDetails,
@@ -311,5 +312,18 @@ export async function fetchIptvNextUpRuntime() {
 			return service.iptvNextUp(backend);
 		},
 		() => fetchIptvNextUp(),
+	);
+}
+
+export async function fetchIptvBrowseRowsRuntime(input: {
+	kind: "vod" | "series";
+	locale?: string;
+}) {
+	return callRuntime(
+		async () => {
+			const { service, backend } = await client();
+			return service.iptvBrowseRows(backend, input);
+		},
+		() => fetchIptvBrowseRows({ data: input }),
 	);
 }

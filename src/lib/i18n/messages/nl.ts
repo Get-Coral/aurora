@@ -515,4 +515,13 @@ export const nlMessages: MessageDictionary = {
 	"player.trackNumber": ({ number } = {}) => `Spoor ${number}`,
 	"player.channels": "Zenders",
 	"player.closeChannels": "Zenderlijst sluiten",
+	"browse.seeAll": "Bekijk alles",
+	"browse.previous": "Vorige",
+	"browse.next": "Volgende",
+	"browse.allTitles": "Alle titels",
+	"browse.row.continue": "Verder kijken",
+	"browse.row.added": "Nieuw toegevoegd",
+	"browse.row.rated": "Best beoordeeld",
+	"browse.row.favorites": "Mijn lijst",
+	"browse.row.unwatched": "Nog niet gezien",
 };

@@ -509,4 +509,13 @@ export const enMessages: MessageDictionary = {
 	"player.trackNumber": ({ number } = {}) => `Track ${number}`,
 	"player.channels": "Channels",
 	"player.closeChannels": "Close channel list",
+	"browse.seeAll": "See all",
+	"browse.previous": "Previous",
+	"browse.next": "Next",
+	"browse.allTitles": "All titles",
+	"browse.row.continue": "Continue watching",
+	"browse.row.added": "New arrivals",
+	"browse.row.rated": "Top rated",
+	"browse.row.favorites": "My List",
+	"browse.row.unwatched": "Not seen yet",
 };

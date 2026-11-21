@@ -422,3 +422,55 @@ describe("next up", () => {
 		]);
 	});
 });
+
+describe("browse rows", () => {
+	it("cleans category names for row titles", async () => {
+		const { displayGroup } = await import("./service");
+		expect(displayGroup("|EN| ACTION/THRILLER")).toBe("ACTION/THRILLER");
+		expect(displayGroup("NL | NETFLIX")).toBe("NETFLIX");
+		expect(displayGroup("AMAZON PRIME [EN]")).toBe("AMAZON PRIME");
+		expect(displayGroup("Belgium")).toBe("Belgium");
+	});
+
+	it("puts the viewer's language first and links rows to filtered grids", async () => {
+		const { iptvBrowseRows } = await import("./service");
+		const catalog = {
+			source: "ab12",
+			loadedAt: 0,
+			...(await loadXtreamCatalog(config, api(xtreamResponses))),
+		};
+		const movie = catalog.movies[0]!;
+		catalog.movies = [
+			...Array.from({ length: 8 }, (_, index) => ({
+				...movie,
+				pid: `1${index}`,
+				title: `En ${index}`,
+				group: "|EN| MOVIES",
+				added: 10 + index,
+			})),
+			...Array.from({ length: 8 }, (_, index) => ({
+				...movie,
+				pid: `2${index}`,
+				title: `Nl ${index}`,
+				group: "|NL| FILMS",
+				added: index,
+			})),
+		];
+		const backend: IptvBackend = {
+			sourceIds: async () => ["ab12"],
+			options: async () => ({ hiddenGroups: [], showAdult: false }),
+			schedule: async () => [],
+			catalog: async () => catalog,
+			vodInfo: async () => undefined,
+			seriesInfo: async () => ({ series: catalog.series[0]!, episodes: [] }),
+			epg: async () => new Map(),
+			art: (raw) => raw,
+			state: { get: async () => new Map(), list: async () => [], update: async () => {} },
+		};
+		const result = await iptvBrowseRows(backend, { kind: "vod", locale: "nl" });
+		const categories = result.rows.filter((row) => row.id.startsWith("group:"));
+		expect(categories.map((row) => row.title)).toEqual(["FILMS", "MOVIES · EN"]);
+		expect(categories[0]?.filter).toEqual({ group: "|NL| FILMS" });
+		expect(result.rows[0]?.titleKey).toBe("added");
+	});
+});
