@@ -7,6 +7,7 @@ import {
 	ChevronUp,
 	Film,
 	Languages,
+	ListVideo,
 	Maximize,
 	Minimize,
 	Pause,
@@ -46,6 +47,7 @@ import {
 	beginIptvPlaybackRuntime,
 	beginPlaybackSessionRuntime,
 	createStreamTokenRuntime,
+	fetchIptvGuideRuntime,
 	fetchOnlineSubtitleRuntime,
 	fetchOpenSubtitlesAvailableRuntime,
 	type IptvPlayback,
@@ -54,6 +56,7 @@ import {
 	searchOnlineSubtitlesRuntime,
 } from "../lib/runtime-functions";
 import { isNativeShell } from "../lib/runtime-mode";
+import { LiveChannelPanel } from "./LiveChannelPanel";
 import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useRemotePlayback } from "./useRemotePlayback";
 
@@ -427,6 +430,30 @@ export function MediaPlayerDialog({
 	const channelQueue = isLive ? (queue ?? []).filter((entry) => entry.type === "channel") : [];
 	const channelIndex = item ? channelQueue.findIndex((entry) => entry.id === item.id) : -1;
 	const canZap = channelIndex >= 0 && channelQueue.length > 1;
+	const [channelListOpen, setChannelListOpen] = useState(false);
+	// What's on, kept current while watching: the list the channel came from
+	// only knew the programme at the time it loaded.
+	const guideIds =
+		isLive && item ? [...new Set([item.id, ...channelQueue.map((c) => c.id)])].slice(0, 60) : [];
+	const { data: liveGuide } = useQuery({
+		queryKey: ["live-guide", guideIds.join(",")],
+		queryFn: () => fetchIptvGuideRuntime(guideIds),
+		enabled: open && guideIds.length > 0,
+		refetchInterval: 60_000,
+		staleTime: 30_000,
+	});
+	const liveNow = (item ? liveGuide?.[item.id]?.now : undefined) ?? item?.epg?.now;
+	const liveNext = (item ? liveGuide?.[item.id]?.next : undefined) ?? item?.epg?.next;
+	const [clock, setClock] = useState(() => Date.now());
+	useEffect(() => {
+		if (!isLive || !open) return;
+		const timer = setInterval(() => setClock(Date.now()), 30_000);
+		return () => clearInterval(timer);
+	}, [isLive, open]);
+	const liveProgress =
+		liveNow && liveNow.end > liveNow.start
+			? Math.min(100, Math.max(0, ((clock - liveNow.start) / (liveNow.end - liveNow.start)) * 100))
+			: null;
 	function zap(step: 1 | -1) {
 		if (!canZap) return;
 		const target = channelQueue[(channelIndex + step + channelQueue.length) % channelQueue.length];
@@ -1276,7 +1303,7 @@ export function MediaPlayerDialog({
 	// Auto-hide controls — pinned while a picker is open, otherwise a long
 	// subtitle list fades to opacity 0 mid-scroll.
 	useEffect(() => {
-		if (!isPlaying || subtitlePickerOpen || qualityPickerOpen) {
+		if (!isPlaying || subtitlePickerOpen || qualityPickerOpen || channelListOpen) {
 			setControlsVisible(true);
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 			return;
@@ -1285,7 +1312,7 @@ export function MediaPlayerDialog({
 		return () => {
 			if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 		};
-	}, [isPlaying, subtitlePickerOpen, qualityPickerOpen]);
+	}, [isPlaying, subtitlePickerOpen, qualityPickerOpen, channelListOpen]);
 
 	// Reopening a long list should land on the current selection, not the top.
 	useEffect(() => {
@@ -1302,7 +1329,7 @@ export function MediaPlayerDialog({
 			// Escape first: it has to work from inside the filter field, and it
 			// must not be gated on the <video> element existing.
 			if (e.key === "Escape") {
-				if (subtitlePickerOpen || qualityPickerOpen || audioPickerOpen) {
+				if (subtitlePickerOpen || qualityPickerOpen || audioPickerOpen || channelListOpen) {
 					e.preventDefault();
 					closePickers();
 					return;
@@ -1333,6 +1360,8 @@ export function MediaPlayerDialog({
 				video.muted = !video.muted;
 			} else if (e.key === "p") {
 				void togglePictureInPicture();
+			} else if (e.key === "c" && canZap) {
+				setChannelListOpen((value) => !value);
 			} else if (e.key === "z") {
 				subtitleOffsetRef.current = Math.round((subtitleOffsetRef.current - 0.1) * 10) / 10;
 			} else if (e.key === "x") {
@@ -1351,9 +1380,12 @@ export function MediaPlayerDialog({
 		isLive,
 		channelIndex,
 		channelQueue.length,
+		channelListOpen,
+		canZap,
 	]);
 
 	function closePickers() {
+		setChannelListOpen(false);
 		setSubtitlePickerOpen(false);
 		setQualityPickerOpen(false);
 		setAudioPickerOpen(false);
@@ -1478,7 +1510,7 @@ export function MediaPlayerDialog({
 	function revealControls() {
 		setControlsVisible(true);
 		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-		if (isPlaying && !subtitlePickerOpen && !qualityPickerOpen) {
+		if (isPlaying && !subtitlePickerOpen && !qualityPickerOpen && !channelListOpen) {
 			hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
 		}
 	}
@@ -1491,7 +1523,7 @@ export function MediaPlayerDialog({
 
 	function handleVideoClick() {
 		if (Date.now() < ignoreVideoClickUntilRef.current) return;
-		if (subtitlePickerOpen || qualityPickerOpen) {
+		if (subtitlePickerOpen || qualityPickerOpen || channelListOpen) {
 			closePickers();
 			return;
 		}
@@ -1878,6 +1910,19 @@ export function MediaPlayerDialog({
 						</div>
 					) : null}
 
+					{channelListOpen && canZap && item ? (
+						<LiveChannelPanel
+							channels={channelQueue}
+							currentId={item.id}
+							guide={liveGuide}
+							onSelect={(channel) => {
+								setChannelListOpen(false);
+								if (channel.id !== item.id) onSelectQueueItem?.(channel);
+							}}
+							onClose={() => setChannelListOpen(false)}
+						/>
+					) : null}
+
 					{playbackError ? (
 						<div className="player-error-overlay" role="alert">
 							<p>{t(playbackError)}</p>
@@ -1950,9 +1995,7 @@ export function MediaPlayerDialog({
 									{item.type === "channel" ? t("player.live") : t("player.nowPlaying")}
 								</p>
 								<h2>{item.title}</h2>
-								{item.type === "channel" && item.epg?.now ? (
-									<span>{item.epg.now.title}</span>
-								) : null}
+								{item.type === "channel" && liveNow ? <span>{liveNow.title}</span> : null}
 								{item.type === "episode" && item.seriesTitle ? (
 									<span>
 										{item.seriesTitle}
@@ -1977,7 +2020,28 @@ export function MediaPlayerDialog({
 									<span className="player-live-badge">
 										<Radio size={14} /> {t("player.live")}
 									</span>
-									{item.epg?.now ? <span>{item.epg.now.title}</span> : null}
+									{liveNow ? (
+										<span className="player-live-programme">
+											<strong>{liveNow.title}</strong>
+											<small>
+												{new Date(liveNow.start).toLocaleTimeString([], {
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+												–
+												{new Date(liveNow.end).toLocaleTimeString([], {
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+												{liveNext ? ` · ${t("dialog.upNext")}: ${liveNext.title}` : ""}
+											</small>
+											{liveProgress != null ? (
+												<i className="player-live-progress">
+													<i style={{ width: `${liveProgress}%` }} />
+												</i>
+											) : null}
+										</span>
+									) : null}
 									{canZap ? (
 										<span className="player-zap">
 											<button
@@ -1988,6 +2052,16 @@ export function MediaPlayerDialog({
 												title={t("player.previousChannel")}
 											>
 												<ChevronUp size={18} />
+											</button>
+											<button
+												type="button"
+												className={`icon-button${channelListOpen ? " nav-pill-active" : ""}`}
+												onClick={() => setChannelListOpen((value) => !value)}
+												aria-label={t("player.channels")}
+												title={t("player.channels")}
+												aria-expanded={channelListOpen}
+											>
+												<ListVideo size={18} />
 											</button>
 											<span className="player-zap-position">
 												{channelIndex + 1} / {channelQueue.length}
@@ -2358,9 +2432,7 @@ export function MediaPlayerDialog({
 									{item.type === "channel" ? t("player.live") : t("player.nowPlaying")}
 								</p>
 								<h2>{item.title}</h2>
-								{item.type === "channel" && item.epg?.now ? (
-									<span>{item.epg.now.title}</span>
-								) : null}
+								{item.type === "channel" && liveNow ? <span>{liveNow.title}</span> : null}
 								{item.type === "episode" && item.seriesTitle ? (
 									<span>
 										{item.seriesTitle}

@@ -158,7 +158,15 @@ export async function attachStream(
 			player.pause();
 			player.unload();
 			player.detachMediaElement();
-			player.destroy();
+			// A source buffer that was still updating fires once more after
+			// detaching; destroying right away makes mpegts.js throw on it.
+			setTimeout(() => {
+				try {
+					player.destroy();
+				} catch {
+					// Already torn down.
+				}
+			}, 1500);
 		},
 		setAudioTrack() {},
 		setSubtitleTrack() {},

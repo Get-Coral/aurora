@@ -507,4 +507,6 @@ export const enMessages: MessageDictionary = {
 	"iptv.guideNow": "Now",
 	"iptv.guideEmpty": "No channels with a TV guide here.",
 	"player.trackNumber": ({ number } = {}) => `Track ${number}`,
+	"player.channels": "Channels",
+	"player.closeChannels": "Close channel list",
 };

@@ -7015,3 +7015,150 @@ html.tv-mode .player-autoplay-cancel {
     opacity: 0.35;
   }
 }
+
+/* Live programme in the player */
+.player-live-programme {
+  position: relative;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding-bottom: 0.35rem;
+}
+
+.player-live-programme strong,
+.player-live-programme small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-live-programme small {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.player-live-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.player-live-progress i,
+.player-channel-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* Channel list beside the live picture */
+.player-channel-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: min(24rem, 92vw);
+  padding: 1rem 0.75rem 1rem 1rem;
+  border-left: 1px solid var(--line);
+  background: rgba(6, 10, 22, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.player-channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.player-channel-panel ol {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.player-channel-panel li button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-channel-panel li button:hover,
+.player-channel-panel li button:focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+  outline: none;
+}
+
+.player-channel-current button {
+  background: rgba(112, 168, 255, 0.14) !important;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.player-channel-logo {
+  display: grid;
+  flex: 0 0 3.2rem;
+  place-items: center;
+  height: 2.3rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(160deg, #18264a 0%, #0c1427 100%);
+  color: var(--ink-faint);
+}
+
+.player-channel-logo img {
+  max-width: 2.8rem;
+  max-height: 1.9rem;
+  object-fit: contain;
+}
+
+.player-channel-copy {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.player-channel-copy strong,
+.player-channel-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-channel-copy strong {
+  font-size: 0.9rem;
+}
+
+.player-channel-copy small {
+  margin-right: 0.4rem;
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+}
+
+.player-channel-copy > span {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.player-channel-progress {
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
