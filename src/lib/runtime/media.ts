@@ -13,6 +13,7 @@ import {
 	fetchClientLibrarySearch,
 	fetchClientMostPlayed,
 	fetchClientMyList,
+	fetchClientNextUp,
 	fetchClientPersonItems,
 	fetchClientRecommendedFromItem,
 	fetchClientSeriesDetails,
@@ -47,6 +48,7 @@ import {
 	fetchLibrarySearch,
 	fetchMostPlayed,
 	fetchMyList,
+	fetchNextUp,
 	fetchPersonItems,
 	fetchRecommendedFromItem,
 	fetchSeriesDetails,
@@ -59,6 +61,7 @@ import {
 import {
 	fetchIptvItemDetailsRuntime,
 	fetchIptvListRuntime,
+	fetchIptvNextUpRuntime,
 	fetchIptvRelatedRuntime,
 	fetchIptvSeriesDetailsRuntime,
 	iptvActive,
@@ -125,12 +128,31 @@ async function jellyfinFetchContinueWatchingRuntime() {
 	);
 }
 
+/**
+ * Titles in progress (newest first), then the next episode of series you
+ * finished an episode of, from Jellyfin and IPTV alike.
+ */
 export async function fetchContinueWatchingRuntime() {
-	return mergeSources(
-		() => jellyfinFetchContinueWatchingRuntime(),
-		() => fetchIptvListRuntime("continue", 20),
-		"date",
-	);
+	const [resume, nextUp] = await Promise.all([
+		mergeSources(
+			() => jellyfinFetchContinueWatchingRuntime(),
+			() => fetchIptvListRuntime("continue", 20),
+			"date",
+		),
+		mergeSources(
+			() =>
+				callRuntime(
+					() => fetchClientNextUp(),
+					() => fetchNextUp(),
+				),
+			() => fetchIptvNextUpRuntime(),
+		).catch(() => [] as MediaItem[]),
+	]);
+	const inProgress = new Set(resume.map((item) => item.seriesTitle ?? item.id));
+	return [
+		...resume,
+		...nextUp.filter((item) => !inProgress.has(item.seriesTitle ?? item.id) && !item.played),
+	];
 }
 
 export async function fetchLatestMoviesRuntime() {

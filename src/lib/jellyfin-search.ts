@@ -66,3 +66,18 @@ export function librarySearchParts(
 		),
 	};
 }
+
+/**
+ * The next unwatched episode of series in progress. The first episode of a
+ * series nobody started is left out, so new shows don't flood the list.
+ */
+export async function getNextUpWith(client: JellyfinClient, limit = 12) {
+	const data = await client.fetch<{ Items?: JellyfinItem[] }>("/Shows/NextUp", {
+		UserId: client.config.userId,
+		Limit: String(limit),
+		Fields: "Overview,GenreItems,UserData",
+		DisableFirstEpisode: "true",
+		EnableTotalRecordCount: "false",
+	});
+	return data.Items ?? [];
+}

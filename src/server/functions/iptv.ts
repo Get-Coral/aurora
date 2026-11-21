@@ -228,6 +228,10 @@ export const fetchIptvList = createServerFn({ method: "GET" })
 		(await service()).iptvList(await backend(), data.kind, Math.min(data.limit ?? 40, 200)),
 	);
 
+export const fetchIptvNextUp = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => (await service()).iptvNextUp(await backend()));
+
 export const beginIptvPlayback = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
 	.validator((input: { id: string; preferHls?: boolean }) => input)

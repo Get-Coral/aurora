@@ -21,6 +21,16 @@ export const fetchContinueWatching = createServerFn({ method: "GET" })
 		return items.map(fromJellyfin);
 	});
 
+export const fetchNextUp = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => {
+		const [{ getNextUp }, { fromJellyfin }] = await Promise.all([
+			import("@/lib/jellyfin"),
+			import("@/lib/media-server"),
+		]);
+		return (await getNextUp()).map(fromJellyfin);
+	});
+
 export const fetchFeatured = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => {

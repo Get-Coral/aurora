@@ -384,3 +384,41 @@ describe("catch-up and categories", () => {
 		});
 	});
 });
+
+describe("next up", () => {
+	it("offers the episode after the last one finished", async () => {
+		const { iptvNextUp } = await import("./service");
+		const catalog = {
+			source: "ab12",
+			loadedAt: 0,
+			...(await loadXtreamCatalog(config, api(xtreamResponses))),
+		};
+		const info = await getSeriesInfo(config, api(xtreamResponses), catalog.series[0]!);
+		const played = { played: true, lastPlayedAt: 10 };
+		const backend: IptvBackend = {
+			sourceIds: async () => ["ab12"],
+			options: async () => ({ hiddenGroups: [], showAdult: false }),
+			schedule: async () => [],
+			catalog: async () => catalog,
+			vodInfo: async () => undefined,
+			seriesInfo: async () => info,
+			epg: async () => new Map(),
+			art: (raw) => raw,
+			state: {
+				get: async (ids) =>
+					new Map(ids.flatMap((id) => (id === "iptv:ab12:ep:9_100" ? [[id, played]] : []))),
+				list: async () => [{ id: "iptv:ab12:ep:9_100", state: played, snapshot: {} as never }],
+				update: async () => {},
+			},
+		};
+		const next = await iptvNextUp(backend);
+		expect(next).toEqual([
+			expect.objectContaining({
+				id: "iptv:ab12:ep:9_101",
+				type: "episode",
+				title: "Second",
+				seriesTitle: "Show",
+			}),
+		]);
+	});
+});

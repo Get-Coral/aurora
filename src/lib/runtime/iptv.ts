@@ -9,6 +9,7 @@ import {
 	fetchIptvGuideRows,
 	fetchIptvItemDetails,
 	fetchIptvList,
+	fetchIptvNextUp,
 	fetchIptvOverview,
 	fetchIptvRelated,
 	fetchIptvSeriesDetails,
@@ -300,5 +301,15 @@ export async function fetchIptvGuideRowsRuntime(
 			return service.iptvGuideRows(backend, input);
 		},
 		() => fetchIptvGuideRows({ data: input }),
+	);
+}
+
+export async function fetchIptvNextUpRuntime() {
+	return callRuntime(
+		async () => {
+			const { service, backend } = await client();
+			return service.iptvNextUp(backend);
+		},
+		() => fetchIptvNextUp(),
 	);
 }

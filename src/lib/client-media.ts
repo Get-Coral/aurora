@@ -270,6 +270,11 @@ export async function fetchClientContinueWatching() {
 	return items.map(fromClientJellyfin);
 }
 
+export async function fetchClientNextUp() {
+	const { getNextUpWith } = await import("./jellyfin-search");
+	return (await getNextUpWith(getClientJellyfin())).map(fromClientJellyfin);
+}
+
 export async function fetchClientFeatured() {
 	const item = await getFeaturedItem(getClientJellyfin());
 	return item ? fromClientJellyfin(item) : null;

@@ -649,6 +649,53 @@ export async function iptvList(
 	return rows.map(({ snapshot, state }) => ({ ...snapshot, ...stateFields(state) }));
 }
 
+/**
+ * The next episode of IPTV series you watched recently: after the last
+ * finished episode, the first one not watched yet.
+ */
+export async function iptvNextUp(backend: IptvBackend, limit = 8) {
+	const ids = await backend.sourceIds();
+	if (!ids.length) return [];
+	const history = await backend.state.list("history", 120);
+	const latestBySeries = new Map<string, { source: string; series: string; at: number }>();
+	for (const { id, state } of history) {
+		const parts = parseIptvId(id);
+		const episode = parts?.kind === "ep" ? splitEpisodePid(parts.pid) : null;
+		if (!parts || !episode || !state.played || !ids.includes(parts.source)) continue;
+		const key = `${parts.source}:${episode.series}`;
+		if (!latestBySeries.has(key))
+			latestBySeries.set(key, {
+				source: parts.source,
+				series: episode.series,
+				at: state.lastPlayedAt ?? 0,
+			});
+	}
+	const picks = [...latestBySeries.values()].sort((a, b) => b.at - a.at).slice(0, limit);
+	const results = await Promise.allSettled(
+		picks.map(async ({ source, series }) => {
+			const catalog = await backend.catalog(source);
+			const entry = findEntry(catalog, "series", series);
+			if (!entry) return null;
+			const info = await backend.seriesInfo(catalog, series);
+			const episodeIds = info.episodes.map((episode) =>
+				iptvId(source, "ep", episodePid(series, episode.pid)),
+			);
+			const states = await backend.state.get(episodeIds);
+			const lastPlayed = episodeIds.reduce(
+				(latest, id, index) => (states.get(id)?.played ? index : latest),
+				-1,
+			);
+			const next = info.episodes[lastPlayed + 1];
+			if (!next) return null;
+			const nextId = episodeIds[lastPlayed + 1] as string;
+			return episodeItem(source, info.series, next, backend.art, states.get(nextId));
+		}),
+	);
+	return results.flatMap((result) =>
+		result.status === "fulfilled" && result.value ? [result.value] : [],
+	);
+}
+
 export function isIptvItem(item: Pick<MediaItem, "id">) {
 	return isIptvId(item.id);
 }

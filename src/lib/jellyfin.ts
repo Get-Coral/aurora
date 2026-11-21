@@ -65,7 +65,7 @@ import {
 } from "./auth-store";
 import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
-import { getPersonItemsWith, searchLibraryWith } from "./jellyfin-search";
+import { getNextUpWith, getPersonItemsWith, searchLibraryWith } from "./jellyfin-search";
 import type { AvatarCandidates, UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
@@ -213,6 +213,10 @@ export async function syncPlaybackState(input: JellyfinPlaybackSyncInput) {
 
 export async function getContinueWatching(): Promise<JellyfinItem[]> {
 	return getContinueWatchingBase(getJellyfinClient());
+}
+
+export async function getNextUp(limit = 12): Promise<JellyfinItem[]> {
+	return getNextUpWith(getJellyfinClient(), limit);
 }
 
 export async function getFavoriteItems(type: JellyfinMediaType = "Movie"): Promise<JellyfinItem[]> {
