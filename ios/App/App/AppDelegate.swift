@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -46,4 +47,54 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+}
+
+/// The app's window scene. UIKit now requires the scene life cycle (an app
+/// without it stops at launch on iOS and macOS 27), so the window comes from
+/// the scene; links and activities that open the app are passed on to
+/// Capacitor as before.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        #if targetEnvironment(macCatalyst)
+        if let windowScene = scene as? UIWindowScene {
+            // Room for the header and a row of cards; a video player below
+            // this gets cramped.
+            windowScene.sizeRestrictions?.minimumSize = CGSize(width: 900, height: 600)
+            windowScene.titlebar?.titleVisibility = .hidden
+            windowScene.titlebar?.toolbar = nil
+        }
+        #endif
+        if let context = connectionOptions.urlContexts.first {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: context.url, options: [:])
+        }
+        if let activity = connectionOptions.userActivities.first {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: activity, restorationHandler: { _ in })
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        for context in URLContexts {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: context.url, options: [:])
+        }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: userActivity, restorationHandler: { _ in })
+    }
+}
+
+/// Capacitor's web view, with the video player allowed to go full screen on
+/// the Mac and iPad.
+class AuroraBridgeViewController: CAPBridgeViewController {
+
+    override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
+        let configuration = super.webViewConfiguration(for: instanceConfiguration)
+        if #available(iOS 15.4, *) {
+            configuration.preferences.isElementFullscreenEnabled = true
+        }
+        return configuration
+    }
 }
