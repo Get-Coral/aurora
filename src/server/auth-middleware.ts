@@ -44,12 +44,15 @@ export const adminRequiredMiddleware = createMiddleware({ type: "function" }).se
 		const { getSessionByToken, SESSION_COOKIE_NAME } = await import("@/lib/auth-store");
 		const { getCookie } = await import("@tanstack/react-start/server");
 
+		// An error, not a redirect: the client follows a redirect from any
+		// server function, so an admin-only query that ran on an ordinary page
+		// (the player used to ask for the OpenSubtitles key) sent everyone who
+		// isn't an admin to /login and from there back to Home, over and over
+		// as the query retried (#105). Admin pages check the role in their
+		// loaders and redirect from there.
 		const session = getSessionByToken(getCookie(SESSION_COOKIE_NAME));
-		if (!session) {
-			throw redirect({ to: "/login" });
-		}
-		if (!session.isAdmin) {
-			throw redirect({ to: "/" });
+		if (!session?.isAdmin) {
+			throw new Error("Administrator access required");
 		}
 
 		return next();
