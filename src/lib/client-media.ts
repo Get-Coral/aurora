@@ -713,6 +713,23 @@ export async function fetchClientWatchHistory(page = 0) {
 	};
 }
 
+export async function fetchClientLibrarySearch(query: string) {
+	if (query.trim().length < 2) return {};
+	const client = getClientJellyfin();
+	const { librarySearchParts, searchLibraryWith } = await import("./jellyfin-search");
+	return librarySearchParts(
+		await searchLibraryWith(client, query.trim()),
+		fromClientJellyfin,
+		(person) =>
+			withImageTag(personImageUrl(client, person.Id, 240), person.ImageTags?.Primary ?? ""),
+	);
+}
+
+export async function fetchClientPersonItems(personId: string) {
+	const { getPersonItemsWith } = await import("./jellyfin-search");
+	return (await getPersonItemsWith(getClientJellyfin(), personId)).map(fromClientJellyfin);
+}
+
 export async function fetchClientSearch(query: string) {
 	if (!query.trim()) return [];
 

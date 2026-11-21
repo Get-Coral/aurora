@@ -274,9 +274,12 @@ describe("Xtream API", () => {
 		};
 		states.set("iptv:ab12:vod:5", { favorite: true });
 		const results = await searchIptv(backend, "fil");
-		expect(results).toEqual([
+		expect(results.movies).toEqual([
 			expect.objectContaining({ id: "iptv:ab12:vod:5", type: "movie", isFavorite: true }),
 		]);
+		expect(results.channels).toEqual([]);
+		// Typos and word order still find titles; series are found by their cast.
+		expect((await searchIptv(backend, "shwo")).series?.[0]?.id).toBe("iptv:ab12:series:9");
 		expect(JSON.stringify(results)).not.toContain("test-secret");
 		const shelves = await iptvShelves(backend);
 		expect(shelves.live[0]).toMatchObject({ type: "channel", live: true });

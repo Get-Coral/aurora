@@ -65,6 +65,7 @@ import {
 } from "./auth-store";
 import { getEffectiveJellyfinSettings, getEffectiveServerConnectionSettings } from "./config-store";
 import { jellyfinImageProxyUrl } from "./jellyfin-image-proxy";
+import { getPersonItemsWith, searchLibraryWith } from "./jellyfin-search";
 import type { AvatarCandidates, UserProfileSummary } from "./media";
 import type { ClientPlaybackContext } from "./platform";
 
@@ -268,6 +269,16 @@ export async function getNextUpForSeries(seriesId: string): Promise<JellyfinItem
 
 export async function searchItems(query: string): Promise<JellyfinItem[]> {
 	return searchItemsBase(getJellyfinClient(), query);
+}
+
+/** Titles (films, series, episodes, collections) and people for search. */
+export async function searchLibrary(query: string) {
+	return searchLibraryWith(getJellyfinClient(), query);
+}
+
+/** Everything a person appears in, newest first. */
+export async function getPersonItems(personId: string): Promise<JellyfinItem[]> {
+	return getPersonItemsWith(getJellyfinClient(), personId);
 }
 
 export async function createCollection(

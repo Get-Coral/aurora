@@ -1,5 +1,13 @@
 import type { DetailedMediaItem, MediaItem, SeriesDetailPayload } from "../media";
 import {
+	dropTypoMatches,
+	normalizeSearchText,
+	type PreparedQuery,
+	prepareQuery,
+	type SearchResults,
+	scoreText,
+} from "../search";
+import {
 	type CatalogChannel,
 	type CatalogEntry,
 	type CatalogMovie,
@@ -40,6 +48,8 @@ export interface IptvBackend {
 	catalog(source: string): Promise<IptvCatalog>;
 	vodInfo(catalog: IptvCatalog, pid: string): Promise<VodInfo | undefined>;
 	seriesInfo(catalog: IptvCatalog, pid: string): Promise<SeriesInfo>;
+	/** Guide programmes whose title matches, when a full guide is loaded. */
+	searchGuide?(catalog: IptvCatalog, query: PreparedQuery): Promise<GuideMatch[]>;
 	/** Guide data for these channels, keyed by channel pid. Best effort. */
 	epg(catalog: IptvCatalog, channels: CatalogChannel[]): Promise<Map<string, EpgProgramme[]>>;
 	art: ArtworkResolver;
@@ -264,24 +274,129 @@ export async function iptvShelves(backend: IptvBackend, size = 12): Promise<Iptv
 	};
 }
 
-export async function searchIptv(backend: IptvBackend, rawQuery: string, limit = 24) {
-	const query = normalize(rawQuery.trim());
-	if (query.length < 2) return [];
+interface IndexedEntry {
+	entry: CatalogEntry;
+	title: string;
+	/** Cast and director of series, searched after titles. */
+	people?: string;
+}
+
+const searchIndexes = new WeakMap<IptvCatalog, IndexedEntry[]>();
+
+function searchIndex(catalog: IptvCatalog) {
+	let index = searchIndexes.get(catalog);
+	if (!index) {
+		index = catalogEntries(catalog).map((entry) => ({
+			entry,
+			title: normalizeSearchText(entry.title),
+			people:
+				entry.kind === "series" && (entry.cast || entry.director)
+					? normalizeSearchText(`${entry.cast ?? ""} ${entry.director ?? ""}`)
+					: undefined,
+		}));
+		searchIndexes.set(catalog, index);
+	}
+	return index;
+}
+
+export interface GuideMatch {
+	epgId: string;
+	programme: EpgProgramme;
+	score: number;
+}
+
+/** Search titles, series cast and the TV guide of every IPTV source. */
+export async function searchIptv(
+	backend: IptvBackend,
+	rawQuery: string,
+	limit = 30,
+): Promise<Partial<SearchResults>> {
+	const query = prepareQuery(rawQuery);
+	if (query.text.length < 2) return {};
 	const all = await catalogs(backend);
-	const matches: { catalog: IptvCatalog; entry: CatalogEntry; score: number }[] = [];
+	type Hit = { catalog: IptvCatalog; entry: CatalogEntry; score: number };
+	const hits: Record<IptvBrowseKind, Hit[]> = { live: [], vod: [], series: [] };
 	for (const catalog of all) {
-		for (const entry of catalogEntries(catalog)) {
-			const title = normalize(entry.title);
-			const index = title.indexOf(query);
-			if (index < 0) continue;
-			matches.push({ catalog, entry, score: (index === 0 ? 0 : 1) + title.length / 1000 });
+		for (const { entry, title, people } of searchIndex(catalog)) {
+			let score = scoreText(query, title);
+			if (score == null && people) {
+				const byPeople = scoreText(query, people);
+				score = byPeople == null ? null : byPeople + 3;
+			}
+			if (score == null) continue;
+			const art = entry.kind === "live" ? entry.logo : entry.poster;
+			score += (art ? 0 : 0.4) + Math.min(title.length, 80) / 400;
+			if (entry.kind === "live" && !entry.epgId) score += 0.2;
+			hits[entry.kind].push({ catalog, entry, score });
 		}
 	}
-	matches.sort((a, b) => a.score - b.score);
-	const items = matches
-		.slice(0, limit)
-		.map(({ catalog, entry }) => catalogItem(catalog.source, entry, backend.art));
-	return withState(backend, items);
+	// Typo matches only count when nothing matched properly anywhere.
+	const exactSomewhere = Object.values(hits).some((list) => list.some((hit) => hit.score < 5));
+	// Providers list one title in several language categories; keep the best copy.
+	const best = (list: Hit[]) => {
+		const seen = new Set<string>();
+		return (exactSomewhere ? list.filter((hit) => hit.score < 5) : dropTypoMatches(list))
+			.sort((a, b) => a.score - b.score)
+			.filter(({ entry }) => {
+				if (entry.kind === "live") return true;
+				const key = `${normalizeSearchText(entry.title)}|${entry.year ?? ""}`;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			})
+			.slice(0, limit);
+	};
+	const items = (list: Hit[]) =>
+		withState(
+			backend,
+			list.map(({ catalog, entry }) => catalogItem(catalog.source, entry, backend.art)),
+		);
+	const [channels, movies, series, onTv] = await Promise.all([
+		items(best(hits.live)).then(async (list) => {
+			// Now/next for the first channels, in one guide request per source.
+			const guide = await iptvGuide(
+				backend,
+				list.slice(0, 12).map((item) => item.id),
+			).catch(() => ({}) as Record<string, MediaItem["epg"]>);
+			return list.map((item) => (guide[item.id] ? { ...item, epg: guide[item.id] } : item));
+		}),
+		items(best(hits.vod)),
+		items(best(hits.series)),
+		searchGuideIptv(backend, all, query),
+	]);
+	return { channels, movies, series, onTv };
+}
+
+/** Programmes on now or later whose title matches, as their channel. */
+async function searchGuideIptv(backend: IptvBackend, all: IptvCatalog[], query: PreparedQuery) {
+	if (!backend.searchGuide) return [];
+	const results: { item: MediaItem; start: number; score: number }[] = [];
+	for (const catalog of all) {
+		const matches = await backend.searchGuide(catalog, query).catch(() => [] as GuideMatch[]);
+		if (!matches.length) continue;
+		// Several channels share a guide id (HD, FHD, backup); show the best one.
+		const byGuide = new Map<string, CatalogChannel>();
+		for (const channel of catalog.channels) {
+			if (!channel.epgId) continue;
+			const current = byGuide.get(channel.epgId);
+			if (!current || (!current.logo && channel.logo)) byGuide.set(channel.epgId, channel);
+		}
+		for (const match of matches) {
+			const channel = byGuide.get(match.epgId);
+			if (!channel) continue;
+			const item = channelItem(catalog.source, channel, backend.art);
+			results.push({
+				item: { ...item, airing: match.programme, overview: match.programme.description },
+				start: match.programme.start,
+				score: match.score,
+			});
+		}
+	}
+	return results
+		.sort((a, b) => a.score - b.score || a.start - b.start)
+		.slice(0, 24)
+		.sort((a, b) => a.start - b.start)
+		.map(({ item }) => item);
 }
 
 export async function iptvItemDetails(

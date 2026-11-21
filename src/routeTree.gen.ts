@@ -18,6 +18,7 @@ import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProfilesRouteImport } from './routes/profiles'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ApiIptvRouteImport } from './routes/api/iptv'
@@ -74,6 +75,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const ProfilesRoute = ProfilesRouteImport.update({
   id: '/profiles',
   path: '/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
   '/profiles': typeof ProfilesRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/api/iptv': typeof ApiIptvRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
   '/profiles': typeof ProfilesRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/api/iptv': typeof ApiIptvRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
   '/profiles': typeof ProfilesRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/api/iptv': typeof ApiIptvRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/offline'
     | '/profile'
     | '/profiles'
+    | '/search'
     | '/settings'
     | '/setup'
     | '/api/iptv'
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/offline'
     | '/profile'
     | '/profiles'
+    | '/search'
     | '/settings'
     | '/setup'
     | '/api/iptv'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/offline'
     | '/profile'
     | '/profiles'
+    | '/search'
     | '/settings'
     | '/setup'
     | '/api/iptv'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   OfflineRoute: typeof OfflineRoute
   ProfileRoute: typeof ProfileRoute
   ProfilesRoute: typeof ProfilesRoute
+  SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   ApiIptvRoute: typeof ApiIptvRoute
@@ -362,6 +375,13 @@ declare module '@tanstack/react-router' {
       path: '/profiles'
       fullPath: '/profiles'
       preLoaderRoute: typeof ProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   OfflineRoute: OfflineRoute,
   ProfileRoute: ProfileRoute,
   ProfilesRoute: ProfilesRoute,
+  SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   ApiIptvRoute: ApiIptvRoute,

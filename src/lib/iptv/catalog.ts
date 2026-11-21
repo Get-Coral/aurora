@@ -14,6 +14,8 @@ interface CatalogEntryBase {
 	group: string;
 	/** Epoch milliseconds the provider added the entry, when known. */
 	added?: number;
+	/** Marked as adult content by the provider. */
+	adult?: boolean;
 }
 
 export interface CatalogChannel extends CatalogEntryBase {
@@ -25,6 +27,8 @@ export interface CatalogChannel extends CatalogEntryBase {
 	/** Upstream URL for playlist sources; Xtream channels derive theirs. */
 	src?: string;
 	format?: StreamFormat;
+	/** Days of past programmes the provider keeps for catch-up. */
+	archiveDays?: number;
 }
 
 export interface CatalogMovie extends CatalogEntryBase {
@@ -55,6 +59,17 @@ export interface XtreamCatalogConfig extends XtreamConfig {
 	liveExt: "ts" | "m3u8";
 	/** Whether the account also serves HLS, used as a fallback for TS. */
 	hls: boolean;
+	/** IANA zone the panel uses for catch-up start times. */
+	timezone?: string;
+}
+
+/** What the provider says about the subscription. */
+export interface IptvAccount {
+	status?: string;
+	expiresAt?: number;
+	maxConnections?: number;
+	activeConnections?: number;
+	trial?: boolean;
 }
 
 export interface IptvCatalog {
@@ -63,6 +78,7 @@ export interface IptvCatalog {
 	xtream?: XtreamCatalogConfig;
 	/** XMLTV guide advertised by the playlist or configured on the source. */
 	epgUrl?: string;
+	account?: IptvAccount;
 	channels: CatalogChannel[];
 	movies: CatalogMovie[];
 	series: CatalogSeries[];

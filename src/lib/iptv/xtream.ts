@@ -5,6 +5,7 @@ import {
 	type CatalogSeries,
 	cleanTitle,
 	type EpgProgramme,
+	type IptvAccount,
 	parseEpoch,
 	parseNumber,
 	type SeriesInfo,
@@ -79,15 +80,51 @@ export function xtreamXmltvUrl(config: XtreamConfig) {
 
 export async function xtreamAccount(config: XtreamConfig, fetchJson: JsonFetcher) {
 	const account = (await fetchJson(xtreamApi(config))) as {
-		user_info?: { auth?: number | string; allowed_output_formats?: unknown };
+		user_info?: XtreamRow & { auth?: number | string; allowed_output_formats?: unknown };
+		server_info?: XtreamRow;
 	} | null;
-	if (String(account?.user_info?.auth) !== "1") throw new Error("Xtream sign-in failed");
-	const formats = Array.isArray(account?.user_info?.allowed_output_formats)
-		? (account.user_info.allowed_output_formats as unknown[]).map(String)
+	const user = account?.user_info;
+	if (String(user?.auth) !== "1") throw new Error("Xtream sign-in failed");
+	const formats = Array.isArray(user?.allowed_output_formats)
+		? (user.allowed_output_formats as unknown[]).map(String)
 		: [];
 	const hls = formats.includes("m3u8");
 	const liveExt: "ts" | "m3u8" = formats.length && !formats.includes("ts") && hls ? "m3u8" : "ts";
-	return { ...config, liveExt, hls } satisfies XtreamCatalogConfig;
+	const timezone = text(account?.server_info?.timezone);
+	return {
+		xtream: {
+			...config,
+			liveExt,
+			hls,
+			timezone: timezone && validTimezone(timezone) ? timezone : undefined,
+		} satisfies XtreamCatalogConfig,
+		account: {
+			status: text(user?.status) || undefined,
+			expiresAt: parseEpoch(user?.exp_date),
+			maxConnections: parseNumber(user?.max_connections),
+			activeConnections: parseNumber(user?.active_cons),
+			trial: String(user?.is_trial) === "1",
+		} satisfies IptvAccount,
+	};
+}
+
+function validTimezone(zone: string) {
+	try {
+		new Intl.DateTimeFormat("en", { timeZone: zone });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+const ADULT_GROUP = /\b(xxx|adults?|18\+|porn|erotic)\b/i;
+
+function isAdult(row: XtreamRow, groups: Map<string, string>) {
+	return (
+		String(row.is_adult) === "1" ||
+		ADULT_GROUP.test(groups.get(String(row.category_id)) ?? "") ||
+		undefined
+	);
 }
 
 function categoryNames(categories: XtreamRow[]) {
@@ -95,7 +132,7 @@ function categoryNames(categories: XtreamRow[]) {
 }
 
 export async function loadXtreamCatalog(config: XtreamConfig, fetchJson: JsonFetcher) {
-	const xtream = await xtreamAccount(config, fetchJson);
+	const { xtream, account } = await xtreamAccount(config, fetchJson);
 	const get = (action: string) => fetchJson(xtreamApi(config, action)).then(rows);
 	const optional = (action: string) => get(action).catch(() => [] as XtreamRow[]);
 	const [live, liveGroups, movies, movieGroups, series, seriesGroups] = await Promise.all([
@@ -122,6 +159,11 @@ export async function loadXtreamCatalog(config: XtreamConfig, fetchJson: JsonFet
 				logo: artworkSource(row.stream_icon),
 				epgId: text(row.epg_channel_id) || undefined,
 				added: parseEpoch(row.added),
+				adult: isAdult(row, liveNames),
+				archiveDays:
+					String(row.tv_archive) === "1"
+						? Math.max(1, parseNumber(row.tv_archive_duration) ?? 1)
+						: undefined,
 			},
 		];
 	});
@@ -144,6 +186,7 @@ export async function loadXtreamCatalog(config: XtreamConfig, fetchJson: JsonFet
 				rating: rating ? rating : undefined,
 				ext: ext.toLowerCase(),
 				added: parseEpoch(row.added),
+				adult: isAdult(row, movieNames),
 			},
 		];
 	});
@@ -172,11 +215,12 @@ export async function loadXtreamCatalog(config: XtreamConfig, fetchJson: JsonFet
 				cast: text(row.cast) || undefined,
 				director: text(row.director) || undefined,
 				added: parseEpoch(row.last_modified),
+				adult: isAdult(row, seriesNames),
 			},
 		];
 	});
 
-	return { xtream, channels, movies: movieEntries, series: seriesEntries };
+	return { xtream, account, channels, movies: movieEntries, series: seriesEntries };
 }
 
 export async function getVodInfo(

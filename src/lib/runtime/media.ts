@@ -10,10 +10,11 @@ import {
 	fetchClientItemDetails,
 	fetchClientLatestMedia,
 	fetchClientLibrary,
+	fetchClientLibrarySearch,
 	fetchClientMostPlayed,
 	fetchClientMyList,
+	fetchClientPersonItems,
 	fetchClientRecommendedFromItem,
-	fetchClientSearch,
 	fetchClientSeriesDetails,
 	fetchClientWatchHistory,
 	markClientPlayed,
@@ -23,6 +24,13 @@ import {
 } from "@/lib/client-media";
 import { isIptvId } from "@/lib/iptv/ids";
 import type { MediaItem } from "@/lib/media";
+import {
+	emptySearchResults,
+	mergeSearchResults,
+	prepareQuery,
+	rankItems,
+	type SearchResults,
+} from "@/lib/search";
 import {
 	addToCollection,
 	createCollection,
@@ -36,10 +44,11 @@ import {
 	fetchLatestMovies,
 	fetchLatestSeries,
 	fetchLibrary,
+	fetchLibrarySearch,
 	fetchMostPlayed,
 	fetchMyList,
+	fetchPersonItems,
 	fetchRecommendedFromItem,
-	fetchSearch,
 	fetchSeriesDetails,
 	fetchWatchHistory,
 	markPlayed,
@@ -219,17 +228,44 @@ export async function removeFromCollectionRuntime(input: {
 	);
 }
 
-async function jellyfinFetchSearchRuntime(input: { data: { query: string } }) {
+async function librarySearchRuntime(query: string) {
 	return callRuntime(
-		() => fetchClientSearch(input.data.query),
-		() => fetchSearch(input),
+		() => fetchClientLibrarySearch(query),
+		() => fetchLibrarySearch({ data: { query } }),
 	);
 }
 
-export async function fetchSearchRuntime(input: { data: { query: string } }) {
-	return mergeSources(
-		() => jellyfinFetchSearchRuntime(input),
-		() => searchIptvRuntime(input.data.query),
+/**
+ * Search Jellyfin and IPTV together. Either side may be missing or fail; the
+ * other still answers. Results come back in ranked sections.
+ */
+export async function fetchSearchResultsRuntime(query: string): Promise<SearchResults> {
+	const text = query.trim();
+	if (text.length < 2) return emptySearchResults(text);
+	const active = await iptvActive();
+	const [jellyfin, iptv] = await Promise.allSettled([
+		librarySearchRuntime(text),
+		active ? searchIptvRuntime(text) : Promise.resolve({}),
+	]);
+	if (jellyfin.status === "rejected" && (!active || iptv.status === "rejected"))
+		throw jellyfin.reason;
+	return mergeSearchResults(text, [
+		jellyfin.status === "fulfilled" ? jellyfin.value : {},
+		iptv.status === "fulfilled" ? iptv.value : {},
+	]);
+}
+
+/** Library-only films and series, for picking items to add to a collection. */
+export async function fetchLibrarySearchItemsRuntime(query: string) {
+	if (query.trim().length < 2) return [];
+	const parts = await librarySearchRuntime(query.trim());
+	return rankItems(prepareQuery(query), [...(parts.movies ?? []), ...(parts.series ?? [])]);
+}
+
+export async function fetchPersonItemsRuntime(id: string) {
+	return callRuntime(
+		() => fetchClientPersonItems(id),
+		() => fetchPersonItems({ data: { id } }),
 	);
 }
 

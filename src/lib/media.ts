@@ -40,6 +40,8 @@ export interface MediaItem {
 	group?: string;
 	channelNumber?: number;
 	epg?: { now?: MediaProgramme; next?: MediaProgramme };
+	/** A guide programme this item stands for (search, catch-up). */
+	airing?: MediaProgramme;
 }
 
 export interface MediaPerson {

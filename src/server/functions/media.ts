@@ -291,6 +291,34 @@ export const fetchSearch = createServerFn({ method: "GET" })
 		return items.map(fromJellyfin);
 	});
 
+export const fetchLibrarySearch = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { query: string }) => input)
+	.handler(async ({ data }) => {
+		if (data.query.trim().length < 2) return {};
+		const [{ searchLibrary }, { fromJellyfin }, { librarySearchParts }, { jellyfinImageProxyUrl }] =
+			await Promise.all([
+				import("@/lib/jellyfin"),
+				import("@/lib/media-server"),
+				import("@/lib/jellyfin-search"),
+				import("@/lib/jellyfin-image-proxy"),
+			]);
+		return librarySearchParts(await searchLibrary(data.query.trim()), fromJellyfin, (person) =>
+			jellyfinImageProxyUrl(person.Id, "Primary", 240, { tag: person.ImageTags?.Primary }),
+		);
+	});
+
+export const fetchPersonItems = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.validator((input: { id: string }) => input)
+	.handler(async ({ data }) => {
+		const [{ getPersonItems }, { fromJellyfin }] = await Promise.all([
+			import("@/lib/jellyfin"),
+			import("@/lib/media-server"),
+		]);
+		return (await getPersonItems(data.id)).map(fromJellyfin);
+	});
+
 export const markPlayed = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
 	.validator((input: { id: string; played: boolean }) => input)

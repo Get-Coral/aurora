@@ -59,8 +59,13 @@ export function createXmltvReader(channels: Set<string>, now: number, windowMs =
 		const title = element(block, "title");
 		if (!title) return;
 		const list = guide.get(channel) ?? [];
-		if (list.length >= 24 || list.some((programme) => programme.start === start)) return;
-		list.push({ title, start, end, description: element(block, "desc")?.slice(0, 600) });
+		// Merged guides list shows twice, a few minutes apart: skip overlaps.
+		if (
+			list.length >= 96 ||
+			list.some((programme) => start < programme.end && end > programme.start)
+		)
+			return;
+		list.push({ title, start, end, description: element(block, "desc")?.slice(0, 320) });
 		guide.set(channel, list);
 	}
 

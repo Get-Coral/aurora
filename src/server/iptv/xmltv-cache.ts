@@ -40,7 +40,8 @@ async function download(catalog: IptvCatalog, url: URL) {
  */
 export async function xmltvGuide(catalog: IptvCatalog, wait = false): Promise<Guide | null> {
 	if (!catalog.epgUrl) return null;
-	const key = `${catalog.source}:${catalog.loadedAt}`;
+	// Per source, so reloading the catalog doesn't throw away a loaded guide.
+	const key = catalog.source;
 	const entry = guides.get(key);
 	if (entry?.guide && entry.expires > Date.now()) return entry.guide;
 	if (entry?.loading) {
@@ -48,8 +49,6 @@ export async function xmltvGuide(catalog: IptvCatalog, wait = false): Promise<Gu
 		return guides.get(key)?.guide ?? entry.guide ?? null;
 	}
 	if (entry && !entry.guide && entry.expires > Date.now()) return null;
-	for (const other of guides.keys())
-		if (other.startsWith(`${catalog.source}:`) && other !== key) guides.delete(other);
 	const next: { guide?: Guide; loading?: Promise<void>; expires: number } = {
 		guide: entry?.guide,
 		expires: Date.now() + XMLTV_RETRY,

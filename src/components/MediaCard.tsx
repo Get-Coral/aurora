@@ -2,6 +2,7 @@ import { Check, CheckCircle, Heart, Info, Play, Plus, Radio, Star } from "lucide
 import { useState } from "react";
 import { useI18n } from "../lib/i18n";
 import { isResumable, type MediaItem } from "../lib/media";
+import { airingLabel } from "../lib/search-labels";
 import { useTvMode } from "../lib/tv-mode";
 import { usePrefetchMediaDetails } from "./usePrefetchMediaDetails";
 
@@ -28,10 +29,13 @@ export function MediaCard({
 	const prefetchMediaDetails = usePrefetchMediaDetails();
 	const [imageFailed, setImageFailed] = useState(false);
 	const channel = item.type === "channel";
-	const onNow = item.epg?.now;
-	const liveProgress = onNow
-		? Math.min(100, Math.max(0, ((Date.now() - onNow.start) / (onNow.end - onNow.start)) * 100))
-		: null;
+	// A programme from the guide (search results) shows itself, on its channel.
+	const airing = item.airing;
+	const onNow = airing ?? item.epg?.now;
+	const liveProgress =
+		onNow && onNow.start <= Date.now()
+			? Math.min(100, Math.max(0, ((Date.now() - onNow.start) / (onNow.end - onNow.start)) * 100))
+			: null;
 
 	function handlePrefetch() {
 		void prefetchMediaDetails(item).catch(() => undefined);
@@ -173,12 +177,14 @@ export function MediaCard({
 
 			<div className="card-body">
 				<div className="card-copy">
-					<p className="card-title">{item.title}</p>
+					<p className="card-title">{airing ? airing.title : item.title}</p>
 					<p className="card-subtitle">
 						{channel
-							? onNow
-								? t("card.onNow", { title: onNow.title })
-								: (item.group ?? t("card.live"))
+							? airing
+								? `${airingLabel(t, airing)} · ${item.title}`
+								: onNow
+									? t("card.onNow", { title: onNow.title })
+									: (item.group ?? t("card.live"))
 							: [
 									item.type === "episode" && item.seriesTitle ? item.seriesTitle : null,
 									item.year,

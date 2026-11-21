@@ -10,22 +10,21 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
-import type { MediaItem } from "../lib/media";
 import { useMultiUserMode } from "../lib/multi-user-mode";
 import {
 	clearActiveUserRuntime,
 	fetchAuthStatusRuntime,
 	fetchCurrentProfileRuntime,
 	fetchIptvStatusRuntime,
-	fetchSearchRuntime,
 	fetchSetupStatusRuntime,
 	fetchUsernameRuntime,
 	logoutRuntime,
 } from "../lib/runtime-functions";
 import { useTvMode } from "../lib/tv-mode";
 import { AuroraMark } from "./AuroraMark";
+import { SearchPanel } from "./SearchPanel";
 
 export default function Header() {
 	const { t } = useI18n();
@@ -63,20 +62,7 @@ export default function Header() {
 	const [navOpen, setNavOpen] = useState(false);
 	const [profileOpen, setProfileOpen] = useState(false);
 	const [loggingOut, setLoggingOut] = useState(false);
-	const [query, setQuery] = useState("");
 	const headerRef = useRef<HTMLElement>(null);
-	const inputRef = useRef<HTMLInputElement>(null);
-	const deferredQuery = useDeferredValue(query.trim());
-
-	const { data: results = [], isFetching } = useQuery({
-		queryKey: ["search", deferredQuery],
-		queryFn: () => fetchSearchRuntime({ data: { query: deferredQuery } }),
-		enabled: deferredQuery.length > 1,
-	});
-
-	useEffect(() => {
-		if (searchOpen) inputRef.current?.focus();
-	}, [searchOpen]);
 
 	useEffect(() => {
 		if (!pathname) return;
@@ -104,12 +90,6 @@ export default function Header() {
 		};
 	}, []);
 
-	function selectItem(item: MediaItem) {
-		window.dispatchEvent(new CustomEvent("aurora:select-media", { detail: item }));
-		setSearchOpen(false);
-		setQuery("");
-	}
-
 	function toggleSearch() {
 		setSearchOpen((current) => {
 			const next = !current;
@@ -117,14 +97,12 @@ export default function Header() {
 				setNavOpen(false);
 				setProfileOpen(false);
 			}
-			if (!next) setQuery("");
 			return next;
 		});
 	}
 
 	function closeSearch() {
 		setSearchOpen(false);
-		setQuery("");
 	}
 
 	function toggleNav() {
@@ -374,62 +352,7 @@ export default function Header() {
 				<div
 					className={searchOpen ? "header-search-row header-search-row-open" : "header-search-row"}
 				>
-					{searchOpen ? (
-						<div className="search-shell">
-							<input
-								ref={inputRef}
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								onKeyDown={(e) => e.key === "Escape" && closeSearch()}
-								placeholder={t("search.placeholder")}
-								className="search-input"
-							/>
-							<button
-								type="button"
-								className="icon-button"
-								onClick={closeSearch}
-								aria-label={t("search.close")}
-							>
-								<X size={16} />
-							</button>
-
-							{deferredQuery.length > 1 ? (
-								<div className="search-results">
-									{isFetching ? <p className="search-state">{t("search.searching")}</p> : null}
-									{!isFetching && results.length === 0 ? (
-										<p className="search-state">{t("search.empty")}</p>
-									) : null}
-									{results.map((item) => (
-										<button
-											key={item.id}
-											type="button"
-											className="search-result"
-											onClick={() => selectItem(item)}
-										>
-											<div className="search-result-copy">
-												<strong>{item.title}</strong>
-												<span>
-													{[
-														item.type === "series"
-															? t("search.series")
-															: item.type === "channel"
-																? t("search.channel")
-																: item.type === "episode"
-																	? t("search.episode")
-																	: t("search.movie"),
-														item.source === "iptv" ? (item.group ?? "IPTV") : null,
-														item.year,
-													]
-														.filter(Boolean)
-														.join(" • ")}
-												</span>
-											</div>
-										</button>
-									))}
-								</div>
-							) : null}
-						</div>
-					) : null}
+					{searchOpen ? <SearchPanel onClose={closeSearch} /> : null}
 				</div>
 			</nav>
 		</header>

@@ -7,12 +7,13 @@ import type {
 } from "../../lib/iptv/catalog";
 import { findEntry } from "../../lib/iptv/catalog";
 import type { ArtworkResolver } from "../../lib/iptv/mapping";
-import type { IptvBackend } from "../../lib/iptv/service";
+import type { GuideMatch, IptvBackend } from "../../lib/iptv/service";
 import { loadSourceCatalog } from "../../lib/iptv/source";
 import { tmdbArtwork } from "../../lib/iptv/urls";
 import { getSeriesInfo, getShortEpg, getVodInfo } from "../../lib/iptv/xtream";
 import { getIptvSource, listIptvSourceIds } from "../../lib/iptv-source-store";
 import { createIptvStateStore, iptvUserKey } from "../../lib/iptv-user-store";
+import { normalizeSearchText, type PreparedQuery, scoreText } from "../../lib/search";
 import { iptvEnabled, providerFetchers } from "./network";
 import { signedImagePath } from "./tokens";
 import { xmltvGuide } from "./xmltv-cache";
@@ -155,6 +156,43 @@ async function serverEpg(catalog: IptvCatalog, channels: CatalogChannel[]) {
 	return guide;
 }
 
+type Guide = Map<string, EpgProgramme[]>;
+const guideIndexes = new WeakMap<
+	Guide,
+	{ epgId: string; programme: EpgProgramme; title: string }[]
+>();
+
+function guideIndex(guide: Guide) {
+	let index = guideIndexes.get(guide);
+	if (!index) {
+		index = [...guide].flatMap(([epgId, programmes]) =>
+			programmes.map((programme) => ({
+				epgId,
+				programme,
+				title: normalizeSearchText(programme.title),
+			})),
+		);
+		guideIndexes.set(guide, index);
+	}
+	return index;
+}
+
+async function serverSearchGuide(catalog: IptvCatalog, query: PreparedQuery) {
+	const guide = await xmltvGuide(catalog);
+	if (!guide) return [];
+	const now = Date.now();
+	const until = now + 24 * 3600_000;
+	const matches: GuideMatch[] = [];
+	for (const { epgId, programme, title } of guideIndex(guide)) {
+		if (programme.end <= now || programme.start > until) continue;
+		const score = scoreText(query, title);
+		if (score != null) matches.push({ epgId, programme, score });
+	}
+	return matches
+		.sort((a, b) => a.score - b.score || a.programme.start - b.programme.start)
+		.slice(0, 60);
+}
+
 export function serverIptvBackend(): IptvBackend {
 	return {
 		async sourceIds() {
@@ -170,6 +208,7 @@ export function serverIptvBackend(): IptvBackend {
 		},
 		seriesInfo: serverSeriesInfo,
 		epg: serverEpg,
+		searchGuide: serverSearchGuide,
 		art: serverArtwork,
 		state: createIptvStateStore(iptvUserKey()),
 	};
