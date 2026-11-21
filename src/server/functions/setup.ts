@@ -59,6 +59,17 @@ export const saveSettings = createServerFn({ method: "POST" })
 		return { configured: isAuroraConfigured() };
 	});
 
+/**
+ * Whether online subtitles are set up. The player only needs to know that;
+ * the key itself stays with administrators.
+ */
+export const fetchOpenSubtitlesAvailable = createServerFn({ method: "GET" })
+	.middleware([authRequiredMiddleware])
+	.handler(async () => {
+		const { getOpenSubtitlesApiKey } = await import("@/lib/config-store");
+		return Boolean(getOpenSubtitlesApiKey());
+	});
+
 export const fetchOpenSubtitlesKey = createServerFn({ method: "GET" })
 	.middleware([adminRequiredMiddleware])
 	.handler(async () => {

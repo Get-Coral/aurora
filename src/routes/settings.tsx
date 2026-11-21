@@ -87,7 +87,10 @@ function SettingsPage() {
 
 	const saveOsMutation = useMutation({
 		mutationFn: () => saveOpenSubtitlesKeyRuntime(osApiKey),
-		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["opensubtitles-key"] }),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey: ["opensubtitles-key"] });
+			void queryClient.invalidateQueries({ queryKey: ["opensubtitles-available"] });
+		},
 	});
 
 	const saveMutation = useMutation({

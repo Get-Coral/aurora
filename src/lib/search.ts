@@ -151,9 +151,18 @@ export function dropTypoMatches<T extends { score: number }>(list: T[]) {
 	return list.some((entry) => entry.score < 5) ? list.filter((entry) => entry.score < 5) : list;
 }
 
-/** Tie-breakers within a match level: artwork, a short title, then recency. */
-export function rankBonus(item: Pick<MediaItem, "posterUrl" | "backdropUrl" | "title">) {
-	return (item.posterUrl || item.backdropUrl ? 0 : 0.4) + Math.min(item.title.length, 80) / 400;
+/**
+ * Tie-breakers within a match level: your own library before a provider's
+ * catalog of tens of thousands, then artwork, then a short title.
+ */
+export function rankBonus(
+	item: Pick<MediaItem, "posterUrl" | "backdropUrl" | "title"> & { source?: MediaItem["source"] },
+) {
+	return (
+		(item.source === "iptv" ? 0.45 : 0) +
+		(item.posterUrl || item.backdropUrl ? 0 : 0.4) +
+		Math.min(item.title.length, 80) / 400
+	);
 }
 
 export function scoreItem(query: PreparedQuery, item: MediaItem) {

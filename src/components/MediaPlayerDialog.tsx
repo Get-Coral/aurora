@@ -45,7 +45,7 @@ import {
 	beginPlaybackSessionRuntime,
 	createStreamTokenRuntime,
 	fetchOnlineSubtitleRuntime,
-	fetchOpenSubtitlesKeyRuntime,
+	fetchOpenSubtitlesAvailableRuntime,
 	type IptvPlayback,
 	reportIptvPlaybackRuntime,
 	reportPlaybackStateRuntime,
@@ -61,6 +61,18 @@ interface MediaPlayerDialogProps {
 	onClose: () => void;
 	queue?: MediaItem[];
 	onSelectQueueItem?: (item: MediaItem) => void;
+}
+
+interface ProgressPayload {
+	id: string;
+	positionTicks: number;
+	playMethod: "DirectPlay" | "Transcode" | undefined;
+	playSessionId: string | undefined;
+	mediaSourceId: string | undefined;
+	sessionId: string | undefined;
+	isPaused?: boolean;
+	isStopped?: boolean;
+	played?: boolean;
 }
 
 interface VttCue {
@@ -282,6 +294,11 @@ export function MediaPlayerDialog({
 	// Where playback was last seen. By the time the closing report runs, the
 	// stream teardown has already reset the element to 0:00.
 	const lastMediaTimeRef = useRef({ time: 0, duration: 0 });
+	const lastProgressRef = useRef<{
+		itemId: string;
+		payload: ProgressPayload;
+		report: (payload: ProgressPayload) => Promise<void>;
+	} | null>(null);
 	// Signed token that lets an AirPlay/Cast receiver fetch the stream without
 	// Aurora's session cookie. Null when login isn't enforced (the proxy is
 	// open anyway) or inside the native shell (direct Jellyfin URLs).
@@ -335,9 +352,9 @@ export function MediaPlayerDialog({
 	onlineCuesRef.current = onlineCues;
 
 	const { data: osApiKey } = useQuery({
-		queryKey: ["opensubtitles-key"],
-		queryFn: () => fetchOpenSubtitlesKeyRuntime(),
-		staleTime: Number.POSITIVE_INFINITY,
+		queryKey: ["opensubtitles-available"],
+		queryFn: () => fetchOpenSubtitlesAvailableRuntime(),
+		staleTime: 5 * 60_000,
 	});
 
 	const { data: onlineSubtitles = [], isFetching: searchingSubtitles } = useQuery({
@@ -895,11 +912,14 @@ export function MediaPlayerDialog({
 			setIsBuffering(false);
 		}
 		function handleTimeUpdate() {
-			if (video!.currentTime > 0)
+			if (video!.currentTime > 0) {
 				lastMediaTimeRef.current = {
 					time: video!.currentTime,
 					duration: Number.isFinite(video!.duration) ? video!.duration : 0,
 				};
+				if (playbackSession)
+					lastProgressRef.current = { itemId: item!.id, payload: buildPayload(), report };
+			}
 			if (playbackSession?.canSyncProgress) syncProgress();
 		}
 		function handlePause() {
@@ -948,14 +968,27 @@ export function MediaPlayerDialog({
 			video.removeEventListener("emptied", handleEmptied);
 			video.removeEventListener("abort", handleAbort);
 			video.removeEventListener("error", handleError);
-
-			if (stopReportedRef.current || video.ended) return;
-			const last = lastMediaTimeRef.current;
-			const played = last.duration && last.time / last.duration >= 0.94 ? true : undefined;
-			stopReportedRef.current = true;
-			void report(buildPayload({ isStopped: true, played }));
 		};
 	}, [debugPlayback, item, open, playbackSession, streamUrl]);
+
+	// The closing report belongs to the title, not to a stream: it goes out
+	// once, when the player closes or moves on, with the last position seen.
+	// Reporting from every stream teardown sent "stopped at 0:00" as soon as
+	// the session started, which Jellyfin took as watched, and then
+	// suppressed the real report.
+	const closingItemId = open ? item?.id : undefined;
+	useEffect(() => {
+		if (!closingItemId) return;
+		return () => {
+			const latest = lastProgressRef.current;
+			lastProgressRef.current = null;
+			if (!latest || latest.itemId !== closingItemId || stopReportedRef.current) return;
+			stopReportedRef.current = true;
+			const last = lastMediaTimeRef.current;
+			const played = last.duration && last.time / last.duration >= 0.94 ? true : undefined;
+			void latest.report({ ...latest.payload, isStopped: true, played });
+		};
+	}, [closingItemId]);
 
 	// Player UI state tracking
 	useEffect(() => {

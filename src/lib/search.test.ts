@@ -72,8 +72,14 @@ describe("search text", () => {
 				],
 			},
 		]);
+		// Exact beats prefix even from IPTV; at equal match the library wins.
 		expect(results.series.map((entry) => entry.id)).toEqual(["i1", "j1"]);
 		expect(results.top.map((entry) => entry.id)).toEqual(["i1"]);
+		const tie = mergeSearchResults("dexter", [
+			{ series: [item("iptv", "Dexter", { type: "series", source: "iptv" })] },
+			{ series: [item("lib", "Dexter", { type: "series" })] },
+		]);
+		expect(tie.series.map((entry) => entry.id)).toEqual(["lib", "iptv"]);
 		expect(results.people).toHaveLength(1);
 		expect(results.onTv).toHaveLength(1);
 	});

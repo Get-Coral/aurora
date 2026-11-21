@@ -9,6 +9,7 @@ import {
 	validateClientJellyfinSettings,
 } from "@/lib/client-config-store";
 import {
+	fetchOpenSubtitlesAvailable,
 	fetchOpenSubtitlesKey,
 	fetchSetupStatus,
 	saveOpenSubtitlesKey,
@@ -97,6 +98,13 @@ export async function saveSettingsRuntime(data: Partial<ClientJellyfinSettings>)
 					password: data.password ?? "",
 				},
 			}),
+	);
+}
+
+export async function fetchOpenSubtitlesAvailableRuntime() {
+	return callRuntime(
+		() => Boolean(getClientOpenSubtitlesApiKey()),
+		() => fetchOpenSubtitlesAvailable(),
 	);
 }
 
