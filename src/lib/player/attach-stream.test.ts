@@ -36,3 +36,20 @@ describe("withStartOffset", () => {
 		);
 	});
 });
+
+describe("track labels and stream params", async () => {
+	const { trackLabel, withStreamParams } = await import("./attach-stream");
+	it("names languages from bibliographic and ISO codes", () => {
+		expect(trackLabel({ language: "ger" }, "en", "Track 1")).toBe("German");
+		expect(trackLabel({ language: "dut" }, "nl", "Spoor 1")).toBe("Nederlands");
+		expect(trackLabel({ language: "eng", title: "Commentary" }, "en", "x")).toBe(
+			"English (Commentary)",
+		);
+		expect(trackLabel({ language: "und" }, "en", "Track 2")).toBe("Track 2");
+	});
+	it("sets and clears stream parameters", () => {
+		expect(withStreamParams("/api/iptv?id=a&start=5", { audio: 1, remux: "1", start: null })).toBe(
+			"/api/iptv?id=a&audio=1&remux=1",
+		);
+	});
+});

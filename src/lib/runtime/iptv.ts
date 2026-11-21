@@ -204,7 +204,7 @@ export async function beginIptvPlaybackRuntime(
 	id: string,
 	preferHls = false,
 ): Promise<IptvPlayback> {
-	return callRuntime(
+	return callRuntime<IptvPlayback>(
 		async () => (await client()).beginClientIptvPlayback(id),
 		() => beginIptvPlayback({ data: { id, preferHls } }),
 	);

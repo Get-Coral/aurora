@@ -20,6 +20,18 @@ export interface IptvPlayback {
 	/** Converted by Aurora's ffmpeg: seeking reloads the stream with `start`. */
 	transcoded: boolean;
 	durationSeconds?: number;
+	/** Audio and text subtitle streams inside the file, when Aurora can convert it. */
+	media?: {
+		audio: IptvMediaTrack[];
+		subtitles: IptvMediaTrack[];
+	};
+}
+
+export interface IptvMediaTrack {
+	id: number;
+	language?: string;
+	title?: string;
+	codec?: string;
 }
 
 /** Whether IPTV is available on this server and has any sources. */
@@ -238,14 +250,43 @@ export const beginIptvPlayback = createServerFn({ method: "POST" })
 			durationSeconds = info?.durationSeconds;
 		}
 		const base = `/api/iptv?id=${encodeURIComponent(data.id)}${data.preferHls ? "&prefer=hls" : ""}`;
+		const ffmpeg = process.env.AURORA_IPTV_FFMPEG;
+		const [{ needsConversion, finalUrl }, probe] = await Promise.all([
+			import("../iptv"),
+			import("../iptv-probe"),
+		]);
+		// Look inside files Aurora can convert, for audio tracks and subtitles.
+		let media: IptvPlayback["media"];
+		if (ffmpeg && !target.live && target.format === "file") {
+			try {
+				const url = await finalUrl(AbortSignal.timeout(20_000), target.url, false);
+				const probed = await probe.probeIptvMedia(data.id, url, ffmpeg);
+				media = {
+					audio: probed.audio.map((track) => ({
+						id: track.index,
+						language: track.language,
+						title: track.title,
+						codec: track.codec,
+					})),
+					subtitles: probed.subtitles.map((track) => ({
+						id: track.index,
+						language: track.language,
+						title: track.title,
+						codec: track.codec,
+					})),
+				};
+			} catch {
+				// Without a probe the file still plays; it just offers no choices.
+			}
+		}
 		return {
 			streamUrl: base,
 			fallbackUrl: target.fallback ? `${base}&fallback=1` : undefined,
 			format: target.format,
 			live: target.live,
-			transcoded:
-				Boolean(process.env.AURORA_IPTV_FFMPEG) && /\.(mkv|avi)$/i.test(target.url.pathname),
+			transcoded: Boolean(ffmpeg) && needsConversion(target.url),
 			durationSeconds,
+			media,
 		};
 	});
 

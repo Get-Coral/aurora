@@ -172,3 +172,63 @@ export function withStartOffset(streamUrl: string, seconds: number) {
 	else url.searchParams.delete("start");
 	return url.origin === "http://aurora.local" ? url.pathname + url.search : url.href;
 }
+
+/** Set or clear query parameters on an Aurora IPTV stream URL. */
+export function withStreamParams(
+	streamUrl: string,
+	params: Record<string, string | number | null>,
+) {
+	const url = new URL(streamUrl, "http://aurora.local");
+	for (const [key, value] of Object.entries(params)) {
+		if (value == null) url.searchParams.delete(key);
+		else url.searchParams.set(key, String(value));
+	}
+	return url.origin === "http://aurora.local" ? url.pathname + url.search : url.href;
+}
+
+/** ISO 639-2/B codes that Intl doesn't know, mapped to their usual tags. */
+const BIBLIOGRAPHIC: Record<string, string> = {
+	ger: "de",
+	dut: "nl",
+	fre: "fr",
+	chi: "zh",
+	cze: "cs",
+	gre: "el",
+	per: "fa",
+	rum: "ro",
+	slo: "sk",
+	alb: "sq",
+	arm: "hy",
+	baq: "eu",
+	bur: "my",
+	geo: "ka",
+	ice: "is",
+	mac: "mk",
+	mao: "mi",
+	may: "ms",
+	tib: "bo",
+	wel: "cy",
+};
+
+/** "Dutch", "English (Director's commentary)", or the track title. */
+export function trackLabel(
+	track: { language?: string; title?: string },
+	locale: string,
+	fallback: string,
+) {
+	const code = track.language?.toLowerCase();
+	let language: string | undefined;
+	if (code && code !== "und") {
+		try {
+			language =
+				new Intl.DisplayNames([locale], { type: "language" }).of(BIBLIOGRAPHIC[code] ?? code) ??
+				undefined;
+		} catch {
+			language = code.toUpperCase();
+		}
+	}
+	const title = track.title?.trim();
+	if (language && title && !title.toLowerCase().includes(language.toLowerCase()))
+		return `${language} (${title})`;
+	return language ?? title ?? fallback;
+}

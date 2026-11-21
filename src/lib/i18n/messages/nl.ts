@@ -512,4 +512,5 @@ export const nlMessages: MessageDictionary = {
 	"iptv.guideLater": "Later",
 	"iptv.guideNow": "Nu",
 	"iptv.guideEmpty": "Geen zenders met een tv-gids hier.",
+	"player.trackNumber": ({ number } = {}) => `Spoor ${number}`,
 };

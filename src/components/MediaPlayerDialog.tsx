@@ -38,7 +38,9 @@ import {
 	browserEngineSupport,
 	choosePlaybackEngine,
 	type StreamTrack,
+	trackLabel,
 	withStartOffset,
+	withStreamParams,
 } from "../lib/player/attach-stream";
 import {
 	beginIptvPlaybackRuntime,
@@ -244,7 +246,7 @@ export function MediaPlayerDialog({
 	queue,
 	onSelectQueueItem,
 }: MediaPlayerDialogProps) {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	useLockBodyScroll(open);
 	const playbackClient = getClientPlaybackContext();
 	const debugPlayback = process.env.NODE_ENV === "development";
@@ -287,6 +289,8 @@ export function MediaPlayerDialog({
 	}>({ audio: [], subtitles: [] });
 	const [activeAudio, setActiveAudio] = useState<number | null>(null);
 	const [activeEngineSubtitle, setActiveEngineSubtitle] = useState<number | null>(null);
+	/** A subtitle stream inside an IPTV file, written out by Aurora's converter. */
+	const [embeddedSubtitle, setEmbeddedSubtitle] = useState<number | null>(null);
 	const [audioPickerOpen, setAudioPickerOpen] = useState(false);
 	const [isPictureInPicture, setIsPictureInPicture] = useState(false);
 	const attachedStreamRef = useRef<AttachedStream | null>(null);
@@ -512,6 +516,7 @@ export function MediaPlayerDialog({
 		setEngineTracks({ audio: [], subtitles: [] });
 		setActiveAudio(null);
 		setActiveEngineSubtitle(null);
+		setEmbeddedSubtitle(null);
 		setAudioPickerOpen(false);
 		knownDurationRef.current = (item?.runtimeMinutes ?? 0) * 60;
 		lastMediaTimeRef.current = { time: 0, duration: 0 };
@@ -735,6 +740,46 @@ export function MediaPlayerDialog({
 		};
 	}, [open, playbackSession?.iptv, streamUrl]);
 
+	// Audio streams inside an IPTV file: Aurora's converter switches between them.
+	const mediaAudio = iptvSession?.media?.audio;
+	useEffect(() => {
+		if (!mediaAudio || mediaAudio.length < 2) return;
+		setEngineTracks((current) => ({
+			...current,
+			audio: mediaAudio.map((track, index) => ({
+				id: track.id,
+				label: trackLabel(track, locale, t("player.trackNumber", { number: index + 1 })),
+				language: track.language,
+			})),
+		}));
+		const current = Number(new URL(streamUrl ?? "/", "http://x").searchParams.get("audio") ?? 0);
+		setActiveAudio(Number.isFinite(current) ? current : 0);
+	}, [mediaAudio, locale, t, streamUrl]);
+
+	// Embedded subtitles grow while the converter runs: fetch them again now and then.
+	useEffect(() => {
+		if (embeddedSubtitle == null || !iptvSession?.transcoded || !streamUrl) return;
+		let cancelled = false;
+		const url = withStreamParams(streamUrl, { subtitle: embeddedSubtitle, start: null });
+		const load = async () => {
+			try {
+				const response = await fetch(url);
+				if (!response.ok) return;
+				const cues = parseVtt(await response.text());
+				if (!cancelled && cues.length) setOnlineCues(cues);
+			} catch {
+				// Try again on the next tick.
+			}
+		};
+		const first = setTimeout(load, 1500);
+		const timer = setInterval(load, 15_000);
+		return () => {
+			cancelled = true;
+			clearTimeout(first);
+			clearInterval(timer);
+		};
+	}, [embeddedSubtitle, iptvSession?.transcoded, streamUrl]);
+
 	// Audio tracks the browser exposes itself (Safari, native HLS / MP4).
 	useEffect(() => {
 		const video = videoRef.current as
@@ -748,7 +793,7 @@ export function MediaPlayerDialog({
 			  })
 			| null;
 		const list = video?.audioTracks;
-		if (!open || !list || iptvEngine === "hls.js") return;
+		if (!open || !list || iptvEngine === "hls.js" || (mediaAudio?.length ?? 0) > 1) return;
 		const read = () => {
 			const audio: StreamTrack[] = [];
 			for (let index = 0; index < list.length; index++) {
@@ -1362,9 +1407,39 @@ export function MediaPlayerDialog({
 		};
 	}, [open, streamUrl]);
 
+	/**
+	 * Restart an IPTV file through Aurora's converter at the current position,
+	 * with other parameters (an audio track, or to get its subtitles out).
+	 */
+	function switchIptvStream(params: Record<string, string | number | null>) {
+		const session = playbackSession;
+		const video = videoRef.current;
+		if (!session?.iptv || !video) return;
+		const position = video.currentTime + startTimeOffsetRef.current;
+		startTimeOffsetRef.current = 0;
+		seekPendingRef.current = position > 0;
+		pendingSeekTargetRef.current = position > 0 ? position : null;
+		lastReportedSecondRef.current = 0;
+		setIsBuffering(true);
+		setPlaybackSession({
+			...session,
+			playMethod: "Transcode",
+			streamUrl: withStreamParams(session.streamUrl, {
+				...params,
+				remux: session.iptv.transcoded ? null : "1",
+				start: position > 0 ? Math.floor(position) : null,
+			}),
+			iptv: { ...session.iptv, transcoded: true },
+		});
+	}
+
 	function selectAudioTrack(id: number) {
 		setAudioPickerOpen(false);
 		setActiveAudio(id);
+		if ((iptvSession?.media?.audio.length ?? 0) > 1) {
+			switchIptvStream({ audio: id });
+			return;
+		}
 		if (iptvEngine === "hls.js") {
 			attachedStreamRef.current?.setAudioTrack(id);
 			return;
@@ -1385,6 +1460,7 @@ export function MediaPlayerDialog({
 
 	function selectEngineSubtitle(id: number | null) {
 		setOnlineCues([]);
+		setEmbeddedSubtitle(null);
 		setActiveSubtitle(null);
 		setActiveEngineSubtitle(id);
 		attachedStreamRef.current?.setSubtitleTrack(id);
@@ -1526,8 +1602,20 @@ export function MediaPlayerDialog({
 		}
 	}
 
+	function selectEmbeddedSubtitle(id: number) {
+		setActiveSubtitle(null);
+		setActiveEngineSubtitle(null);
+		setOnlineCues([]);
+		subtitleOffsetRef.current = 0;
+		setEmbeddedSubtitle(id);
+		// Subtitles come out of the converter, so a direct file switches to it.
+		if (!iptvSession?.transcoded) switchIptvStream({});
+		closePickers();
+	}
+
 	function selectSubtitle(index: number | null) {
 		setOnlineCues([]);
+		setEmbeddedSubtitle(null);
 		if (activeEngineSubtitle !== null) {
 			attachedStreamRef.current?.setSubtitleTrack(null);
 			setActiveEngineSubtitle(null);
@@ -2078,6 +2166,7 @@ export function MediaPlayerDialog({
 									) : null}
 									{nativeSubtitleTracks.length > 0 ||
 									engineTracks.subtitles.length > 0 ||
+									(iptvSession?.media?.subtitles.length ?? 0) > 0 ||
 									(osApiKey && !isLive) ? (
 										<div className="player-subtitle-wrap">
 											{subtitlePickerOpen ? (
@@ -2107,12 +2196,26 @@ export function MediaPlayerDialog({
 													    must stay one click away at any scroll position. */}
 													<button
 														type="button"
-														className={`player-subtitle-option${activeSubtitle === null && activeEngineSubtitle === null && onlineCues.length === 0 ? " active" : ""}`}
+														className={`player-subtitle-option${activeSubtitle === null && activeEngineSubtitle === null && embeddedSubtitle === null && onlineCues.length === 0 ? " active" : ""}`}
 														onClick={() => selectSubtitle(null)}
 													>
 														{t("player.subtitlesOff")}
 													</button>
 													<div className="player-subtitle-list" ref={subtitleListRef}>
+														{(iptvSession?.media?.subtitles ?? []).map((track, index) => (
+															<button
+																key={`embedded-${track.id}`}
+																type="button"
+																className={`player-subtitle-option${embeddedSubtitle === track.id ? " active" : ""}`}
+																onClick={() => selectEmbeddedSubtitle(track.id)}
+															>
+																{trackLabel(
+																	track,
+																	locale,
+																	t("player.trackNumber", { number: index + 1 }),
+																)}
+															</button>
+														))}
 														{engineTracks.subtitles.map((track) => (
 															<button
 																key={`engine-${track.id}`}

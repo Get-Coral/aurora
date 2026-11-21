@@ -44,6 +44,42 @@ function corsHeaders(headers: Headers) {
 	return headers;
 }
 
+/** Files browsers can't play as they are. */
+export function needsConversion(url: URL) {
+	return /\.(mkv|avi)$/i.test(url.pathname);
+}
+
+/** Follow (and check) redirects without downloading, for tools that open the URL themselves. */
+export async function finalUrl(signal: AbortSignal, target: URL, trusted: boolean) {
+	const { response, url } = await upstream(target, signal, { range: "bytes=0-0", trusted });
+	await response.body?.cancel();
+	return url;
+}
+
+function subtitleKey(itemId: string) {
+	return itemId.replace(/[^a-z0-9]+/gi, "-");
+}
+
+/** The conversion whose subtitles are being written right now. */
+let activeSubtitles: { itemId: string; key: string } | null = null;
+
+async function subtitle(itemId: string, index: number) {
+	if (activeSubtitles?.itemId !== itemId || !Number.isInteger(index) || index < 0)
+		return respond(404);
+	const [{ readFile }, { subtitleFile }] = await Promise.all([
+		import("node:fs/promises"),
+		import("./iptv-transcode"),
+	]);
+	try {
+		const text = await readFile(subtitleFile(activeSubtitles.key, index), "utf8");
+		return new Response(text || "WEBVTT\n", {
+			headers: { ...baseHeaders, "content-type": "text/vtt; charset=utf-8" },
+		});
+	} catch {
+		return respond(404);
+	}
+}
+
 async function proxy(
 	request: Request,
 	target: URL,
@@ -53,22 +89,40 @@ async function proxy(
 		trusted: boolean;
 		start?: number;
 		streamToken?: string | null;
+		/** Convert even a browser-friendly file (another audio track, subtitles). */
+		remux?: boolean;
+		audioIndex?: number;
 	},
 ) {
 	const ffmpeg =
-		/\.(mkv|avi)$/i.test(target.pathname) && process.env.AURORA_IPTV_FFMPEG
+		process.env.AURORA_IPTV_FFMPEG && (needsConversion(target) || options.remux)
 			? process.env.AURORA_IPTV_FFMPEG
 			: undefined;
 	if (ffmpeg) {
-		const { transcodeIptv } = await import("./iptv-transcode");
+		const [{ transcodeIptv, subtitleFile }, probe] = await Promise.all([
+			import("./iptv-transcode"),
+			import("./iptv-probe"),
+		]);
 		// Resolve redirects (and check every hop) before ffmpeg opens the URL
 		// itself, so it can seek with range requests.
-		const { response, url } = await upstream(target, request.signal, {
-			range: "bytes=0-0",
-			trusted: options.trusted,
+		const url = await finalUrl(request.signal, target, options.trusted);
+		const media = await probe.probeIptvMedia(itemId, url, ffmpeg).catch(() => undefined);
+		const audioIndex = Math.min(
+			options.audioIndex ?? 0,
+			Math.max(0, (media?.audio.length ?? 1) - 1),
+		);
+		const key = subtitleKey(itemId);
+		const body = await transcodeIptv(url, ffmpeg, request.signal, {
+			start: options.start ?? 0,
+			copyVideo: probe.canCopyVideo(media),
+			audioIndex,
+			copyAudio: probe.canCopyAudio(media?.audio[audioIndex]),
+			subtitles: (media?.subtitles ?? []).map((subtitle) => ({
+				index: subtitle.index,
+				file: subtitleFile(key, subtitle.index),
+			})),
 		});
-		await response.body?.cancel();
-		const body = await transcodeIptv(url, ffmpeg, request.signal, options.start ?? 0);
+		activeSubtitles = { itemId, key };
 		return new Response(body, {
 			headers: corsHeaders(new Headers({ ...baseHeaders, "content-type": "video/mp4" })),
 		});
@@ -194,12 +248,17 @@ export async function iptvRequest(request: Request) {
 			return respond(404);
 		}
 		const useFallback = params.get("fallback") === "1" && target.fallback;
+		const subtitleIndex = params.get("subtitle");
+		if (subtitleIndex != null) return await subtitle(id, Number(subtitleIndex));
 		const start = Number(params.get("start") ?? 0);
+		const audio = Number(params.get("audio") ?? 0);
 		return await proxy(request, useFallback ? (target.fallback as URL) : target.url, id, {
 			format: useFallback ? "hls" : target.format,
 			trusted: false,
 			start: Number.isFinite(start) && start > 0 ? start : 0,
 			streamToken,
+			remux: params.get("remux") === "1" && !target.live,
+			audioIndex: Number.isInteger(audio) && audio >= 0 ? audio : 0,
 		});
 	} catch (error) {
 		if (error instanceof IptvSourceError && error.code === "origin") return respond(421);
