@@ -173,6 +173,8 @@ function HomePage() {
 		if (heroTimerRef.current) clearInterval(heroTimerRef.current);
 		if (tvMode && heroPool.length > 1) {
 			heroTimerRef.current = setInterval(() => {
+				// Don't swap the title out from under a focused Play button.
+				if (document.getElementById("spotlight")?.contains(document.activeElement)) return;
 				setHeroIndex((i) => (i + 1) % heroPool.length);
 			}, 15000);
 		}

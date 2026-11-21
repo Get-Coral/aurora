@@ -40,12 +40,14 @@ export function MediaCard({
 			role="button"
 			tabIndex={0}
 			onKeyDown={(e) => {
+				// OK opens the details, as on Plex and Jellyfin; the remote's
+				// play key starts playback straight from the card.
 				if (e.key === "Enter") {
-					if (tvMode && onPlay) {
-						onPlay(item);
-					} else {
-						onClick?.();
-					}
+					e.preventDefault();
+					onClick?.();
+				} else if (tvMode && onPlay && (e.key === "MediaPlayPause" || e.key === "MediaPlay")) {
+					e.preventDefault();
+					onPlay(item);
 				}
 			}}
 			data-tv-focusable="true"

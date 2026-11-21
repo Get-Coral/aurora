@@ -382,7 +382,8 @@ The public Android app is [Aurora for Jellyfin](https://play.google.com/store/ap
 
 - Android release bundles are built with `pnpm android:bundle:release` (see above). Android Studio is still useful for running and debugging.
 - iOS packaging happens from Xcode after opening the generated project.
-- Google TV should be treated as an Android TV target using the same Capacitor Android project once the TV UX is finalized.
+- The same Android build runs on Android TV and Google TV. It appears in the TV launcher (`LEANBACK_LAUNCHER`, with the banner in `res/drawable-xhdpi/tv_banner.png`) and asks the system whether it runs on a TV, so TV mode switches on even when the WebView's user agent doesn't mention one. To ship it to TVs, opt in to the Android TV form factor in the Play Console and upload TV screenshots; the store banner is `fastlane/metadata/android/en-US/images/tvBanner.png`.
+- To try the TV build, create an Android TV device in Android Studio's Device Manager (Television, 1080p) and run `pnpm cap:run:android` with it selected. In a desktop browser, Settings → TV mode gives the same layout, driven with the arrow keys and Enter.
 - Capacitor Android 8 requires JDK 21 for local and CI builds.
 - `pnpm cap:run:android` resolves `JAVA_HOME` automatically on macOS and prefers the Homebrew JDK 21 path when present, then falls back to system JDK 21 or 17.
 - CI validates the native Android path with `pnpm cap:sync` and `pnpm android:assemble:debug`.
