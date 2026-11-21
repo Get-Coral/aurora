@@ -203,6 +203,16 @@ export async function iptvRequest(request: Request) {
 		});
 	} catch (error) {
 		if (error instanceof IptvSourceError && error.code === "origin") return respond(421);
+		// Panels answer a full account (too many connections) in several ways.
+		if (
+			error instanceof IptvSourceError &&
+			error.code === "provider" &&
+			[429, 458, 509, 551].includes(error.status ?? 0)
+		)
+			return new Response(null, {
+				status: 429,
+				headers: { ...baseHeaders, "x-aurora-provider-status": String(error.status) },
+			});
 		if (error instanceof IptvSourceError && error.code === "provider")
 			return new Response(null, {
 				status: 502,

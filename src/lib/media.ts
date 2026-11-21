@@ -7,6 +7,8 @@ export interface MediaProgramme {
 	start: number;
 	end: number;
 	description?: string;
+	/** Item id that plays this programme from the provider's archive. */
+	replayId?: string;
 }
 
 export interface MediaItem {
@@ -40,6 +42,8 @@ export interface MediaItem {
 	group?: string;
 	channelNumber?: number;
 	epg?: { now?: MediaProgramme; next?: MediaProgramme };
+	/** The day's guide for a live channel, earlier programmes included. */
+	schedule?: MediaProgramme[];
 	/** A guide programme this item stands for (search, catch-up). */
 	airing?: MediaProgramme;
 }

@@ -480,4 +480,23 @@ export const enMessages: MessageDictionary = {
 	"search.emptyFor": ({ query } = {}) => `No results for “${query}”.`,
 	"search.allResults": ({ query } = {}) => `All results for “${query}”`,
 	"search.showAll": ({ count } = {}) => `Show all ${count}`,
+	"iptv.categories": "Categories",
+	"iptv.categoriesCopy":
+		"Choose which categories appear in Aurora. Hidden categories stay out of Home, Live TV and search.",
+	"iptv.showAdult": "Show adult content",
+	"iptv.filterCategories": "Filter categories",
+	"iptv.showListed": "Show these",
+	"iptv.hideListed": "Hide these",
+	"iptv.noCategory": "No category",
+	"iptv.account.trial": "Trial",
+	"iptv.connectionLimit":
+		"Your IPTV subscription is already streaming on another device, and it allows only so many at once. Stop the other stream and try again.",
+	"iptv.account.expires": ({ date } = {}) => `Active until ${date}`,
+	"iptv.account.expired": ({ date } = {}) => `Expired on ${date}`,
+	"iptv.account.connections": ({ count } = {}) =>
+		`${count} ${Number(count) === 1 ? "connection" : "connections"}`,
+	"dialog.schedule": "TV guide",
+	"dialog.watchBack": "Watch back",
+	"player.previousChannel": "Previous channel",
+	"player.nextChannel": "Next channel",
 };

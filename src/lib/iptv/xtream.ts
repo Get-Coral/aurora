@@ -355,3 +355,65 @@ export async function getShortEpg(
 		}),
 	);
 }
+
+/** A channel's full guide (several days, earlier programmes included). */
+export async function getChannelSchedule(
+	config: XtreamConfig,
+	fetchJson: JsonFetcher,
+	pid: string,
+): Promise<EpgProgramme[]> {
+	const data = (await fetchJson(
+		xtreamApi(config, "get_simple_data_table", { stream_id: pid }),
+	)) as { epg_listings?: unknown } | null;
+	const listings = Array.isArray(data?.epg_listings) ? rows(data.epg_listings) : [];
+	return tidyGuide(
+		listings.flatMap((row): EpgProgramme[] => {
+			const start = parseEpoch(row.start_timestamp);
+			const end = parseEpoch(row.stop_timestamp);
+			const title = decodeBase64(row.title);
+			if (!start || !end || end <= start || !title) return [];
+			return [
+				{
+					title,
+					start,
+					end,
+					description: decodeBase64(row.description).slice(0, 320) || undefined,
+					archive: String(row.has_archive) === "1" || undefined,
+				},
+			];
+		}),
+	);
+}
+
+/** `YYYY-MM-DD:HH-mm` in the panel's own time zone, as timeshift URLs expect. */
+export function timeshiftStart(time: number, timeZone = "UTC") {
+	const parts = Object.fromEntries(
+		new Intl.DateTimeFormat("en-GB", {
+			timeZone,
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+			hourCycle: "h23",
+		})
+			.formatToParts(new Date(time))
+			.map((part) => [part.type, part.value]),
+	);
+	return `${parts.year}-${parts.month}-${parts.day}:${parts.hour}-${parts.minute}`;
+}
+
+export function xtreamTimeshiftUrl(
+	config: XtreamCatalogConfig,
+	pid: string,
+	start: number,
+	minutes: number,
+) {
+	if (!/^\d+$/.test(pid)) throw new Error("Invalid Xtream stream");
+	const credentials = [config.username, config.password].map(encodeURIComponent).join("/");
+	const ext = config.hls ? "m3u8" : "ts";
+	return new URL(
+		`timeshift/${credentials}/${minutes}/${timeshiftStart(start, config.timezone)}/${pid}.${ext}`,
+		config.server,
+	);
+}

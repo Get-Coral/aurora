@@ -10,8 +10,12 @@ import type { ArtworkResolver } from "../../lib/iptv/mapping";
 import type { GuideMatch, IptvBackend } from "../../lib/iptv/service";
 import { loadSourceCatalog } from "../../lib/iptv/source";
 import { tmdbArtwork } from "../../lib/iptv/urls";
-import { getSeriesInfo, getShortEpg, getVodInfo } from "../../lib/iptv/xtream";
-import { getIptvSource, listIptvSourceIds } from "../../lib/iptv-source-store";
+import { getChannelSchedule, getSeriesInfo, getShortEpg, getVodInfo } from "../../lib/iptv/xtream";
+import {
+	getIptvSource,
+	getIptvSourceOptions,
+	listIptvSourceIds,
+} from "../../lib/iptv-source-store";
 import { createIptvStateStore, iptvUserKey } from "../../lib/iptv-user-store";
 import { normalizeSearchText, type PreparedQuery, scoreText } from "../../lib/search";
 import { iptvEnabled, providerFetchers } from "./network";
@@ -74,6 +78,7 @@ const catalogs = new Cache<IptvCatalog>(CATALOG_TTL, 4);
 const vodInfos = new Cache<VodInfo | undefined>(INFO_TTL, 500);
 const seriesInfos = new Cache<SeriesInfo>(INFO_TTL, 200);
 const guides = new Cache<EpgProgramme[]>(EPG_TTL, 2000);
+const schedules = new Cache<EpgProgramme[]>(EPG_TTL, 300);
 
 function background() {
 	return AbortSignal.timeout(180_000);
@@ -84,6 +89,7 @@ export function forgetIptvCatalog(source: string) {
 	vodInfos.delete(`${source}:`);
 	seriesInfos.delete(`${source}:`);
 	guides.delete(`${source}:`);
+	schedules.delete(`${source}:`);
 }
 
 export async function loadServerCatalog(source: string, force = false) {
@@ -198,6 +204,9 @@ export function serverIptvBackend(): IptvBackend {
 		async sourceIds() {
 			return iptvEnabled() ? listIptvSourceIds() : [];
 		},
+		async options(source) {
+			return getIptvSourceOptions(source);
+		},
 		catalog: (source) => loadServerCatalog(source),
 		async vodInfo(catalog, pid) {
 			const xtream = catalog.xtream;
@@ -209,12 +218,29 @@ export function serverIptvBackend(): IptvBackend {
 		seriesInfo: serverSeriesInfo,
 		epg: serverEpg,
 		searchGuide: serverSearchGuide,
+		async schedule(catalog, channel) {
+			const xtream = catalog.xtream;
+			if (xtream && !channel.src) {
+				const full = await schedules
+					.get(`${catalog.source}:${channel.pid}`, () =>
+						getChannelSchedule(
+							xtream,
+							providerFetchers(AbortSignal.timeout(15_000)).json,
+							channel.pid,
+						),
+					)
+					.catch(() => [] as EpgProgramme[]);
+				if (full.length) return full;
+			}
+			const guide = channel.epgId ? (await xmltvGuide(catalog))?.get(channel.epgId) : undefined;
+			return guide ?? [];
+		},
 		art: serverArtwork,
 		state: createIptvStateStore(iptvUserKey()),
 	};
 }
 
-export function cachedCatalogLoadedAt(source: string) {
+export function cachedCatalog(source: string) {
 	const saved = getIptvSource(source);
-	return saved ? catalogs.peek(`${source}:${saved.updatedAt}`)?.loadedAt : undefined;
+	return saved ? catalogs.peek(`${source}:${saved.updatedAt}`) : undefined;
 }

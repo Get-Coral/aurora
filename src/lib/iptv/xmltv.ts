@@ -41,13 +41,20 @@ function element(block: string, name: string) {
 
 /**
  * Streaming XMLTV reader that keeps only the wanted channels and the
- * programmes overlapping `[now, now + windowMs]`. Guides run to hundreds of
+ * programmes overlapping `[now - pastMs, now + windowMs]`. Guides run to hundreds of
  * megabytes, so the document is never held in memory as a whole.
  */
-export function createXmltvReader(channels: Set<string>, now: number, windowMs = 24 * 3600_000) {
+export function createXmltvReader(
+	channels: Set<string>,
+	now: number,
+	windowMs = 24 * 3600_000,
+	/** Earlier programmes to keep, for catch-up. */
+	pastMs = 24 * 3600_000,
+) {
 	const guide = new Map<string, EpgProgramme[]>();
 	let buffer = "";
 	const until = now + windowMs;
+	const from = now - pastMs;
 
 	function take(block: string) {
 		const open = block.slice(0, block.indexOf(">") + 1);
@@ -55,7 +62,7 @@ export function createXmltvReader(channels: Set<string>, now: number, windowMs =
 		if (!channel || !channels.has(channel)) return;
 		const start = parseXmltvTime(attribute(open, "start") ?? "");
 		const end = parseXmltvTime(attribute(open, "stop") ?? "");
-		if (!start || !end || end <= now || start >= until || end <= start) return;
+		if (!start || !end || end <= from || start >= until || end <= start) return;
 		const title = element(block, "title");
 		if (!title) return;
 		const list = guide.get(channel) ?? [];

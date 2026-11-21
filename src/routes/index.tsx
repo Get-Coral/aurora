@@ -377,7 +377,7 @@ function HomePage() {
 						subtitle={t("home.live.subtitle")}
 						items={iptvLive}
 						onSelect={dispatchSelect}
-						onPlay={(item) => dispatchPlay(item, [item])}
+						onPlay={(item) => dispatchPlay(item, iptvLive)}
 						onToggleFavorite={(item) =>
 							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
 						}

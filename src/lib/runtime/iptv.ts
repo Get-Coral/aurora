@@ -1,6 +1,6 @@
 import type { IptvItemState } from "@/lib/iptv/mapping";
 import type { IptvBrowseInput } from "@/lib/iptv/service";
-import type { IptvSourceInput } from "@/lib/iptv/source";
+import type { IptvSourceInput, IptvSourceOptions } from "@/lib/iptv/source";
 import {
 	beginIptvPlayback,
 	deleteIptvSourceFn,
@@ -12,12 +12,14 @@ import {
 	fetchIptvRelated,
 	fetchIptvSeriesDetails,
 	fetchIptvShelves,
+	fetchIptvSourceGroups,
 	fetchIptvSources,
 	fetchIptvStatus,
 	type IptvPlayback,
 	refreshIptvSourceFn,
 	reportIptvPlayback,
 	saveIptvSourceFn,
+	saveIptvSourceOptionsFn,
 	searchIptvFn,
 	setIptvFavorite,
 	setIptvPlayed,
@@ -272,4 +274,18 @@ export async function fetchSourcesRuntime() {
 		iptv: iptv.enabled && iptv.sources > 0,
 		iptvEnabled: iptv.enabled,
 	};
+}
+
+export async function fetchIptvSourceGroupsRuntime(id: string) {
+	return callRuntime(
+		async () => (await client()).fetchClientIptvSourceGroups(id),
+		() => fetchIptvSourceGroups({ data: { id } }),
+	);
+}
+
+export async function saveIptvSourceOptionsRuntime(id: string, options: IptvSourceOptions) {
+	return callRuntime(
+		async () => (await client()).saveClientIptvSourceOptions(id, options),
+		() => saveIptvSourceOptionsFn({ data: { id, options } }),
+	);
 }

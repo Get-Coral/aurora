@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, CheckCircle, Circle, Play, Plus, Star, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, CheckCircle, Circle, Play, Plus, RotateCcw, Star, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import { type DetailedMediaItem, isResumable, type MediaItem } from "../lib/media";
 import {
@@ -176,7 +176,10 @@ export function MediaSpotlightDialog({
 						</div>
 
 						{detail.type === "channel" ? (
-							<ChannelGuide epg={detail.epg} />
+							<>
+								<ChannelGuide epg={detail.epg} />
+								<ChannelSchedule channel={detail} onPlay={onPlay} />
+							</>
 						) : detail.overview ? (
 							<p className="tv-detail-overview">{detail.overview}</p>
 						) : null}
@@ -493,7 +496,10 @@ export function MediaSpotlightDialog({
 							</div>
 
 							{detail.type === "channel" ? (
-								<ChannelGuide epg={detail.epg} loading={loadingState} />
+								<>
+									<ChannelGuide epg={detail.epg} loading={loadingState} />
+									<ChannelSchedule channel={detail} onPlay={onPlay} />
+								</>
 							) : (
 								<p className="dialog-overview">{detail.overview || t("dialog.noSynopsis")}</p>
 							)}
@@ -756,5 +762,104 @@ function ChannelGuide({ epg, loading }: { epg?: MediaItem["epg"]; loading?: bool
 				</div>
 			) : null}
 		</div>
+	);
+}
+
+/**
+ * The day's guide for a channel. Earlier programmes the provider keeps in
+ * its archive can be watched back from the start.
+ */
+function ChannelSchedule({
+	channel,
+	onPlay,
+}: {
+	channel: MediaItem;
+	onPlay?: (item: MediaItem, queue?: MediaItem[]) => void;
+}) {
+	const { t } = useI18n();
+	const listRef = useRef<HTMLOListElement>(null);
+	const schedule = channel.schedule ?? [];
+	const now = Date.now();
+	const currentIndex = schedule.findIndex((programme) => programme.end > now);
+
+	useEffect(() => {
+		const current = listRef.current?.querySelector<HTMLElement>(".channel-schedule-now");
+		if (current && listRef.current)
+			listRef.current.scrollTop = Math.max(0, current.offsetTop - listRef.current.offsetTop - 80);
+	}, [schedule.length]);
+
+	if (schedule.length < 3) return null;
+
+	function replay(programme: (typeof schedule)[number]) {
+		if (!programme.replayId) return;
+		onPlay?.({
+			id: programme.replayId,
+			source: "iptv",
+			type: "episode",
+			title: programme.title,
+			seriesTitle: channel.title,
+			overview: programme.description,
+			runtimeMinutes: Math.round((programme.end - programme.start) / 60_000),
+			genres: channel.genres,
+			posterUrl: channel.posterUrl,
+			logoUrl: channel.logoUrl,
+			airing: { title: programme.title, start: programme.start, end: programme.end },
+			streamUrl: programme.replayId,
+		});
+	}
+
+	let lastDay = "";
+	return (
+		<section className="channel-schedule">
+			<p className="eyebrow">{t("dialog.schedule")}</p>
+			<ol ref={listRef}>
+				{schedule.map((programme, index) => {
+					const day = new Date(programme.start).toLocaleDateString([], {
+						weekday: "long",
+						day: "numeric",
+						month: "long",
+					});
+					const showDay = day !== lastDay;
+					lastDay = day;
+					const state =
+						index < currentIndex
+							? "past"
+							: index === currentIndex && programme.start <= now
+								? "now"
+								: "later";
+					return (
+						<li key={programme.start} className={`channel-schedule-${state}`}>
+							{showDay ? <p className="channel-schedule-day">{day}</p> : null}
+							<div className="channel-schedule-row">
+								<span className="channel-schedule-time">{formatClock(programme.start)}</span>
+								<span className="channel-schedule-copy">
+									<strong>{programme.title}</strong>
+									{programme.description ? <span>{programme.description}</span> : null}
+								</span>
+								{state === "now" ? (
+									<button
+										type="button"
+										className="secondary-action channel-schedule-action"
+										onClick={() => onPlay?.(channel)}
+										data-tv-focusable="true"
+									>
+										<Play size={14} fill="currentColor" /> {t("dialog.watchLive")}
+									</button>
+								) : programme.replayId ? (
+									<button
+										type="button"
+										className="secondary-action channel-schedule-action"
+										onClick={() => replay(programme)}
+										data-tv-focusable="true"
+									>
+										<RotateCcw size={14} /> {t("dialog.watchBack")}
+									</button>
+								) : null}
+							</div>
+						</li>
+					);
+				})}
+			</ol>
+		</section>
 	);
 }

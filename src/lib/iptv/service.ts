@@ -17,8 +17,17 @@ import {
 	type IptvCatalog,
 	type SeriesInfo,
 	type VodInfo,
+	visibleCatalog,
 } from "./catalog";
-import { episodePid, iptvId, isIptvId, parseIptvId, splitEpisodePid } from "./ids";
+import {
+	episodePid,
+	iptvId,
+	isIptvId,
+	parseIptvId,
+	replayPid,
+	splitEpisodePid,
+	splitReplayPid,
+} from "./ids";
 import {
 	type ArtworkResolver,
 	catalogItem,
@@ -29,8 +38,10 @@ import {
 	type IptvItemState,
 	movieDetails,
 	movieItem,
+	replayItem,
 	seriesDetails,
 } from "./mapping";
+import { DEFAULT_SOURCE_OPTIONS, type IptvSourceOptions } from "./source";
 
 /** Where IPTV state lives: SQLite on the server, the device in the app. */
 export interface IptvStateStore {
@@ -45,9 +56,13 @@ export interface IptvStateStore {
 /** What the server and the native app each provide to the shared logic. */
 export interface IptvBackend {
 	sourceIds(): Promise<string[]>;
+	/** Hidden categories and adult content per source. */
+	options(source: string): Promise<IptvSourceOptions>;
 	catalog(source: string): Promise<IptvCatalog>;
 	vodInfo(catalog: IptvCatalog, pid: string): Promise<VodInfo | undefined>;
 	seriesInfo(catalog: IptvCatalog, pid: string): Promise<SeriesInfo>;
+	/** A channel's guide for several days, earlier programmes included. */
+	schedule(catalog: IptvCatalog, channel: CatalogChannel): Promise<EpgProgramme[]>;
 	/** Guide programmes whose title matches, when a full guide is loaded. */
 	searchGuide?(catalog: IptvCatalog, query: PreparedQuery): Promise<GuideMatch[]>;
 	/** Guide data for these channels, keyed by channel pid. Best effort. */
@@ -81,9 +96,17 @@ export interface IptvOverview {
 	series: number;
 }
 
+/** Every source's catalog as people browse it (hidden categories left out). */
 async function catalogs(backend: IptvBackend) {
 	const ids = await backend.sourceIds();
-	const results = await Promise.allSettled(ids.map((id) => backend.catalog(id)));
+	const results = await Promise.allSettled(
+		ids.map(async (id) =>
+			visibleCatalog(
+				await backend.catalog(id),
+				await backend.options(id).catch(() => DEFAULT_SOURCE_OPTIONS),
+			),
+		),
+	);
 	return results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
 }
 
@@ -408,13 +431,33 @@ export async function iptvItemDetails(
 	if (parts.kind === "live") {
 		const channel = findEntry(catalog, "live", parts.pid);
 		if (!channel) throw new Error("Unknown channel");
-		const guide = await withEpg(backend, catalog, [channel]);
-		return detailed(
-			channelItem(catalog.source, channel, backend.art, state, guide.get(channel.pid)),
-			{
-				tags: channel.group ? [channel.group] : [],
-			},
+		const [guide, schedule] = await Promise.all([
+			withEpg(backend, catalog, [channel]),
+			channelSchedule(backend, catalog, channel),
+		]);
+		const item = channelItem(
+			catalog.source,
+			channel,
+			backend.art,
+			state,
+			guide.get(channel.pid) ?? schedule,
 		);
+		return detailed(
+			{ ...item, schedule: scheduleWithReplays(catalog.source, channel, schedule) },
+			{ tags: channel.group ? [channel.group] : [] },
+		);
+	}
+	if (parts.kind === "arc") {
+		const replay = splitReplayPid(parts.pid);
+		const channel = replay ? findEntry(catalog, "live", replay.channel) : undefined;
+		if (!replay || !channel) throw new Error("Unknown recording");
+		const schedule = await channelSchedule(backend, catalog, channel);
+		const programme = schedule.find((entry) => entry.start === replay.start) ?? {
+			title: channel.title,
+			start: replay.start,
+			end: replay.end,
+		};
+		return detailed(replayItem(catalog.source, channel, programme, backend.art, state));
 	}
 	if (parts.kind === "vod") {
 		const movie = findEntry(catalog, "vod", parts.pid);
@@ -453,11 +496,48 @@ export async function iptvSeriesDetails(
 	return seriesDetails(catalog.source, info, backend.art, (key) => states.get(key), similar);
 }
 
+/** The guide around now: what already aired today and what's still to come. */
+async function channelSchedule(
+	backend: IptvBackend,
+	catalog: IptvCatalog,
+	channel: CatalogChannel,
+) {
+	const programmes = await backend.schedule(catalog, channel).catch(() => [] as EpgProgramme[]);
+	const now = Date.now();
+	const from = now - 24 * 3600_000;
+	const until = now + 18 * 3600_000;
+	return programmes.filter((programme) => programme.end > from && programme.start < until);
+}
+
+/** Mark the programmes that can be watched back from the provider's archive. */
+function scheduleWithReplays(source: string, channel: CatalogChannel, schedule: EpgProgramme[]) {
+	const now = Date.now();
+	const oldest = now - (channel.archiveDays ?? 0) * 24 * 3600_000;
+	return schedule.map((programme) => ({
+		title: programme.title,
+		start: programme.start,
+		end: programme.end,
+		description: programme.description,
+		replayId:
+			channel.archiveDays &&
+			programme.start >= oldest &&
+			programme.end <= now &&
+			programme.archive !== false
+				? iptvId(source, "arc", replayPid(channel.pid, programme.start, programme.end))
+				: undefined,
+	}));
+}
+
 /** Titles from the same provider category. */
 export async function relatedIptv(backend: IptvBackend, id: string, limit = 12) {
 	const { parts, catalog } = await catalogFor(backend, id);
-	const kind = parts.kind === "ep" ? "series" : parts.kind;
-	const pid = parts.kind === "ep" ? splitEpisodePid(parts.pid)?.series : parts.pid;
+	const kind = parts.kind === "ep" ? "series" : parts.kind === "arc" ? "live" : parts.kind;
+	const pid =
+		parts.kind === "ep"
+			? splitEpisodePid(parts.pid)?.series
+			: parts.kind === "arc"
+				? splitReplayPid(parts.pid)?.channel
+				: parts.pid;
 	const entry = pid ? findEntry(catalog, kind, pid) : undefined;
 	if (!entry) return [];
 	const siblings = listFor(catalog, kind)

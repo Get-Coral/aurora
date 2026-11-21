@@ -22,6 +22,24 @@ export type IptvSourceConfig =
 	| { kind: "m3u"; url: string; epgUrl?: string }
 	| { kind: "direct"; url: string };
 
+/** How a source is shown: categories to leave out and adult content. */
+export interface IptvSourceOptions {
+	hiddenGroups: string[];
+	showAdult: boolean;
+}
+
+export const DEFAULT_SOURCE_OPTIONS: IptvSourceOptions = { hiddenGroups: [], showAdult: false };
+
+export function normalizeSourceOptions(value: unknown): IptvSourceOptions {
+	const input = (value && typeof value === "object" ? value : {}) as Partial<IptvSourceOptions>;
+	return {
+		hiddenGroups: Array.isArray(input.hiddenGroups)
+			? [...new Set(input.hiddenGroups.filter((group) => typeof group === "string"))].slice(0, 5000)
+			: [],
+		showAdult: input.showAdult === true,
+	};
+}
+
 /** What Aurora may show about a saved source: never a password or full URL. */
 export interface IptvSourceSummary {
 	id: string;

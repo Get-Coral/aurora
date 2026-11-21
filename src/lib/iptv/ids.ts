@@ -5,9 +5,9 @@
  * signed stream token (which splits on dots), and they never contain provider
  * credentials or URLs.
  */
-export type IptvKind = "live" | "vod" | "series" | "ep";
+export type IptvKind = "live" | "vod" | "series" | "ep" | "arc";
 
-const KINDS = new Set<IptvKind>(["live", "vod", "series", "ep"]);
+const KINDS = new Set<IptvKind>(["live", "vod", "series", "ep", "arc"]);
 const PART = /^[a-z0-9_]+$/;
 
 export interface IptvIdParts {
@@ -59,4 +59,16 @@ export function stableHash(value: string) {
 	h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
 	h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
 	return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+/** Catch-up recordings: `<channelPid>_<startMinute>_<minutes>`. */
+export function replayPid(channelPid: string, start: number, end: number) {
+	return `${channelPid}_${Math.floor(start / 60_000)}_${Math.max(1, Math.ceil((end - start) / 60_000))}`;
+}
+
+export function splitReplayPid(pid: string) {
+	const match = pid.match(/^([a-z0-9]+)_(\d+)_(\d+)$/);
+	if (!match) return null;
+	const start = Number(match[2]) * 60_000;
+	return { channel: match[1] as string, start, end: start + Number(match[3]) * 60_000 };
 }

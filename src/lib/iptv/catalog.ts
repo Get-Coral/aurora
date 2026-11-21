@@ -6,6 +6,8 @@ export interface EpgProgramme {
 	start: number;
 	end: number;
 	description?: string;
+	/** The provider keeps a recording to watch back. */
+	archive?: boolean;
 }
 
 interface CatalogEntryBase {
@@ -196,4 +198,64 @@ export function tidyGuide(programmes: EpgProgramme[]) {
 		kept.push(programme);
 	}
 	return kept;
+}
+
+const views = new WeakMap<IptvCatalog, Map<string, IptvCatalog>>();
+
+/**
+ * The catalog as people browse it: without hidden categories, and without
+ * adult content unless the source allows it. Views are cached per catalog.
+ */
+export function visibleCatalog(
+	catalog: IptvCatalog,
+	options: { hiddenGroups: string[]; showAdult: boolean },
+): IptvCatalog {
+	if (!options.hiddenGroups.length && options.showAdult) return catalog;
+	const key = `${options.showAdult}|${options.hiddenGroups.join("\u0000")}`;
+	let cache = views.get(catalog);
+	const cached = cache?.get(key);
+	if (cached) return cached;
+	const hidden = new Set(options.hiddenGroups.map((group) => `${group}`));
+	const keep = (entry: CatalogEntry) =>
+		!hidden.has(`${entry.kind}:${entry.group}`) && (options.showAdult || !entry.adult);
+	const view = {
+		...catalog,
+		channels: catalog.channels.filter(keep),
+		movies: catalog.movies.filter(keep),
+		series: catalog.series.filter(keep),
+	};
+	if (!cache) {
+		cache = new Map();
+		views.set(catalog, cache);
+	}
+	cache.clear();
+	cache.set(key, view);
+	return view;
+}
+
+export interface CatalogGroup {
+	kind: "live" | "vod" | "series";
+	name: string;
+	count: number;
+	adult: boolean;
+}
+
+/** Categories per kind with their size, for the category picker. */
+export function catalogGroups(catalog: IptvCatalog): CatalogGroup[] {
+	const groups = new Map<string, CatalogGroup>();
+	for (const entry of catalogEntries(catalog)) {
+		const key = `${entry.kind}:${entry.group}`;
+		const group = groups.get(key) ?? {
+			kind: entry.kind,
+			name: entry.group,
+			count: 0,
+			adult: false,
+		};
+		group.count++;
+		group.adult ||= Boolean(entry.adult);
+		groups.set(key, group);
+	}
+	return [...groups.values()].sort(
+		(a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name),
+	);
 }

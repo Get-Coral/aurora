@@ -260,6 +260,8 @@ describe("Xtream API", () => {
 		const states = new Map<string, { favorite: boolean }>();
 		const backend: IptvBackend = {
 			sourceIds: async () => ["ab12"],
+			options: async () => ({ hiddenGroups: [], showAdult: false }),
+			schedule: async () => [],
 			catalog: async () => catalog,
 			vodInfo: async () => undefined,
 			seriesInfo: async () => ({ series: catalog.series[0]!, episodes: [] }),
@@ -296,7 +298,7 @@ describe("XMLTV", () => {
 
 	it("keeps wanted channels in the window across chunk boundaries", () => {
 		const now = Date.UTC(2026, 10, 20, 22, 0);
-		const reader = createXmltvReader(new Set(["a.be"]), now, 3 * 3600_000);
+		const reader = createXmltvReader(new Set(["a.be"]), now, 3 * 3600_000, 0);
 		const xml = [
 			'<tv><channel id="a.be"><display-name>A</display-name></channel>',
 			'<programme start="20261120200000 +0000" stop="20261120210000 +0000" channel="a.be"><title>Old</title></programme>',
@@ -320,5 +322,65 @@ describe("XMLTV", () => {
 				end: Date.UTC(2026, 10, 20, 23, 30),
 			},
 		]);
+	});
+});
+
+describe("catch-up and categories", () => {
+	it("builds timeshift links in the panel's time zone", async () => {
+		const { timeshiftStart, xtreamTimeshiftUrl } = await import("./xtream");
+		const start = Date.UTC(2026, 10, 21, 12, 0);
+		expect(timeshiftStart(start, "Europe/Amsterdam")).toBe("2026-11-21:13-00");
+		expect(timeshiftStart(start)).toBe("2026-11-21:12-00");
+		const url = xtreamTimeshiftUrl(
+			{ ...config, liveExt: "ts", hls: true, timezone: "Europe/Amsterdam" },
+			"3",
+			start,
+			30,
+		);
+		expect(url.href).toBe(`${provider}/timeshift/demo/test-secret/30/2026-11-21:13-00/3.m3u8`);
+	});
+
+	it("resolves recordings only inside the archive window", async () => {
+		const { replayPid } = await import("./ids");
+		const catalog = {
+			source: "ab12",
+			loadedAt: 0,
+			...(await loadXtreamCatalog(config, api(xtreamResponses))),
+		};
+		catalog.channels[0] = { ...catalog.channels[0]!, archiveDays: 2 };
+		const end = Date.now() - 3600_000;
+		const recent = replayPid("3", end - 1800_000, end);
+		const target = await resolveStream(
+			catalog,
+			{ source: "ab12", kind: "arc", pid: recent },
+			{ seriesInfo: async () => ({ series: catalog.series[0]!, episodes: [] }) },
+		);
+		expect(target).toMatchObject({ format: "hls", live: false, durationSeconds: 1800 });
+		const old = replayPid("3", Date.now() - 5 * 86400_000, Date.now() - 5 * 86400_000 + 60_000);
+		await expect(
+			resolveStream(
+				catalog,
+				{ source: "ab12", kind: "arc", pid: old },
+				{ seriesInfo: async () => ({ series: catalog.series[0]!, episodes: [] }) },
+			),
+		).rejects.toThrow();
+	});
+
+	it("hides categories and adult content from the browsing view", async () => {
+		const { visibleCatalog, catalogGroups } = await import("./catalog");
+		const catalog = {
+			source: "ab12",
+			loadedAt: 0,
+			...(await loadXtreamCatalog(config, api(xtreamResponses))),
+		};
+		catalog.movies.push({ ...catalog.movies[0]!, pid: "6", adult: true });
+		const view = visibleCatalog(catalog, { hiddenGroups: ["live:Belgium"], showAdult: false });
+		expect(view.channels).toHaveLength(0);
+		expect(view.movies.map((movie) => movie.pid)).toEqual(["5"]);
+		expect(visibleCatalog(catalog, { hiddenGroups: [], showAdult: true })).toBe(catalog);
+		expect(catalogGroups(catalog).find((group) => group.kind === "live")).toMatchObject({
+			name: "Belgium",
+			count: 1,
+		});
 	});
 });

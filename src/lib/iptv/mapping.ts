@@ -9,7 +9,7 @@ import type {
 	SeriesInfo,
 	VodInfo,
 } from "./catalog";
-import { episodePid, iptvId } from "./ids";
+import { episodePid, iptvId, replayPid } from "./ids";
 
 export type ArtworkSlot = "poster" | "backdrop" | "logo" | "still";
 
@@ -81,6 +81,36 @@ export function channelItem(
 			streamUrl: id,
 			epg: channelProgrammes(epg),
 			overview: channelProgrammes(epg)?.now?.description,
+		},
+		state,
+	);
+}
+
+/** A past programme from a channel's archive, played like an episode. */
+export function replayItem(
+	source: string,
+	channel: CatalogChannel,
+	programme: EpgProgramme,
+	art: ArtworkResolver,
+	state?: IptvItemState,
+): MediaItem {
+	const id = iptvId(source, "arc", replayPid(channel.pid, programme.start, programme.end));
+	const logo = art(channel.logo, "logo");
+	return applyState(
+		{
+			id,
+			source: "iptv",
+			type: "episode",
+			title: programme.title,
+			seriesTitle: channel.title,
+			overview: programme.description,
+			runtimeMinutes: Math.round((programme.end - programme.start) / 60_000),
+			genres: channel.group ? [channel.group] : [],
+			group: channel.group || undefined,
+			posterUrl: logo,
+			logoUrl: logo,
+			airing: { title: programme.title, start: programme.start, end: programme.end },
+			streamUrl: id,
 		},
 		state,
 	);

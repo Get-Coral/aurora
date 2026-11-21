@@ -51,7 +51,7 @@ function sourceError(error: unknown) {
 export const fetchIptvSources = createServerFn({ method: "GET" })
 	.middleware([adminRequiredMiddleware])
 	.handler(async () => {
-		const [store, { getCookie, deleteCookie }, { iptvEnabled }, { cachedCatalogLoadedAt }] =
+		const [store, { getCookie, deleteCookie }, { iptvEnabled }, { cachedCatalog }] =
 			await Promise.all([
 				import("../../lib/iptv-source-store"),
 				import("@tanstack/react-start/server"),
@@ -69,10 +69,21 @@ export const fetchIptvSources = createServerFn({ method: "GET" })
 		}
 		return {
 			enabled: iptvEnabled(),
-			sources: store.listIptvSources().map((source) => ({
-				...source,
-				loadedAt: cachedCatalogLoadedAt(source.id),
-			})),
+			sources: store.listIptvSources().map((source) => {
+				const catalog = cachedCatalog(source.id);
+				return {
+					...source,
+					loadedAt: catalog?.loadedAt,
+					account: catalog?.account,
+					counts: catalog
+						? {
+								live: catalog.channels.length,
+								movies: catalog.movies.length,
+								series: catalog.series.length,
+							}
+						: undefined,
+				};
+			}),
 		};
 	});
 
@@ -148,6 +159,7 @@ export const refreshIptvSourceFn = createServerFn({ method: "POST" })
 				movies: catalog.movies.length,
 				series: catalog.series.length,
 				loadedAt: catalog.loadedAt,
+				account: catalog.account,
 			};
 		} catch (error) {
 			throw sourceError(error);
@@ -285,5 +297,31 @@ export const setIptvPlayed = createServerFn({ method: "POST" })
 			positionTicks: 0,
 			lastPlayedAt: data.played ? Date.now() : current?.lastPlayedAt,
 		}));
+		return { ok: true };
+	});
+
+/** Categories of a source with their size, plus what is hidden. */
+export const fetchIptvSourceGroups = createServerFn({ method: "GET" })
+	.middleware([adminRequiredMiddleware])
+	.validator((input: { id: string }) => input)
+	.handler(async ({ data }) => {
+		const [{ catalogGroups }, cache, store] = await Promise.all([
+			import("../../lib/iptv/catalog"),
+			import("../iptv/backend"),
+			import("../../lib/iptv-source-store"),
+		]);
+		const catalog = await cache.loadServerCatalog(data.id);
+		return { groups: catalogGroups(catalog), options: store.getIptvSourceOptions(data.id) };
+	});
+
+export const saveIptvSourceOptionsFn = createServerFn({ method: "POST" })
+	.middleware([adminRequiredMiddleware])
+	.validator(
+		(input: { id: string; options: import("../../lib/iptv/source").IptvSourceOptions }) => input,
+	)
+	.handler(async ({ data }) => {
+		const store = await import("../../lib/iptv-source-store");
+		if (!store.getIptvSource(data.id)) throw new Error("Unknown IPTV source");
+		store.setIptvSourceOptions(data.id, data.options);
 		return { ok: true };
 	});

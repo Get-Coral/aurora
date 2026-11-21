@@ -3,6 +3,8 @@ import {
 	Airplay,
 	Captions,
 	Cast,
+	ChevronDown,
+	ChevronUp,
 	Film,
 	Languages,
 	Maximize,
@@ -262,6 +264,11 @@ export function MediaPlayerDialog({
 	} | null>(null);
 	const [playbackError, setPlaybackError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
+	const limitRetryRef = useRef(false);
+	const itemId = item?.id;
+	useEffect(() => {
+		if (itemId) limitRetryRef.current = false;
+	}, [itemId]);
 	const [engineTracks, setEngineTracks] = useState<{
 		audio: StreamTrack[];
 		subtitles: StreamTrack[];
@@ -395,6 +402,15 @@ export function MediaPlayerDialog({
 	const currentIndex = item && queue?.length ? queue.findIndex((q) => q.id === item.id) : -1;
 	const nextItem = currentIndex >= 0 ? (queue?.[currentIndex + 1] ?? null) : null;
 	const showNextButton = item?.type === "episode" && nextItem !== null;
+	// Zapping: live channels step through the list they were started from.
+	const channelQueue = isLive ? (queue ?? []).filter((entry) => entry.type === "channel") : [];
+	const channelIndex = item ? channelQueue.findIndex((entry) => entry.id === item.id) : -1;
+	const canZap = channelIndex >= 0 && channelQueue.length > 1;
+	function zap(step: 1 | -1) {
+		if (!canZap) return;
+		const target = channelQueue[(channelIndex + step + channelQueue.length) % channelQueue.length];
+		if (target) onSelectQueueItem?.(target);
+	}
 	const displayedQualityLabel =
 		manualQualityIndex == null
 			? t("player.qualityAuto")
@@ -646,7 +662,14 @@ export function MediaPlayerDialog({
 			if (disposed || failed) return;
 			failed = true;
 			const fallbackUrl = session.fallbackUrl;
-			if (fallbackUrl && status !== 421 && status !== 410) {
+			// Zapping: the provider may still count the previous channel for a
+			// moment. Try once more before telling the viewer.
+			if (status === 429 && !limitRetryRef.current) {
+				limitRetryRef.current = true;
+				setTimeout(() => setAttempt((value) => value + 1), 2500);
+				return;
+			}
+			if (fallbackUrl && status !== 421 && status !== 410 && status !== 429) {
 				setPlaybackSession((current) =>
 					current
 						? {
@@ -660,13 +683,15 @@ export function MediaPlayerDialog({
 			}
 			setIsBuffering(false);
 			setPlaybackError(
-				status === 421
-					? "iptv.blockedOrigin"
-					: status === 410
-						? "iptv.staleStream"
-						: status === 401 || status === 403
-							? "iptv.providerRefused"
-							: "iptv.playError",
+				status === 429
+					? "iptv.connectionLimit"
+					: status === 421
+						? "iptv.blockedOrigin"
+						: status === 410
+							? "iptv.staleStream"
+							: status === 401 || status === 403
+								? "iptv.providerRefused"
+								: "iptv.playError",
 			);
 		};
 		const onError = () => fail();
@@ -1143,7 +1168,8 @@ export function MediaPlayerDialog({
 		if (!video || !open) return;
 
 		function handleEnded() {
-			if (nextItem) setAutoplayCountdown(10);
+			// A live stream that ends has dropped; never zap away on its own.
+			if (nextItem && !isLive) setAutoplayCountdown(10);
 		}
 
 		video.addEventListener("ended", handleEnded);
@@ -1213,6 +1239,12 @@ export function MediaPlayerDialog({
 			if (e.key === " " || e.key === "k") {
 				e.preventDefault();
 				video.paused ? void video.play() : video.pause();
+			} else if (
+				isLive &&
+				["ArrowUp", "ArrowDown", "PageUp", "PageDown", "ChannelUp", "ChannelDown"].includes(e.key)
+			) {
+				e.preventDefault();
+				zap(e.key === "ArrowUp" || e.key === "PageUp" || e.key === "ChannelUp" ? -1 : 1);
 			} else if (e.key === "ArrowLeft") {
 				seekToMovieTime(currentTime - 15);
 			} else if (e.key === "ArrowRight") {
@@ -1231,7 +1263,17 @@ export function MediaPlayerDialog({
 		}
 		window.addEventListener("keydown", handleKeydown);
 		return () => window.removeEventListener("keydown", handleKeydown);
-	}, [currentTime, open, onClose, subtitlePickerOpen, qualityPickerOpen, audioPickerOpen]);
+	}, [
+		currentTime,
+		open,
+		onClose,
+		subtitlePickerOpen,
+		qualityPickerOpen,
+		audioPickerOpen,
+		isLive,
+		channelIndex,
+		channelQueue.length,
+	]);
 
 	function closePickers() {
 		setSubtitlePickerOpen(false);
@@ -1815,6 +1857,31 @@ export function MediaPlayerDialog({
 										<Radio size={14} /> {t("player.live")}
 									</span>
 									{item.epg?.now ? <span>{item.epg.now.title}</span> : null}
+									{canZap ? (
+										<span className="player-zap">
+											<button
+												type="button"
+												className="icon-button"
+												onClick={() => zap(-1)}
+												aria-label={t("player.previousChannel")}
+												title={t("player.previousChannel")}
+											>
+												<ChevronUp size={18} />
+											</button>
+											<span className="player-zap-position">
+												{channelIndex + 1} / {channelQueue.length}
+											</span>
+											<button
+												type="button"
+												className="icon-button"
+												onClick={() => zap(1)}
+												aria-label={t("player.nextChannel")}
+												title={t("player.nextChannel")}
+											>
+												<ChevronDown size={18} />
+											</button>
+										</span>
+									) : null}
 								</div>
 							) : (
 								<div

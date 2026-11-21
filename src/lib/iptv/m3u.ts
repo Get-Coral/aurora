@@ -57,6 +57,7 @@ export function parseIptvPlaylist(text: string, base: URL): ParsedPlaylist {
 		if (seen.has(pid)) continue;
 		seen.add(pid);
 		const group = attribute(entry, "group-title");
+		const adult = /\b(xxx|adults?|18\+|porn|erotic)\b/i.test(group) || undefined;
 		const logo = artworkSource(attribute(entry, "tvg-logo"));
 		const vod =
 			/\/(movie|series)\//i.test(url.pathname) ||
@@ -69,6 +70,7 @@ export function parseIptvPlaylist(text: string, base: URL): ParsedPlaylist {
 				title,
 				year,
 				group,
+				adult,
 				poster: logo,
 				ext: url.pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() ?? "mp4",
 				src: url.href,
@@ -79,6 +81,7 @@ export function parseIptvPlaylist(text: string, base: URL): ParsedPlaylist {
 				pid,
 				title: cleanTitle(name).title,
 				group,
+				adult,
 				number: parseNumber(attribute(entry, "tvg-chno")),
 				logo,
 				epgId: attribute(entry, "tvg-id") || undefined,

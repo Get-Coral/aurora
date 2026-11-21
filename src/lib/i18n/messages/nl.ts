@@ -486,4 +486,23 @@ export const nlMessages: MessageDictionary = {
 	"search.emptyFor": ({ query } = {}) => `Geen resultaten voor “${query}”.`,
 	"search.allResults": ({ query } = {}) => `Alle resultaten voor “${query}”`,
 	"search.showAll": ({ count } = {}) => `Toon alle ${count}`,
+	"iptv.categories": "Categorieën",
+	"iptv.categoriesCopy":
+		"Kies welke categorieën in Aurora verschijnen. Verborgen categorieën blijven weg uit Home, Live tv en zoeken.",
+	"iptv.showAdult": "Inhoud voor volwassenen tonen",
+	"iptv.filterCategories": "Categorieën filteren",
+	"iptv.showListed": "Deze tonen",
+	"iptv.hideListed": "Deze verbergen",
+	"iptv.noCategory": "Geen categorie",
+	"iptv.account.trial": "Proefperiode",
+	"iptv.connectionLimit":
+		"Je IPTV-abonnement streamt al op een ander toestel en laat maar een beperkt aantal tegelijk toe. Stop de andere stream en probeer opnieuw.",
+	"iptv.account.expires": ({ date } = {}) => `Actief tot ${date}`,
+	"iptv.account.expired": ({ date } = {}) => `Verlopen op ${date}`,
+	"iptv.account.connections": ({ count } = {}) =>
+		`${count} ${Number(count) === 1 ? "verbinding" : "verbindingen"}`,
+	"dialog.schedule": "Tv-gids",
+	"dialog.watchBack": "Terugkijken",
+	"player.previousChannel": "Vorige zender",
+	"player.nextChannel": "Volgende zender",
 };

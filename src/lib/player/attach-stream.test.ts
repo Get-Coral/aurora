@@ -5,13 +5,17 @@ const chrome = { canPlayType: () => "", mse: true };
 const safari = {
 	canPlayType: (type: string) => (type === "application/vnd.apple.mpegurl" ? "maybe" : ""),
 	mse: true,
+	preferNativeHls: true,
 };
+// Recent Chrome reports native HLS too, but hls.js handles IPTV better.
+const chromeWithHls = { ...safari, preferNativeHls: false };
 const iosWithoutMse = { ...safari, mse: false };
 
 describe("choosePlaybackEngine", () => {
 	it.each([
 		["hls", chrome, "hls.js"],
 		["hls", safari, "native"],
+		["hls", chromeWithHls, "hls.js"],
 		["hls", iosWithoutMse, "native"],
 		["ts", chrome, "mpegts"],
 		["ts", iosWithoutMse, "unsupported"],

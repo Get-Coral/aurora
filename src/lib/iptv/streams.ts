@@ -1,8 +1,8 @@
 import type { IptvCatalog, SeriesInfo } from "./catalog";
 import { findEntry } from "./catalog";
-import { type IptvIdParts, splitEpisodePid } from "./ids";
+import { type IptvIdParts, splitEpisodePid, splitReplayPid } from "./ids";
 import { httpUrl, type StreamFormat, streamFormat } from "./urls";
-import { xtreamStreamUrl } from "./xtream";
+import { xtreamStreamUrl, xtreamTimeshiftUrl } from "./xtream";
 
 export interface StreamTarget {
 	url: URL;
@@ -67,6 +67,21 @@ export async function resolveStream(
 			format: streamFormat(url, false),
 			live: false,
 			durationSeconds: episode.durationSeconds,
+		};
+	}
+	if (parts.kind === "arc") {
+		const replay = splitReplayPid(parts.pid);
+		const channel = replay && findEntry(catalog, "live", replay.channel);
+		if (!replay || !channel || !xtream || !channel.archiveDays) throw new Error("No recording");
+		const oldest = Date.now() - channel.archiveDays * 24 * 3600_000;
+		if (replay.start < oldest || replay.start > Date.now()) throw new Error("No recording");
+		const minutes = Math.round((replay.end - replay.start) / 60_000);
+		const url = xtreamTimeshiftUrl(xtream, channel.pid, replay.start, minutes);
+		return {
+			url,
+			format: xtream.hls ? "hls" : "ts",
+			live: false,
+			durationSeconds: minutes * 60,
 		};
 	}
 	throw new Error("Not playable");

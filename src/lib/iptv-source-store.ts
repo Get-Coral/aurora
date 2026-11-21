@@ -5,8 +5,10 @@ import { getAppDatabase } from "./config-store";
 import {
 	type IptvSourceConfig,
 	type IptvSourceInput,
+	type IptvSourceOptions,
 	type IptvSourceSummary,
 	normalizeSourceInput,
+	normalizeSourceOptions,
 	summarizeSource,
 } from "./iptv/source";
 import { m3uLegacyInput } from "./iptv/urls";
@@ -22,6 +24,11 @@ function database() {
 			"CREATE TABLE IF NOT EXISTS iptv_sources_v2 (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, config TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
 		].join(";\n"),
 	);
+	try {
+		db.exec("ALTER TABLE iptv_sources_v2 ADD COLUMN options TEXT");
+	} catch {
+		// Already there.
+	}
 	return db;
 }
 
@@ -168,4 +175,22 @@ export function migrateLegacyIptvSource(cookieId: string | undefined) {
 		database().prepare("DELETE FROM iptv_sources WHERE id = ?").run(storageId);
 	}
 	return true;
+}
+
+export function getIptvSourceOptions(id: string): IptvSourceOptions {
+	const row = database().prepare("SELECT options FROM iptv_sources_v2 WHERE id = ?").get(id) as
+		| { options?: string | null }
+		| undefined;
+	try {
+		return normalizeSourceOptions(row?.options ? JSON.parse(row.options) : {});
+	} catch {
+		return normalizeSourceOptions({});
+	}
+}
+
+/** Options aren't secret and don't change the catalog, so the cache stays. */
+export function setIptvSourceOptions(id: string, options: IptvSourceOptions) {
+	database()
+		.prepare("UPDATE iptv_sources_v2 SET options = ? WHERE id = ?")
+		.run(JSON.stringify(normalizeSourceOptions(options)), id);
 }

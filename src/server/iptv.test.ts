@@ -190,4 +190,30 @@ describe("IPTV routes", () => {
 			"test-secret",
 		);
 	});
+
+	it("keeps streaming a body past the connect timeout", async () => {
+		const { upstream } = await import("./iptv/network");
+		let signal: AbortSignal | undefined;
+		fetchMock.mockImplementationOnce(async (_url, init) => {
+			signal = init?.signal ?? undefined;
+			return new Response(
+				new ReadableStream({
+					async start(controller) {
+						await new Promise((resolve) => setTimeout(resolve, 80));
+						controller.enqueue(new TextEncoder().encode("still streaming"));
+						controller.close();
+					},
+				}),
+			);
+		});
+		const { response } = await upstream(
+			new URL(`${provider}/live/1.ts`),
+			new AbortController().signal,
+			{
+				timeoutMs: 20,
+			},
+		);
+		expect(await response.text()).toBe("still streaming");
+		expect(signal?.aborted).toBe(false);
+	});
 });

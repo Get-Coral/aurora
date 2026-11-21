@@ -106,12 +106,20 @@ export async function upstream(
 		const allowed =
 			isAllowedOrigin(url) || ((hops > 0 || options.trusted) && (await isAllowedHop(url)));
 		if (!allowed) throw new IptvSourceError("origin");
-		const timeout = AbortSignal.timeout(options.timeoutMs ?? 15_000);
-		const response = await fetch(url, {
-			redirect: "manual",
-			signal: AbortSignal.any([signal, timeout]),
-			headers: options.range ? { ...baseHeaders, range: options.range } : baseHeaders,
-		});
+		// The time limit covers connecting and the response headers only: a live
+		// channel or a long recording keeps streaming its body for hours.
+		const timeout = new AbortController();
+		const timer = setTimeout(() => timeout.abort(), options.timeoutMs ?? 15_000);
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				redirect: "manual",
+				signal: AbortSignal.any([signal, timeout.signal]),
+				headers: options.range ? { ...baseHeaders, range: options.range } : baseHeaders,
+			});
+		} finally {
+			clearTimeout(timer);
+		}
 		const location = response.headers.get("location");
 		if (response.status >= 300 && response.status < 400 && location) {
 			await response.body?.cancel();

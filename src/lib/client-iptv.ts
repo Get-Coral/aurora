@@ -3,7 +3,7 @@
  * talks to the provider itself: sources and state live on the device, and the
  * catalog is cached in IndexedDB because it is far too big for localStorage.
  */
-import type { EpgProgramme, IptvCatalog, SeriesInfo, VodInfo } from "./iptv/catalog";
+import type { EpgProgramme, IptvAccount, IptvCatalog, SeriesInfo, VodInfo } from "./iptv/catalog";
 import { findEntry } from "./iptv/catalog";
 import { parseIptvId } from "./iptv/ids";
 import type { ArtworkResolver, IptvItemState } from "./iptv/mapping";
@@ -11,15 +11,17 @@ import type { IptvBackend, IptvStateStore } from "./iptv/service";
 import {
 	type IptvSourceConfig,
 	type IptvSourceInput,
+	type IptvSourceOptions,
 	type IptvSourceSummary,
 	loadSourceCatalog,
 	normalizeSourceInput,
+	normalizeSourceOptions,
 	type ProviderFetchers,
 	summarizeSource,
 } from "./iptv/source";
 import { resolveStream } from "./iptv/streams";
 import { tmdbArtwork } from "./iptv/urls";
-import { getSeriesInfo, getShortEpg, getVodInfo } from "./iptv/xtream";
+import { getChannelSchedule, getSeriesInfo, getShortEpg, getVodInfo } from "./iptv/xtream";
 import type { MediaItem } from "./media";
 
 const SOURCES_KEY = "aurora.client.iptv-sources";
@@ -33,6 +35,7 @@ interface StoredSource {
 	name: string;
 	config: IptvSourceConfig;
 	updatedAt: number;
+	options?: IptvSourceOptions;
 }
 
 function readSources(): StoredSource[] {
@@ -140,7 +143,10 @@ async function loadCatalog(source: StoredSource, force = false): Promise<IptvCat
 		}
 	})();
 	memory.set(key, promise);
-	promise.catch(() => memory.delete(key));
+	promise.then(
+		(catalog) => loadedCatalogs.set(key, catalog),
+		() => memory.delete(key),
+	);
 	return promise;
 }
 
@@ -241,6 +247,9 @@ export function clientIptvBackend(): IptvBackend {
 		async sourceIds() {
 			return readSources().map((source) => source.id);
 		},
+		async options(source) {
+			return normalizeSourceOptions(readSources().find((entry) => entry.id === source)?.options);
+		},
 		catalog: (id) => loadCatalog(sourceById(id)),
 		vodInfo(catalog, pid) {
 			const xtream = catalog.xtream;
@@ -278,6 +287,11 @@ export function clientIptvBackend(): IptvBackend {
 			);
 			return guide;
 		},
+		async schedule(catalog, channel) {
+			const xtream = catalog.xtream;
+			if (!xtream || channel.src) return [];
+			return getChannelSchedule(xtream, fetchers.json, channel.pid).catch(() => []);
+		},
 		art: clientArtwork,
 		state: clientState,
 	};
@@ -285,10 +299,28 @@ export function clientIptvBackend(): IptvBackend {
 
 // --- Sources ----------------------------------------------------------------
 
-export function listClientIptvSources(): (IptvSourceSummary & { loadedAt?: number })[] {
-	return readSources().map((source) =>
-		summarizeSource(source.id, source.name, source.config, source.updatedAt),
-	);
+const loadedCatalogs = new Map<string, IptvCatalog>();
+
+export function listClientIptvSources(): (IptvSourceSummary & {
+	loadedAt?: number;
+	account?: IptvAccount;
+	counts?: { live: number; movies: number; series: number };
+})[] {
+	return readSources().map((source) => {
+		const catalog = loadedCatalogs.get(catalogKey(source));
+		return {
+			...summarizeSource(source.id, source.name, source.config, source.updatedAt),
+			loadedAt: catalog?.loadedAt,
+			account: catalog?.account,
+			counts: catalog
+				? {
+						live: catalog.channels.length,
+						movies: catalog.movies.length,
+						series: catalog.series.length,
+					}
+				: undefined,
+		};
+	});
 }
 
 export function hasClientIptvSources() {
@@ -318,7 +350,11 @@ export async function saveClientIptvSource(input: IptvSourceInput, id?: string) 
 	if (!catalog.channels.length && !catalog.movies.length && !catalog.series.length)
 		throw new Error("iptv.empty");
 	writeSources(
-		existing ? sources.map((source) => (source.id === id ? stored : source)) : [...sources, stored],
+		existing
+			? sources.map((source) =>
+					source.id === id ? { ...stored, options: source.options } : source,
+				)
+			: [...sources, stored],
 	);
 	if (existing) await idbPut(catalogKey(existing), undefined);
 	return {
@@ -344,6 +380,7 @@ export async function refreshClientIptvSource(id: string) {
 		movies: catalog.movies.length,
 		series: catalog.series.length,
 		loadedAt: catalog.loadedAt,
+		account: catalog.account,
 	};
 }
 
@@ -368,4 +405,22 @@ export async function beginClientIptvPlayback(id: string) {
 		transcoded: false,
 		durationSeconds,
 	};
+}
+
+export async function fetchClientIptvSourceGroups(id: string) {
+	const { catalogGroups } = await import("./iptv/catalog");
+	const source = sourceById(id);
+	return {
+		groups: catalogGroups(await loadCatalog(source)),
+		options: normalizeSourceOptions(source.options),
+	};
+}
+
+export function saveClientIptvSourceOptions(id: string, options: IptvSourceOptions) {
+	writeSources(
+		readSources().map((source) =>
+			source.id === id ? { ...source, options: normalizeSourceOptions(options) } : source,
+		),
+	);
+	return { ok: true };
 }

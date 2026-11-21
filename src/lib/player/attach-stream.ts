@@ -11,13 +11,21 @@ export interface EngineSupport {
 	canPlayType: (type: string) => string;
 	/** Media Source Extensions (or Apple's ManagedMediaSource) exist. */
 	mse: boolean;
+	/**
+	 * Apple's own HLS player is the best choice on Apple platforms (and the
+	 * only one AirPlay can take over). Elsewhere a browser's built-in HLS, as
+	 * in recent Chrome, copes worse with IPTV streams than hls.js.
+	 */
+	preferNativeHls?: boolean;
 }
 
 export function choosePlaybackEngine(format: StreamFormat, support: EngineSupport): PlaybackEngine {
 	if (format === "file") return "native";
 	if (format === "hls") {
-		if (support.canPlayType("application/vnd.apple.mpegurl")) return "native";
-		return support.mse ? "hls.js" : "unsupported";
+		const native = Boolean(support.canPlayType("application/vnd.apple.mpegurl"));
+		if (native && (support.preferNativeHls || !support.mse)) return "native";
+		if (support.mse) return "hls.js";
+		return native ? "native" : "unsupported";
 	}
 	if (support.canPlayType("video/mp2t")) return "native";
 	return support.mse ? "mpegts" : "unsupported";
@@ -32,6 +40,7 @@ export function browserEngineSupport(): EngineSupport {
 	return {
 		canPlayType: (type) => probe?.canPlayType(type) ?? "",
 		mse: Boolean(window.MediaSource || scope.ManagedMediaSource),
+		preferNativeHls: /Apple/.test(navigator.vendor),
 	};
 }
 

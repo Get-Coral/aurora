@@ -38,9 +38,11 @@ function dispatchSelect(item: MediaItem) {
 	window.dispatchEvent(new CustomEvent("aurora:select-media", { detail: item }));
 }
 
-function dispatchPlay(item: MediaItem) {
+function dispatchPlay(item: MediaItem, list: MediaItem[] = [item]) {
 	if (item.type === "series") return dispatchSelect(item);
-	window.dispatchEvent(new CustomEvent("aurora:play-media", { detail: { item, queue: [item] } }));
+	// Channels zap through the list on screen; titles play on their own.
+	const queue = item.type === "channel" ? list.filter((entry) => entry.type === "channel") : [item];
+	window.dispatchEvent(new CustomEvent("aurora:play-media", { detail: { item, queue } }));
 }
 
 function IptvPage() {
@@ -236,7 +238,7 @@ function IptvPage() {
 									priority={index < 8}
 									variant={tab === "live" ? "standard" : "poster"}
 									onClick={() => dispatchSelect(item)}
-									onPlay={dispatchPlay}
+									onPlay={(target) => dispatchPlay(target, items)}
 									onToggleFavorite={(target) =>
 										favoriteMutation.mutate({
 											id: target.id,
