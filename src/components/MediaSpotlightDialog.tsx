@@ -88,6 +88,23 @@ export function MediaSpotlightDialog({
 		enabled: open && Boolean(itemId) && item?.type === "series",
 	});
 
+	// On a TV, Play is where the remote should start, but a series' Play waits
+	// for its episodes, so the layer opened with focus on Close. Move it to
+	// Play once that can be pressed, unless the viewer has moved on.
+	const tvPlayRef = useRef<HTMLButtonElement>(null);
+	const tvPlayReady =
+		open && Boolean(onPlay) && !(item?.type === "series" ? seriesLoading : isLoading);
+	useEffect(() => {
+		const play = tvPlayRef.current;
+		if (!tvMode || !tvPlayReady || !play || play.disabled) return;
+		const active = document.activeElement;
+		const shell = play.closest(".tv-detail-shell");
+		if (!shell?.contains(active) || active?.classList.contains("tv-detail-close")) {
+			play.focus({ preventScroll: true });
+			play.scrollIntoView?.({ block: "nearest" });
+		}
+	}, [tvMode, tvPlayReady]);
+
 	if (!open || !item) return null;
 	const activeItem = item;
 
@@ -100,6 +117,7 @@ export function MediaSpotlightDialog({
 	const nextUp = activeItem.type === "series" ? (seriesData?.nextUp ?? []) : [];
 	const loadingState = activeItem.type === "series" ? seriesLoading : isLoading;
 	const resumable = isResumable(detail);
+	const playDisabled = !onPlay || (activeItem.type === "series" && loadingState);
 
 	const seasons = [...new Set(episodes.map((e) => e.seasonNumber ?? 1))].sort((a, b) => a - b);
 	const activeSeason = selectedSeason ?? nextUp[0]?.seasonNumber ?? seasons[0] ?? 1;
@@ -184,9 +202,10 @@ export function MediaSpotlightDialog({
 						<div className="tv-detail-actions">
 							<button
 								type="button"
+								ref={tvPlayRef}
 								className="primary-action"
 								onClick={playAction}
-								disabled={!onPlay || (activeItem.type === "series" && loadingState)}
+								disabled={playDisabled}
 								data-tv-autofocus
 							>
 								<Play size={20} fill="currentColor" /> {playLabel}

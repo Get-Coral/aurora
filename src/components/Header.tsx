@@ -61,6 +61,7 @@ export default function Header() {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [navOpen, setNavOpen] = useState(false);
 	const [profileOpen, setProfileOpen] = useState(false);
+	const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
 	const [loggingOut, setLoggingOut] = useState(false);
 	const headerRef = useRef<HTMLElement>(null);
 
@@ -197,11 +198,14 @@ export default function Header() {
 								aria-expanded={profileOpen}
 								data-tv-focusable="true"
 							>
-								{profile?.imageUrl ? (
+								{profile?.imageUrl && failedAvatar !== profile.imageUrl ? (
 									<img
 										src={profile.imageUrl}
 										alt={profile.name || username || t("header.profileFallback")}
 										className="header-profile-avatar-image"
+										// An account without a picture has no image to load: show
+										// the initials instead of a broken image.
+										onError={() => setFailedAvatar(profile.imageUrl ?? null)}
 									/>
 								) : (
 									<span className="header-profile-avatar">
@@ -276,6 +280,8 @@ export default function Header() {
 				<div className={navOpen ? "header-nav header-nav-open" : "header-nav"}>
 					<Link
 						to="/"
+						// Every page sits under "/", so only an exact match is Home.
+						activeOptions={{ exact: true }}
 						className="nav-pill"
 						activeProps={{ className: "nav-pill nav-pill-active" }}
 						data-tv-focusable="true"
