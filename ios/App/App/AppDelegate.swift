@@ -50,7 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 /// The app's window scene. UIKit now requires the scene life cycle (an app
-/// without it stops at launch on iOS and macOS 27), so the window comes from
+/// without it stops at launch on iOS 27), so the window comes from
 /// the scene; links and activities that open the app are passed on to
 /// Capacitor as before.
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -58,15 +58,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        #if targetEnvironment(macCatalyst)
-        if let windowScene = scene as? UIWindowScene {
-            // Room for the header and a row of cards; a video player below
-            // this gets cramped.
-            windowScene.sizeRestrictions?.minimumSize = CGSize(width: 900, height: 600)
-            windowScene.titlebar?.titleVisibility = .hidden
-            windowScene.titlebar?.toolbar = nil
-        }
-        #endif
         if let context = connectionOptions.urlContexts.first {
             _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: context.url, options: [:])
         }
@@ -87,7 +78,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 
 /// Capacitor's web view, with the video player allowed to go full screen on
-/// the Mac and iPad.
+/// iPad.
 class AuroraBridgeViewController: CAPBridgeViewController {
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {

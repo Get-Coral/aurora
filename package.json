@@ -24,10 +24,8 @@
     "cap:open:ios": "cap open ios",
     "cap:run:android": "export JAVA_HOME=\"$([ -d /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ] && printf %s /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home || /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home)\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && pnpm build && cap run android",
     "cap:run:ios": "pnpm build && node scripts/run-capacitor-ios.mjs",
-    "mac:frameworks": "bash scripts/build-mac-frameworks.sh",
-    "mac:build": "pnpm build && cap sync ios && bash scripts/build-mac-frameworks.sh && xcodebuild -quiet -workspace ios/App/AuroraMac.xcworkspace -scheme App -destination 'platform=macOS,variant=Mac Catalyst' -derivedDataPath ios/App/mac/.derived CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build && echo 'Built ios/App/mac/.derived/Build/Products/Debug-maccatalyst/App.app'",
-    "mac:run": "pnpm mac:build && open ios/App/mac/.derived/Build/Products/Debug-maccatalyst/App.app",
-    "mac:open": "bash scripts/build-mac-frameworks.sh && open ios/App/AuroraMac.xcworkspace"
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.1",
@@ -57,11 +55,13 @@
     "@get-coral/tsconfig": "^0.2.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-vite": "^0.8.5",
+    "@tauri-apps/cli": "^2.12.6",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "esbuild": "0.27.7",
     "jsdom": "^28.1.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.1",

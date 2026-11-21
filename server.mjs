@@ -3,6 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { createDesktopGuard } from './desktop-guard.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,27 +25,28 @@ const MIME_TYPES = {
 const CLIENT_DIR = path.join(__dirname, 'dist', 'client');
 const sockets = new Set();
 
-function serveStatic(url, response) {
-  const pathname = url.pathname;
-  const filePath = path.join(CLIENT_DIR, pathname);
+/** The built client file a request asks for, if there is one. */
+function findStaticFile(url) {
+  const filePath = path.join(CLIENT_DIR, url.pathname);
 
   // Prevent path traversal
-  if (!filePath.startsWith(CLIENT_DIR)) return false;
+  if (!filePath.startsWith(CLIENT_DIR)) return null;
 
-  let stat;
   try {
-    stat = fs.statSync(filePath);
+    const stat = fs.statSync(filePath);
+    return stat.isFile() ? { filePath, stat } : null;
   } catch {
-    return false;
+    return null;
   }
+}
 
-  if (!stat.isFile()) return false;
-
+function serveStatic(file, url, response) {
+  const { filePath, stat } = file;
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
 
   // Long-lived cache for hashed assets
-  const isHashed = /\.[a-zA-Z0-9]{8,}\.\w+$/.test(pathname);
+  const isHashed = /\.[a-zA-Z0-9]{8,}\.\w+$/.test(url.pathname);
   const cacheControl = isHashed
     ? 'public, max-age=31536000, immutable'
     : 'public, max-age=3600';
@@ -55,7 +57,6 @@ function serveStatic(url, response) {
     'content-length': stat.size,
   });
   fs.createReadStream(filePath).pipe(response);
-  return true;
 }
 
 function loadEnvFile(filename) {
@@ -96,6 +97,11 @@ const { default: serverEntry } = await import('./dist/server/server.js');
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = Number.parseInt(process.env.PORT ?? '3200', 10);
+// Set by the desktop app, which runs this server for its own window only.
+const desktopGuard = createDesktopGuard({
+  token: process.env.AURORA_DESKTOP_TOKEN,
+  port,
+});
 
 function getOrigin(request) {
   const forwardedProto = request.headers['x-forwarded-proto'];
@@ -115,6 +121,16 @@ const nodeServer = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', getOrigin(request));
 
+    const file = findStaticFile(url);
+    const refusal = desktopGuard?.(request.headers, url, {
+      publicFile: file != null,
+    });
+    if (refusal) {
+      response.writeHead(refusal.status, refusal.headers);
+      response.end(refusal.body);
+      return;
+    }
+
     if (url.pathname === '/healthz') {
       response.writeHead(204, {
         'cache-control': 'no-store, no-cache, must-revalidate',
@@ -123,7 +139,10 @@ const nodeServer = http.createServer(async (request, response) => {
       return;
     }
 
-    if (serveStatic(url, response)) return;
+    if (file) {
+      serveStatic(file, url, response);
+      return;
+    }
     const headers = new Headers();
 
     for (const [key, value] of Object.entries(request.headers)) {
@@ -224,6 +243,13 @@ function shutdown(signal) {
 
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => shutdown(signal));
+}
+
+// The desktop app holds this process's stdin open; when the app goes away,
+// even without a chance to stop the server, stdin closes and the server stops.
+if (process.env.AURORA_EXIT_WITH_STDIN === '1') {
+  process.stdin.on('end', () => shutdown('stdin closed'));
+  process.stdin.resume();
 }
 
 nodeServer.listen(port, host, () => {

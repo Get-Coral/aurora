@@ -13,9 +13,3 @@ __unconfig*
 todos.json
 data/
 todo.md
-
-# Built by scripts/build-mac-frameworks.sh
-ios/App/mac/.build
-ios/App/mac/capacitor-swift-pm/*.xcframework
-ios/App/mac/capacitor-swift-pm/.capacitor-version
-ios/App/mac/.derived

@@ -18,11 +18,21 @@ export function configuredOrigins() {
 		.filter(Boolean);
 }
 
+/**
+ * The desktop app runs this server for one person on their own computer, so
+ * there is nothing to protect from server-side requests: like the mobile
+ * apps, it may reach any provider the user adds, also one on their network.
+ */
+function anyOrigin() {
+	return process.env.AURORA_IPTV_ANY_ORIGIN === "true";
+}
+
 export function iptvEnabled() {
-	return configuredOrigins().length > 0;
+	return anyOrigin() || configuredOrigins().length > 0;
 }
 
 export function isAllowedOrigin(url: URL) {
+	if (anyOrigin()) return url.protocol === "http:" || url.protocol === "https:";
 	return configuredOrigins().includes(url.origin);
 }
 

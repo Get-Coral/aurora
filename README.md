@@ -422,17 +422,20 @@ Published images go to:
 - [`getcoral/aurora`](https://hub.docker.com/r/getcoral/aurora) on Docker Hub
 - [`ghcr.io/get-coral/aurora`](https://github.com/Get-Coral/aurora/pkgs/container/aurora) on GHCR
 
-### Mac App
+## Desktop App (macOS & Windows)
 
-The Mac app is the iOS app built for Mac Catalyst: the same web bundle and native runtime, in a resizable, sandboxed Mac window with full-screen video. Capacitor only publishes its frameworks for iOS and the iOS Simulator, so `scripts/build-mac-frameworks.sh` builds the same Capacitor version from source with a Mac Catalyst slice into `ios/App/mac/capacitor-swift-pm` (a few minutes, once per Capacitor version). The `AuroraMac` workspace uses that local package in place of the published one; the iOS build keeps using the published frameworks.
+The desktop app is built with [Tauri](https://tauri.app). It runs the Aurora server on `127.0.0.1` next to the app, on the Node.js build it ships with, and shows it in a native window (WKWebView on macOS, WebView2 on Windows). So it has everything a server install has: ffmpeg remuxing for MKV and raw MPEG-TS, audio and subtitle tracks, the TV guide cache, and IPTV providers without CORS limits. Settings and caches live in the app's data folder (`~/Library/Application Support/dev.getcoral.aurora` on macOS, `%APPDATA%\dev.getcoral.aurora` on Windows).
+
+The server only answers the app's own window: it checks the Host header, and the window gets a secret for each launch that the server sets as a SameSite=Strict cookie (see [`desktop-guard.mjs`](./desktop-guard.mjs)), so web pages in your browser can't use it. In the desktop app IPTV can reach any provider you add, also one on your own network, as in the mobile apps.
 
 ```bash
-pnpm mac:run    # build the web app, the frameworks and the Mac app, then open it
-pnpm mac:build  # the same without opening it (ad-hoc signed, for this Mac)
-pnpm mac:open   # open ios/App/AuroraMac.xcworkspace in Xcode, e.g. to archive and sign
+pnpm desktop:dev    # run it in development
+pnpm desktop:build  # build the installers for this machine (.app/.dmg on macOS, .exe/.msi on Windows)
 ```
 
-To ship it, open the workspace, pick a team under Signing & Capabilities and archive the "My Mac (Mac Catalyst)" destination. The Mac build runs in the App Sandbox with outgoing network access only (`ios/App/App/Mac.entitlements`).
+You need [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ build tools. Before each build, [`scripts/desktop/prepare.mjs`](./scripts/desktop/prepare.mjs) builds the web app, bundles the server into one file, and downloads the matching official Node.js build (checked against nodejs.org's checksums). The Windows build also bundles ffmpeg (the LGPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds)); on macOS the app uses an installed ffmpeg (`brew install ffmpeg`) when there is one.
+
+The [Desktop workflow](./.github/workflows/desktop.yml) builds macOS and Windows installers on every change to the desktop code. They aren't signed yet: macOS needs a Developer ID certificate and notarization, Windows a code signing certificate, or users get a warning on first launch.
 
 An Apple TV app isn't possible this way: tvOS has no web view, so it would need a separate native app.
 
