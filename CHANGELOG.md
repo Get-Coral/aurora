@@ -25,6 +25,24 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.16.0](https://github.com/Get-Coral/aurora/compare/v1.15.0...v1.16.0) (2026-11-21)
+
+
+### Features
+
+* IPTV as a full media source, desktop app, and TV remote support ([b0581da](https://github.com/Get-Coral/aurora/commit/b0581dacc71f6c5826d5c2725603bdfa22427e21))
+* **player:** preview thumbnails and downloaded range on the progress bar ([17270cd](https://github.com/Get-Coral/aurora/commit/17270cdf9e27239334c8d020589b6a2623c277a8))
+* tablet and TV Play Store listing, and TV layout fixes ([5ae14ec](https://github.com/Get-Coral/aurora/commit/5ae14ecaa04c257cf66019738df7644b6ea837b0))
+* **tv:** home rows that scroll sideways and remember where you were ([73f603c](https://github.com/Get-Coral/aurora/commit/73f603c25d44faf47ebae259dee1d4d23aa5a1d7))
+* **tv:** make Aurora usable on Android TV and Google TV with a remote ([b0ac43e](https://github.com/Get-Coral/aurora/commit/b0ac43e2df912363b83cf5e81876fc6ff330a7d7))
+* **tv:** make Aurora usable on Android TV and Google TV with a remote ([7817540](https://github.com/Get-Coral/aurora/commit/781754043d1914fd9bd2cd3b0ea2801fdcf4fd44))
+
+
+### Bug Fixes
+
+* **player:** make the progress bar follow clicks and drags in Safari ([5918b0e](https://github.com/Get-Coral/aurora/commit/5918b0ea657519c25085fd8761df0c7420b03b7c))
+* **player:** make the progress bar follow clicks and drags in Safari ([2c013fe](https://github.com/Get-Coral/aurora/commit/2c013fe71fa514d22349cb1148bff60a0a6c2af2))
+
 ## [1.15.0](https://github.com/Get-Coral/aurora/compare/v1.14.1...v1.15.0) (2026-10-20)
 
 
