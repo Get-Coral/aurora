@@ -152,6 +152,8 @@ export const enMessages: MessageDictionary = {
 	"player.series": "Series",
 	"player.movie": "Movie",
 	"player.episode": "Episode",
+	"player.seek": "Seek",
+	"player.seekPosition": (params) => `${params?.current} of ${params?.total}`,
 	"player.skipBack": "−15s",
 	"player.skipForward": "+30s",
 	"player.autoplayCountdown": (params) => `Playing next in ${params?.count}s`,

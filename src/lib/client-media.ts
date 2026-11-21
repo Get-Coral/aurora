@@ -64,6 +64,7 @@ import type {
 	UserProfileSummary,
 } from "./media";
 import type { ClientPlaybackContext } from "./platform";
+import { buildTrickplayPreview, type JellyfinTrickplayManifest } from "./trickplay";
 
 type ClientSettings = NonNullable<ReturnType<typeof getEffectiveClientJellyfinSettings>>;
 
@@ -213,6 +214,7 @@ function fromClientJellyfin(item: JellyfinItem): MediaItem {
 		title: item.Name,
 		year: item.ProductionYear,
 		runtimeMinutes: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600_000_000) : undefined,
+		runtimeSeconds: item.RunTimeTicks ? item.RunTimeTicks / 10_000_000 : undefined,
 		overview: item.Overview,
 		rating: item.CommunityRating,
 		ageRating: item.OfficialRating,
@@ -750,12 +752,43 @@ export async function fetchClientSeriesDetails(seriesId: string): Promise<Series
 	};
 }
 
+function readMediaKey(mediaUrl: string): string | null {
+	try {
+		const params = new URL(mediaUrl).searchParams;
+		return params.get("ApiKey") ?? params.get("api_key");
+	} catch {
+		return null;
+	}
+}
+
 export async function beginClientPlaybackSession(itemId: string, client?: ClientPlaybackContext) {
-	const session = await createPlaybackSession(getClientJellyfin(), itemId, {
-		prefersSafeVideo: client?.prefersSafeVideo,
-	});
+	const jellyfin = getClientJellyfin();
+	const [session, trickplayManifest] = await Promise.all([
+		createPlaybackSession(jellyfin, itemId, {
+			prefersSafeVideo: client?.prefersSafeVideo,
+		}),
+		jellyfin
+			.fetch<{ Trickplay?: JellyfinTrickplayManifest }>(
+				`/Users/${jellyfin.config.userId}/Items/${itemId}`,
+				{ Fields: "Trickplay" },
+			)
+			.then((item) => item.Trickplay ?? null)
+			.catch(() => null),
+	]);
 	return {
 		...session,
+		// The native app loads images straight from Jellyfin, so they need the
+		// same key the stream URL carries (as ApiKey, which Jellyfin 10.x and
+		// 12 both accept).
+		trickplay: buildTrickplayPreview({
+			manifest: trickplayManifest,
+			itemId,
+			mediaSourceId: session.mediaSourceId,
+			toUrl: (path) => {
+				const key = readMediaKey(session.streamUrl) ?? jellyfin.config.apiKey;
+				return `${jellyfin.config.url}${path}&ApiKey=${encodeURIComponent(key)}`;
+			},
+		}),
 		streamUrl:
 			session.playMethod === "Transcode"
 				? setTranscodeQuality(session.streamUrl)
