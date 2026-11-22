@@ -38,14 +38,14 @@ Keep Jellyfin's web client for administering the server. Open Aurora when you wa
 ## Screenshots
 
 <p align="center">
-  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/01_home.png" width="200" alt="Aurora home screen featuring Caminandes: Gran Dillama, with Play now and a cinematic mood rail" />
-  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/02_rows.png" width="200" alt="Continue watching rail titled Resume your queue, with progress on War of the World" />
-  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/03_details.png" width="200" alt="Movie spotlight for Caminandes: Llamigos with backdrop, poster, and Play now" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/01_home.jpg" width="200" alt="Aurora home screen with a featured film, Play now and More info" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/02_continue.jpg" width="200" alt="Continue watching rail with progress on the titles in progress" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/03_details.jpg" width="200" alt="Movie spotlight with backdrop, poster and Play now" />
 </p>
 <p align="center">
-  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/04_series.png" width="200" alt="Series episode list with Resume next up for Pioneer One" />
-  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/05_library.png" width="200" alt="Movie library with genre chips and sort controls" />
-  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/07_player.png" width="200" alt="Now playing Caminandes: Llamigos, with transport controls and a progress bar" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/04_series.jpg" width="200" alt="Series spotlight with Resume now and the episode list" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/05_library.jpg" width="200" alt="Movie library with genre chips and sort controls" />
+  <img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/07_player.jpg" width="200" alt="Now playing view with transport controls and a progress bar" />
 </p>
 
 These are the English Google Play phone screenshots shipped in [`fastlane/metadata/android/en-US/images/phoneScreenshots`](./fastlane/metadata/android/en-US/images/phoneScreenshots). Dutch listings are in [`fastlane/metadata/android/nl-NL/images/phoneScreenshots`](./fastlane/metadata/android/nl-NL/images/phoneScreenshots).
@@ -402,7 +402,7 @@ The signed bundle is written to `android/app/build/outputs/bundle/release/app-re
 
 The version comes from `package.json`. The versionCode is `major * 1000000 + minor * 10000 + patch * 100 + build`, so 1.14.1 becomes `1140100`. To upload the same version again, raise the build number with `AURORA_BUILD_NUMBER` (0–99), for example `AURORA_BUILD_NUMBER=1 pnpm android:bundle:release`.
 
-Store listing texts, release notes, the icon, the feature graphic, the TV banner and the phone, tablet and TV screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The tablet and TV screenshots come from [`scripts/store/screenshots.mjs`](./scripts/store/screenshots.mjs), which runs the built app as the Android app does (on-device runtime, TV mode at 1080p) against the public Jellyfin demo server, whose films are all public domain or Creative Commons: `pnpm build && node scripts/store/screenshots.mjs`. The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
+Store listing texts, release notes, the icon, the feature graphic, the TV banner and the phone, tablet and TV screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The phone, tablet and TV screenshots all come from [`scripts/store/screenshots.mjs`](./scripts/store/screenshots.mjs), which runs the built app as the Android app does (on-device runtime, TV mode at 1080p) against the public Jellyfin demo server, whose films are all public domain or Creative Commons. Run `pnpm store:screenshots` to make them again (add `-- --only phone`, `tablet` or `tv` for one kind); uploading them to the Play Console is still a manual step. The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
 
 The public Android app is [Aurora for Jellyfin](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
 
