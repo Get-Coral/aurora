@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Quest build's name in the headset's library, as on the Horizon Store. -->
+<resources>
+    <string name="app_name">Aurora Cinema</string>
+    <string name="title_activity_main">Aurora Cinema</string>
+</resources>

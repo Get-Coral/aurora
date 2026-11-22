@@ -362,7 +362,7 @@ function SettingsPage() {
 				<section className="settings-about-card">
 					<div className="settings-about-head">
 						<Heart size={15} className="settings-about-heart" />
-						<span>Aurora for Jellyfin</span>
+						<span>Aurora Cinema</span>
 					</div>
 					<p className="settings-about-copy">{t("settings.aboutCopy")}</p>
 					<div className="settings-about-links">

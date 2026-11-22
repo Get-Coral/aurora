@@ -70,7 +70,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			{
 				name: "description",
 				content:
-					"Aurora brings a TV-friendly Jellyfin experience to the web, mobile, and living room screens.",
+					"Aurora Cinema brings your Jellyfin library and your own IPTV to the web, mobile, TV and Meta Quest.",
 			},
 			{
 				property: "og:type",
@@ -82,12 +82,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			},
 			{
 				property: "og:title",
-				content: "Aurora for Jellyfin",
+				content: "Aurora Cinema",
 			},
 			{
 				property: "og:description",
 				content:
-					"Aurora brings a TV-friendly Jellyfin experience to the web, mobile, and living room screens.",
+					"Aurora Cinema brings your Jellyfin library and your own IPTV to the web, mobile, TV and Meta Quest.",
 			},
 			{
 				property: "og:image",
@@ -99,7 +99,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			},
 			{
 				name: "twitter:title",
-				content: "Aurora for Jellyfin",
+				content: "Aurora Cinema",
 			},
 			{
 				name: "twitter:image",
@@ -126,7 +126,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				content: "Aurora",
 			},
 			{
-				title: "Aurora for Jellyfin",
+				title: "Aurora Cinema",
 			},
 		],
 		links: [

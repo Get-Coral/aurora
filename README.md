@@ -19,7 +19,7 @@
   </a>
 </p>
 
-Aurora UI is an open-source Jellyfin frontend. It keeps Jellyfin as the source of truth and adds a living-room-ready way to browse and watch: a featured home, richer detail views, embedded playback, favorites, genre browsing, and a translation-ready UI. Self-host it, or install [Aurora for Jellyfin on Google Play](https://play.google.com/store/apps/details?id=dev.getcoral.aurora).
+Aurora UI is an open-source Jellyfin frontend. It keeps Jellyfin as the source of truth and adds a living-room-ready way to browse and watch: a featured home, richer detail views, embedded playback, favorites, genre browsing, and a translation-ready UI. Self-host it, or install [Aurora Cinema on Google Play](https://play.google.com/store/apps/details?id=dev.getcoral.aurora).
 
 Aurora is an independent project and is not affiliated with or endorsed by the Jellyfin project.
 
@@ -423,7 +423,7 @@ ovr-platform-util upload-quest-build --app-id <APP_ID> --app-secret <APP_SECRET>
   --apk android/app/build/outputs/apk/quest/release/app-quest-release.apk --channel ALPHA
 ```
 
-The public Android app is [Aurora for Jellyfin](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
+The public Android app is [Aurora Cinema](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
 
 ### Packaging Notes
 

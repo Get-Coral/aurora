@@ -1,7 +1,7 @@
 [package]
 name = "aurora-desktop"
 version = "0.0.0"
-description = "Aurora for Jellyfin and IPTV, for macOS and Windows"
+description = "Aurora Cinema: Jellyfin and IPTV for macOS and Windows"
 edition = "2021"
 publish = false
 
