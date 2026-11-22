@@ -13,3 +13,6 @@ __unconfig*
 todos.json
 data/
 todo.md
+
+# Python bytecode (scripts/quest)
+__pycache__/

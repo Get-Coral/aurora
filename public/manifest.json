@@ -1,7 +1,7 @@
 {
   "id": "/",
   "short_name": "Aurora",
-  "name": "Aurora for Jellyfin",
+  "name": "Aurora Cinema",
   "description": "A TV-friendly Jellyfin web client for living-room screens, Android devices, and iPhone Safari.",
   "icons": [
     {

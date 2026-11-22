@@ -9,6 +9,9 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Local plugins must be registered before the bridge is created.
         registerPlugin(AuroraTvPlugin.class);
+        for (Class<? extends com.getcapacitor.Plugin> plugin : FlavorPlugins.all()) {
+            registerPlugin(plugin);
+        }
         super.onCreate(savedInstanceState);
     }
 }

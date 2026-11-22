@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/theater_card_bg"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="118dp">
+
+        <ImageView
+            android:id="@+id/theater_environment_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+
+        <ImageView
+            android:id="@+id/theater_environment_check"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="10dp"
+            android:background="@drawable/theater_play_button_bg"
+            android:importantForAccessibility="no"
+            android:padding="8dp"
+            android:src="@drawable/theater_icon_check"
+            android:tint="@color/theater_void"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/theater_environment_name"
+        style="@style/TheaterTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_marginTop="12dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textSize="17sp" />
+
+    <TextView
+        android:id="@+id/theater_environment_hint"
+        style="@style/TheaterText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_marginTop="2dp"
+        android:maxLines="2"
+        android:textColor="@color/theater_ink_faint"
+        android:textSize="13sp" />
+</LinearLayout>

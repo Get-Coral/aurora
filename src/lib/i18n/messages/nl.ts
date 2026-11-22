@@ -456,6 +456,7 @@ export const nlMessages: MessageDictionary = {
 	"home.iptvSeries.subtitle": "Recent toegevoegd",
 	"player.live": "Live",
 	"player.pip": "Beeld-in-beeld",
+	"player.theater": "Bekijk in de bioscoop",
 	"player.audioTrack": "Audiospoor",
 	"player.iptvUnavailable":
 		"Aurora kon deze stream niet voorbereiden. De bron is misschien niet beschikbaar.",

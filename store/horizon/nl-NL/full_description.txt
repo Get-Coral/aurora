@@ -1,0 +1,24 @@
+Aurora Cinema maakt van je headset een privébioscoop voor de films en series die je al hebt: je eigen Jellyfin-server en het IPTV-abonnement van je provider.
+
+Blader in een comfortabel paneel en stap dan de bioscoop in: de film speelt op een groot scherm, en je zit in een eigen zetel.
+
+PLEKKEN OM TE KIJKEN
+• Grand Theater: rood fluweel en een sterrenplafond, vanaf een VIP-rij
+• Orbitaal dek: een lounge boven een planeet, onder een zee van sterren
+• Sentinel HQ: een penthouse hoog boven een nachtelijke stad
+• Magische bibliotheek: zwevende kaarsen en een knetterend haardvuur
+• Lichtend woud: een gloeiende jungle onder twee manen
+• Poollicht, een donkere zaal, of je eigen kamer
+
+De zaal reageert op de film: druk op play en de lichten dimmen, pauzeer en ze gaan weer aan.
+
+JE BIBLIOTHEEK EN IPTV
+• Verder kijken, favorieten, genres en zoeken
+• Voortgang wordt gesynchroniseerd met je server
+• Keuze van audio en ondertitels
+• Profielen voor gedeelde huishoudens
+• Je eigen M3U, Xtream Codes of stream-URL, met tv-gids
+
+Aurora Cinema bevat zelf geen zenders of media: je hebt je eigen Jellyfin-server of IPTV-provider nodig.
+
+Geen accounts, geen advertenties, geen tracking. Open source op github.com/Get-Coral/aurora. Niet verbonden aan het Jellyfin-project.

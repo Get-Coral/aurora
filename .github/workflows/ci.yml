@@ -75,5 +75,10 @@ jobs:
       - name: Sync Capacitor assets
         run: pnpm cap:sync
 
+      # The Quest build compiles its theater shader with the NDK version the
+      # Android Gradle plugin expects; the runner image doesn't ship that one.
+      - name: Install Android NDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.0.12077973" > /dev/null
+
       - name: Assemble Android debug build
         run: pnpm android:assemble:debug

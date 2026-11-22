@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="theater_screen" type="id" />
+    <item name="theater_controls" type="id" />
+    <item name="theater_environments" type="id" />
+
+    <string name="theater_live">Live</string>
+    <string name="theater_back">Back to panel</string>
+    <string name="theater_play">Play</string>
+    <string name="theater_pause">Pause</string>
+    <string name="theater_skip_back">Back 10 seconds</string>
+    <string name="theater_skip_forward">Forward 30 seconds</string>
+    <string name="theater_environments">Environment</string>
+    <string name="theater_environments_title">Where do you want to watch?</string>
+    <string name="theater_env_grand_theater">Grand Theater</string>
+    <string name="theater_env_grand_theater_hint">A classic cinema, from the VIP row</string>
+    <string name="theater_env_orbital_deck">Orbital Deck</string>
+    <string name="theater_env_orbital_deck_hint">An observation lounge high above a planet, under a sea of stars</string>
+    <string name="theater_env_sentinel_hq">Sentinel HQ</string>
+    <string name="theater_env_sentinel_hq_hint">A command lounge in a penthouse high above a city at night</string>
+    <string name="theater_env_arcane_library">Arcane Library</string>
+    <string name="theater_env_arcane_library_hint">A moonlit gothic hall, candlelight and a crackling fire</string>
+    <string name="theater_env_biolume_grove">Biolume Grove</string>
+    <string name="theater_env_biolume_grove_hint">A glowing jungle clearing under two moons</string>
+    <string name="theater_env_aurora">Northern lights</string>
+    <string name="theater_env_aurora_hint">A night sky over a still lake</string>
+    <string name="theater_env_dark">Dark room</string>
+    <string name="theater_env_dark_hint">Nothing but the film</string>
+    <string name="theater_env_passthrough">Your room</string>
+    <string name="theater_env_passthrough_hint">The screen on your own wall</string>
+    <string name="theater_error">This video can\'t play in the theater. Go back to the panel to watch it there.</string>
+
+    <!-- The web player's tokens (src/styles.css). -->
+    <color name="theater_glass">#EB131C34</color>
+    <color name="theater_glass_soft">#0DFFFFFF</color>
+    <color name="theater_glass_hover">#1FFFFFFF</color>
+    <color name="theater_line">#47AAC4FF</color>
+    <color name="theater_ink">#FFF5F7FF</color>
+    <color name="theater_ink_muted">#B8E4EBFF</color>
+    <color name="theater_ink_faint">#6BDCE5FF</color>
+    <color name="theater_accent">#FF70A8FF</color>
+    <color name="theater_accent_strong">#FF8FD1FF</color>
+    <color name="theater_void">#FF050816</color>
+</resources>

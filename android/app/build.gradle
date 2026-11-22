@@ -1,6 +1,12 @@
 import groovy.json.JsonSlurper
 
+plugins {
+    // Compiles the Quest theater's own shaders (src/quest/shaders).
+    id 'com.meta.spatial.plugin' version '0.15.0'
+}
+
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
 
 // package.json is the single source of truth for the app version (bumped by release-please).
 // versionCode = major * 1000000 + minor * 10000 + patch * 100 + build, e.g. 1.14.1 build 1 -> 1140101.
@@ -62,7 +68,14 @@ android {
             dimension "store"
             // Meta's recommended floor for apps that only target current headsets.
             minSdkVersion 32
+            // The theater is an immersive activity, and the Horizon Store caps
+            // immersive apps at API 34 (Horizon OS is Android 14).
+            targetSdkVersion 34
         }
+    }
+    // Java 21 comes from capacitor.build.gradle; Kotlin has to match it.
+    kotlinOptions {
+        jvmTarget = '21'
     }
     buildTypes {
         release {
@@ -72,6 +85,16 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+// The Spatial plugin reads the SDK's shader includes from a configuration named exactly
+// "debugCompileClasspath". With product flavors the Android plugin names its configurations
+// per flavor instead, so give it one that holds just the SDK package. It is never packaged.
+configurations {
+    debugCompileClasspath {
+        canBeResolved = true
+        canBeConsumed = false
     }
 }
 
@@ -91,6 +114,16 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Only for the Spatial plugin to find the SDK's shader includes (see configurations above).
+    debugCompileClasspath "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion@aar"
+
+    // Quest only: the immersive theater (Meta Spatial SDK) and its native player.
+    questImplementation "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion"
+    questImplementation "com.meta.spatial:meta-spatial-sdk-toolkit:$metaSpatialSdkVersion"
+    questImplementation "com.meta.spatial:meta-spatial-sdk-vr:$metaSpatialSdkVersion"
+    questImplementation "androidx.media3:media3-exoplayer:$media3Version"
+    questImplementation "androidx.media3:media3-exoplayer-hls:$media3Version"
 }
 
 apply from: 'capacitor.build.gradle'
@@ -102,4 +135,19 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+spatial {
+    allowUsageDataCollection.set(false)
+    shaders {
+        // Not src/quest/shaders: that is the Android plugin's own shader folder,
+        // and these need the Spatial SDK's shader compiler and includes.
+        sources.add(project.layout.projectDirectory.dir("src/quest/theater-shaders"))
+    }
+}
+
+// The Spatial plugin compiles the theater shaders itself (compileShadersFor<variant>), with the
+// SDK's includes. The Android plugin's own shader step would try the same files without them.
+tasks.withType(com.android.build.gradle.tasks.ShaderCompile).configureEach {
+    enabled = false
 }

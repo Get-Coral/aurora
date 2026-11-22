@@ -13,6 +13,7 @@ import {
 	Pause,
 	PictureInPicture2,
 	Play,
+	Projector,
 	Radio,
 	RotateCcw,
 	RotateCw,
@@ -33,6 +34,13 @@ import {
 	withStreamToken,
 } from "../lib/jellyfin-stream-proxy";
 import type { MediaItem } from "../lib/media";
+import {
+	isTheaterAvailable,
+	onTheaterClosed,
+	openTheater,
+	type TheaterResult,
+	toTheaterUrl,
+} from "../lib/native/theater";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
 	type AttachedStream,
@@ -298,6 +306,14 @@ export function MediaPlayerDialog({
 	} | null>(null);
 	const [playbackError, setPlaybackError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
+	// Where to resume instead of the item's saved position: set when the
+	// viewer comes back from the Quest theater, which played on from there.
+	const resumeOverrideRef = useRef<{ itemId: string; ticks: number } | null>(null);
+	function resumeTicksFor(target: MediaItem | null | undefined) {
+		const override = resumeOverrideRef.current;
+		if (target && override?.itemId === target.id) return override.ticks;
+		return target?.playbackPositionTicks ?? 0;
+	}
 	const limitRetryRef = useRef(false);
 	const itemId = item?.id;
 	useEffect(() => {
@@ -452,6 +468,17 @@ export function MediaPlayerDialog({
 	// token is item-scoped and dies with the session, so it grants nothing the
 	// page's own cookie doesn't.
 	const streamUrl = baseStreamUrl ? withStreamToken(baseStreamUrl, streamToken) : baseStreamUrl;
+	// The Quest build can hand the film to an immersive theater.
+	const [theaterAvailable, setTheaterAvailable] = useState(false);
+	useEffect(() => {
+		let cancelled = false;
+		void isTheaterAvailable().then((available) => {
+			if (!cancelled) setTheaterAvailable(available);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 	const remote = useRemotePlayback(videoRef, {
 		enabled: open && Boolean(streamUrl),
 		srcKey: streamUrl ?? null,
@@ -582,7 +609,7 @@ export function MediaPlayerDialog({
 			prefersSafeVideo: playbackClient.prefersSafeVideo,
 			playMethod: playbackSession?.playMethod,
 			isNativeHlsPlayback,
-			resumeTicks: item?.playbackPositionTicks ?? 0,
+			resumeTicks: resumeTicksFor(item),
 			startTimeOffset: startTimeOffsetRef.current,
 			seekPending: seekPendingRef.current,
 			pendingSeekTarget: pendingSeekTargetRef.current,
@@ -605,7 +632,7 @@ export function MediaPlayerDialog({
 		setScrubTime(null);
 		setHoverTime(null);
 		setBufferedEnd(0);
-		lastKnownPositionRef.current = (item?.playbackPositionTicks ?? 0) / 10_000_000;
+		lastKnownPositionRef.current = resumeTicksFor(item) / 10_000_000;
 		setIsBuffering(true);
 		setPlaybackSession(null);
 		setStreamToken(null);
@@ -657,7 +684,7 @@ export function MediaPlayerDialog({
 						knownDurationRef.current = session.durationSeconds;
 						setDuration(session.durationSeconds);
 					}
-					const resumeSeconds = session.live ? 0 : (item.playbackPositionTicks ?? 0) / 10_000_000;
+					const resumeSeconds = session.live ? 0 : resumeTicksFor(item) / 10_000_000;
 					let streamUrl = session.streamUrl;
 					if (session.transcoded && resumeSeconds > 0) {
 						// Aurora's converter seeks on the provider; the new stream starts there.
@@ -705,7 +732,7 @@ export function MediaPlayerDialog({
 				// For transcoded streams, bake the resume position into StartTimeTicks
 				// so that Jellyfin starts the transcode from the right point. This
 				// avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
-				const resumeTicks = item!.playbackPositionTicks ?? 0;
+				const resumeTicks = resumeTicksFor(item);
 				const isNativeHlsSession =
 					session.playMethod === "Transcode" && isNativeHlsStreamUrl(session.streamUrl);
 				if (resumeTicks > 0 && session.playMethod === "Transcode" && !isNativeHlsSession) {
@@ -1078,12 +1105,13 @@ export function MediaPlayerDialog({
 				void attemptAutoplay();
 				return;
 			}
-			if (item!.playbackPositionTicks) {
+			const resumeTicks = resumeTicksFor(item);
+			if (resumeTicks) {
 				logPlayback("media:seek-to-resume-position", {
-					resumeSeconds: item!.playbackPositionTicks / 10_000_000,
+					resumeSeconds: resumeTicks / 10_000_000,
 					videoState: snapshotMediaState(video),
 				});
-				const resumeAt = item!.playbackPositionTicks / 10_000_000;
+				const resumeAt = resumeTicks / 10_000_000;
 				beginOptimisticSeek(resumeAt);
 				setVideoCurrentTime(resumeAt);
 			}
@@ -1746,6 +1774,71 @@ export function MediaPlayerDialog({
 		setAudioPickerOpen(false);
 		setSubtitleFilter("");
 	}
+
+	// The Quest theater plays the same stream natively, Jellyfin and IPTV alike,
+	// once there is a resolved playback session.
+	const canOpenTheater = theaterAvailable && playbackSession != null && streamUrl != null;
+
+	async function enterTheater() {
+		const video = videoRef.current;
+		if (!item || !video || !streamUrl || !canOpenTheater) return;
+		video.pause();
+		const position = isLive
+			? 0
+			: seekPendingRef.current && pendingSeekTargetRef.current != null
+				? pendingSeekTargetRef.current
+				: video.currentTime + startTimeOffsetRef.current;
+		try {
+			await openTheater({
+				itemId: item.id,
+				title: item.title,
+				url: toTheaterUrl(streamUrl),
+				positionSeconds: position,
+				streamOffsetSeconds: isLive ? 0 : startTimeOffsetRef.current,
+				durationSeconds: isLive ? undefined : (getBestDuration() ?? undefined),
+				live: isLive,
+				format: iptvSession?.format,
+				fallbackUrl: iptvSession?.fallbackUrl ? toTheaterUrl(iptvSession.fallbackUrl) : undefined,
+			});
+		} catch {
+			// The headset couldn't switch; the panel player is still here.
+		}
+	}
+
+	// Back from the theater: close the player when the film ended there
+	// (closing reports it played), or carry on from where the viewer got to.
+	// The panel's own stream sat paused all that time and the server may have
+	// dropped it, so start a fresh one there, the way "Try again" does.
+	const theaterClosedRef = useRef<(result: TheaterResult) => void>(() => undefined);
+	theaterClosedRef.current = (result) => {
+		if (result.itemId !== activeItemIdRef.current) return;
+		pendingSeekTargetRef.current = null;
+		lastKnownPositionRef.current = isLive ? 0 : result.positionSeconds;
+		if (result.ended && !isLive) {
+			onClose();
+			return;
+		}
+		resumeOverrideRef.current = {
+			itemId: result.itemId,
+			ticks: isLive ? 0 : Math.round(result.positionSeconds * 10_000_000),
+		};
+		setPlaybackError(null);
+		setAttempt((value) => value + 1);
+	};
+
+	useEffect(() => {
+		if (!open || !theaterAvailable) return;
+		let cancelled = false;
+		let dispose: (() => void) | undefined;
+		void onTheaterClosed((result) => theaterClosedRef.current(result)).then((remove) => {
+			if (cancelled) remove();
+			else dispose = remove;
+		});
+		return () => {
+			cancelled = true;
+			dispose?.();
+		};
+	}, [open, theaterAvailable]);
 
 	// Picture-in-picture: the standard API, or Safari's presentation modes.
 	const pictureInPictureSupported =
@@ -2860,6 +2953,17 @@ export function MediaPlayerDialog({
 											aria-label={remote.active ? t("player.remoteActive") : t("player.remote")}
 										>
 											{isAirplayPlatform ? <Airplay size={20} /> : <Cast size={20} />}
+										</button>
+									) : null}
+									{canOpenTheater ? (
+										<button
+											type="button"
+											className="icon-button"
+											onClick={() => void enterTheater()}
+											aria-label={t("player.theater")}
+											title={t("player.theater")}
+										>
+											<Projector size={20} />
 										</button>
 									) : null}
 									{pictureInPictureSupported ? (
