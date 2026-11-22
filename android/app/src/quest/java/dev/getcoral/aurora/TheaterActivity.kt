@@ -14,6 +14,7 @@ import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.SeekBar
@@ -30,10 +31,12 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.meta.spatial.core.Color4
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Pose
+import com.meta.spatial.core.Quaternion
 import com.meta.spatial.core.Query
 import com.meta.spatial.core.SpatialFeature
 import com.meta.spatial.core.SystemBase
 import com.meta.spatial.core.Vector3
+import com.meta.spatial.runtime.AlphaMode
 import com.meta.spatial.runtime.ButtonBits
 import com.meta.spatial.runtime.ReferenceSpace
 import com.meta.spatial.runtime.SessionState
@@ -103,9 +106,13 @@ class TheaterActivity : AppSystemActivity() {
     private const val CONTROLS_WIDTH = 1.25f
     private const val CONTROLS_HEIGHT = 0.275f
     private val CONTROLS_POSITION = Vector3(0f, 0.95f, 1.45f)
-    private const val PICKER_HEIGHT = 0.45f
+    private const val PICKER_HEIGHT = 0.65f
     private val PICKER_POSITION =
         Vector3(0f, 0.95f + CONTROLS_HEIGHT / 2 + PICKER_HEIGHT / 2 + 0.03f, 1.5f)
+
+    // How the rendered skies and seats line up with the screen (yaw, degrees).
+    private const val SKY_YAW = 180f
+    private const val SEAT_YAW = 180f
 
     private const val SKIP_BACK_MS = 10_000L
     private const val SKIP_FORWARD_MS = 30_000L
@@ -133,7 +140,12 @@ class TheaterActivity : AppSystemActivity() {
   private var environment = TheaterEnvironment.all.first()
 
   private var screen: Entity? = null
-  private var sky: Entity? = null
+  /** The environment's sky (index 0) and its light layers, once their images are decoded. */
+  private var skies: List<TheaterSky> = emptyList()
+  /** Bumped on every switch, so a slow decode never puts up an environment no longer chosen. */
+  private var environmentGeneration = 0
+  private val decoder = java.util.concurrent.Executors.newSingleThreadExecutor()
+  private var seat: Entity? = null
   private var controlsEntity: Entity? = null
   private var pickerEntity: Entity? = null
 
@@ -170,7 +182,7 @@ class TheaterActivity : AppSystemActivity() {
     environment =
         TheaterEnvironment.byKey(
             getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PREF_ENVIRONMENT, null))
-    ambience = TheaterAmbience(this) { level -> setSkyLevel(level) }
+    ambience = TheaterAmbience(this) { sky, layers, lightsUp -> renderLights(sky, layers, lightsUp) }
     systemManager.registerSystem(WakeControlsSystem())
   }
 
@@ -187,14 +199,6 @@ class TheaterActivity : AppSystemActivity() {
     // A theater, not a place to walk around in.
     systemManager.findSystem<LocomotionSystem>().enableLocomotion(false)
 
-    sky =
-        Entity.create(
-            listOf(
-                Mesh("mesh://skybox".toUri(), hittable = MeshCollision.NoCollision),
-                skyMaterial(environment, 1f),
-                Transform(Pose(Vector3(0f))),
-            ),
-        )
     screen = Entity.create(Panel(R.id.theater_screen), Transform(Pose(SCREEN_POSITION)))
     controlsEntity =
         Entity.create(Panel(R.id.theater_controls), Transform(Pose(CONTROLS_POSITION)))
@@ -236,7 +240,7 @@ class TheaterActivity : AppSystemActivity() {
               settingsCreator = {
                 UIPanelSettings(
                     shape = QuadShapeOptions(width = CONTROLS_WIDTH, height = PICKER_HEIGHT),
-                    display = DpDisplayOptions(width = 1000f, height = 360f),
+                    display = DpDisplayOptions(width = 1000f, height = 520f),
                     style = PanelStyleOptions(themeResourceId = R.style.TheaterPanelTheme),
                 )
               },
@@ -441,6 +445,17 @@ class TheaterActivity : AppSystemActivity() {
           handler.postDelayed({ setPickerOpen(false) }, 450)
         }
       }
+      // Four equal columns; the cards wrap into rows.
+      val margin = (8 * root.resources.displayMetrics.density).toInt()
+      card.layoutParams =
+          GridLayout.LayoutParams(
+                  GridLayout.spec(GridLayout.UNDEFINED),
+                  GridLayout.spec(GridLayout.UNDEFINED, 1f),
+              )
+              .apply {
+                width = 0
+                setMargins(margin, margin, margin, margin)
+              }
       list.addView(card)
       environmentCards[env.key] = card
     }
@@ -549,24 +564,61 @@ class TheaterActivity : AppSystemActivity() {
   }
 
   private fun applyEnvironment(env: TheaterEnvironment) {
-    val sky = sky ?: return
-    // Passthrough only shows where nothing is drawn, so the sky has to go.
-    sky.setComponent(Visible(!env.passthrough))
+    val generation = ++environmentGeneration
+    // Passthrough only shows where nothing is drawn, so there is no sky at all.
     scene.enablePassthrough(env.passthrough)
+
+    seat?.destroy()
+    seat =
+        env.seat?.let {
+          Entity.create(
+              listOf(
+                  Mesh("apk:///$it".toUri()),
+                  Transform(Pose(Vector3(0f), Quaternion(0f, SEAT_YAW, 0f))),
+              ),
+          )
+        }
     ambience.setEnvironment(env)
-  }
 
-  private fun setSkyLevel(level: Float) {
-    if (environment.passthrough) return
-    sky?.setComponent(skyMaterial(environment, level))
-  }
-
-  private fun skyMaterial(env: TheaterEnvironment, level: Float) =
-      Material().apply {
-        baseTextureAndroidResourceId = env.sky ?: R.drawable.theater_dark
-        baseColor = Color4(level, level, level, 1f)
-        unlit = true // The sky is the light; scene lighting must not shade it.
+    val images = listOfNotNull(env.sky) + env.layers.map { it.texture }
+    if (images.isEmpty()) {
+      showSkies(emptyList())
+      return
+    }
+    // Panoramas are large; decode them off the main thread, then swap them in at once.
+    decoder.execute {
+      val bitmaps = images.map { TheaterSky.decode(resources, it) }
+      handler.post {
+        if (generation != environmentGeneration || leaving) return@post
+        showSkies(
+            bitmaps.mapIndexed { i, bitmap ->
+              TheaterSky.create(scene, systemManager, bitmap, SKY_YAW, layer = i)
+            })
+        ambience.redraw()
       }
+    }
+  }
+
+  private fun showSkies(next: List<TheaterSky>) {
+    skies.forEach { it.destroy() }
+    skies = next
+  }
+
+  /** One frame of the environment's lights: the sky, each light layer, and the seat's light. */
+  private fun renderLights(skyLevel: Float, layers: FloatArray, lightsUp: Float) {
+    val env = environment
+    val offset = if (env.sky != null) 1 else 0
+    if (offset == 1) skies.getOrNull(0)?.setLevel(skyLevel)
+    layers.forEachIndexed { i, level -> skies.getOrNull(i + offset)?.setLevel(level) }
+    val dim = 0.12f + 0.88f * lightsUp
+    val light = env.seatLight
+    scene.setLightingEnvironment(
+        ambientColor = Vector3(light[0] * dim, light[1] * dim, light[2] * dim),
+        sunColor = Vector3(0f),
+        sunDirection = -Vector3(1f, 3f, 2f),
+        environmentIntensity = 0.15f * dim,
+    )
+  }
 
   private fun updateEnvironmentCards() {
     environmentCards.forEach { (key, card) ->
@@ -664,6 +716,7 @@ class TheaterActivity : AppSystemActivity() {
     player?.release()
     player = null
     if (!leaving && ::ambience.isInitialized) ambience.release()
+    decoder.shutdownNow()
     super.onDestroy()
   }
 }

@@ -3,6 +3,9 @@ package dev.getcoral.aurora
 import android.animation.ValueAnimator
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -13,23 +16,42 @@ import androidx.media3.exoplayer.ExoPlayer
 /**
  * How an environment reacts to the film, like a cinema does. When the film starts the lights go
  * down and the room hushes; on pause, in the system menu or at the end, the lights come back up and
- * the ambience returns.
+ * the ambience returns. Light layers with a [LightMotion] keep moving all the while (a fire flickers
+ * even during the film).
  *
- * [setSkyLevel] gets the sky brightness (0..1) on every animation frame.
+ * [render] gets, on every frame that changes something: the sky's brightness, each light layer's
+ * strength (in [TheaterEnvironment.layers] order) and how far the lights are up (0..1).
  */
-class TheaterAmbience(private val context: Context, private val setSkyLevel: (Float) -> Unit) {
+class TheaterAmbience(
+    private val context: Context,
+    private val render: (sky: Float, layers: FloatArray, lightsUp: Float) -> Unit,
+) {
 
   private companion object {
-    const val LIGHTS_MS = 1_800L
+    const val LIGHTS_MS = 2_200L
     const val SOUND_MS = 1_400L
+    const val FRAME_MS = 50L // 20 updates a second is plenty for light
   }
 
   private var environment: TheaterEnvironment? = null
   private var filmPlaying = false
-  private var skyLevel = 1f
+  /** 0 = lights down (film), 1 = lights up. */
+  private var lightsUp = 1f
   private var soundLevel = 0f
   private var lightsAnimator: ValueAnimator? = null
   private var soundAnimator: ValueAnimator? = null
+  private val handler = Handler(Looper.getMainLooper())
+  private val started = SystemClock.uptimeMillis()
+
+  private val frame =
+      object : Runnable {
+        override fun run() {
+          draw()
+          if (environment?.layers?.any { it.motion != LightMotion.STEADY } == true) {
+            handler.postDelayed(this, FRAME_MS)
+          }
+        }
+      }
 
   private val sound: ExoPlayer =
       ExoPlayer.Builder(context).build().apply {
@@ -45,13 +67,10 @@ class TheaterAmbience(private val context: Context, private val setSkyLevel: (Fl
         )
       }
 
-  /** Switch to [env]; the lights jump straight to where they should be. */
+  /** Switch to [env]; the lights stay where they are, the sound follows. */
   fun setEnvironment(env: TheaterEnvironment) {
     val previous = environment
     environment = env
-    lightsAnimator?.cancel()
-    skyLevel = target(env)
-    setSkyLevel(skyLevel)
     if (previous?.ambience != env.ambience) {
       sound.stop()
       sound.clearMediaItems()
@@ -64,6 +83,8 @@ class TheaterAmbience(private val context: Context, private val setSkyLevel: (Fl
       }
     }
     fadeSound()
+    handler.removeCallbacks(frame)
+    frame.run()
   }
 
   /** The film started (true) or stopped, paused or ended (false). */
@@ -74,19 +95,30 @@ class TheaterAmbience(private val context: Context, private val setSkyLevel: (Fl
     fadeSound()
   }
 
-  private fun target(env: TheaterEnvironment) = if (filmPlaying) env.lightsDown else env.lightsUp
+  /** Draw the current state again (new skies came in). */
+  fun redraw() = draw()
+
+  private fun draw() {
+    val env = environment ?: return
+    val t = (SystemClock.uptimeMillis() - started) / 1000.0
+    val sky = env.lightsDown + (env.lightsUp - env.lightsDown) * lightsUp
+    val layers =
+        FloatArray(env.layers.size) { i ->
+          val layer = env.layers[i]
+          (layer.down + (layer.up - layer.down) * lightsUp) * layer.motion.at(t)
+        }
+    render(sky, layers, lightsUp)
+  }
 
   private fun fadeLights() {
-    val env = environment ?: return
-    if (env.passthrough) return
     lightsAnimator?.cancel()
     lightsAnimator =
-        ValueAnimator.ofFloat(skyLevel, target(env)).apply {
+        ValueAnimator.ofFloat(lightsUp, if (filmPlaying) 0f else 1f).apply {
           duration = LIGHTS_MS
           interpolator = AccelerateDecelerateInterpolator()
           addUpdateListener {
-            skyLevel = it.animatedValue as Float
-            setSkyLevel(skyLevel)
+            lightsUp = it.animatedValue as Float
+            draw()
           }
           start()
         }
@@ -110,6 +142,7 @@ class TheaterAmbience(private val context: Context, private val setSkyLevel: (Fl
   }
 
   fun release() {
+    handler.removeCallbacks(frame)
     lightsAnimator?.cancel()
     soundAnimator?.cancel()
     sound.release()

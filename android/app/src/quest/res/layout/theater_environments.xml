@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The environment picker: a card per environment, opened from the control
-     bar. 1000x360dp on a 1.25x0.45m panel just above it. -->
+<!-- The environment picker: a grid of cards, one per environment, opened from
+     the control bar. 1000x520dp on a 1.25x0.65m panel just above it. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/theater_environments_root"
     android:layout_width="match_parent"
@@ -24,18 +24,13 @@
             android:text="@string/theater_environments_title"
             android:textSize="24sp" />
 
-        <HorizontalScrollView
+        <GridLayout
+            android:id="@+id/theater_environment_list"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="16dp"
             android:layout_weight="1"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/theater_environment_list"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:orientation="horizontal" />
-        </HorizontalScrollView>
+            android:columnCount="4"
+            android:useDefaultMargins="false" />
     </LinearLayout>
 </FrameLayout>

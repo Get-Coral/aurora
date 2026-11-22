@@ -1,5 +1,10 @@
 import groovy.json.JsonSlurper
 
+plugins {
+    // Compiles the Quest theater's own shaders (src/quest/shaders).
+    id 'com.meta.spatial.plugin' version '0.15.0'
+}
+
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
@@ -83,6 +88,16 @@ android {
     }
 }
 
+// The Spatial plugin reads the SDK's shader includes from a configuration named exactly
+// "debugCompileClasspath". With product flavors the Android plugin names its configurations
+// per flavor instead, so give it one that holds just the SDK package. It is never packaged.
+configurations {
+    debugCompileClasspath {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
@@ -99,6 +114,9 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Only for the Spatial plugin to find the SDK's shader includes (see configurations above).
+    debugCompileClasspath "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion@aar"
 
     // Quest only: the immersive theater (Meta Spatial SDK) and its native player.
     questImplementation "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion"
@@ -117,4 +135,19 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+spatial {
+    allowUsageDataCollection.set(false)
+    shaders {
+        // Not src/quest/shaders: that is the Android plugin's own shader folder,
+        // and these need the Spatial SDK's shader compiler and includes.
+        sources.add(project.layout.projectDirectory.dir("src/quest/theater-shaders"))
+    }
+}
+
+// The Spatial plugin compiles the theater shaders itself (compileShadersFor<variant>), with the
+// SDK's includes. The Android plugin's own shader step would try the same files without them.
+tasks.withType(com.android.build.gradle.tasks.ShaderCompile).configureEach {
+    enabled = false
 }

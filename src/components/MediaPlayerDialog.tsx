@@ -306,6 +306,14 @@ export function MediaPlayerDialog({
 	} | null>(null);
 	const [playbackError, setPlaybackError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
+	// Where to resume instead of the item's saved position: set when the
+	// viewer comes back from the Quest theater, which played on from there.
+	const resumeOverrideRef = useRef<{ itemId: string; ticks: number } | null>(null);
+	function resumeTicksFor(target: MediaItem | null | undefined) {
+		const override = resumeOverrideRef.current;
+		if (target && override?.itemId === target.id) return override.ticks;
+		return target?.playbackPositionTicks ?? 0;
+	}
 	const limitRetryRef = useRef(false);
 	const itemId = item?.id;
 	useEffect(() => {
@@ -601,7 +609,7 @@ export function MediaPlayerDialog({
 			prefersSafeVideo: playbackClient.prefersSafeVideo,
 			playMethod: playbackSession?.playMethod,
 			isNativeHlsPlayback,
-			resumeTicks: item?.playbackPositionTicks ?? 0,
+			resumeTicks: resumeTicksFor(item),
 			startTimeOffset: startTimeOffsetRef.current,
 			seekPending: seekPendingRef.current,
 			pendingSeekTarget: pendingSeekTargetRef.current,
@@ -624,7 +632,7 @@ export function MediaPlayerDialog({
 		setScrubTime(null);
 		setHoverTime(null);
 		setBufferedEnd(0);
-		lastKnownPositionRef.current = (item?.playbackPositionTicks ?? 0) / 10_000_000;
+		lastKnownPositionRef.current = resumeTicksFor(item) / 10_000_000;
 		setIsBuffering(true);
 		setPlaybackSession(null);
 		setStreamToken(null);
@@ -676,7 +684,7 @@ export function MediaPlayerDialog({
 						knownDurationRef.current = session.durationSeconds;
 						setDuration(session.durationSeconds);
 					}
-					const resumeSeconds = session.live ? 0 : (item.playbackPositionTicks ?? 0) / 10_000_000;
+					const resumeSeconds = session.live ? 0 : resumeTicksFor(item) / 10_000_000;
 					let streamUrl = session.streamUrl;
 					if (session.transcoded && resumeSeconds > 0) {
 						// Aurora's converter seeks on the provider; the new stream starts there.
@@ -724,7 +732,7 @@ export function MediaPlayerDialog({
 				// For transcoded streams, bake the resume position into StartTimeTicks
 				// so that Jellyfin starts the transcode from the right point. This
 				// avoids a seek-beyond-buffer that causes iOS to restart at 0:00.
-				const resumeTicks = item!.playbackPositionTicks ?? 0;
+				const resumeTicks = resumeTicksFor(item);
 				const isNativeHlsSession =
 					session.playMethod === "Transcode" && isNativeHlsStreamUrl(session.streamUrl);
 				if (resumeTicks > 0 && session.playMethod === "Transcode" && !isNativeHlsSession) {
@@ -1097,12 +1105,13 @@ export function MediaPlayerDialog({
 				void attemptAutoplay();
 				return;
 			}
-			if (item!.playbackPositionTicks) {
+			const resumeTicks = resumeTicksFor(item);
+			if (resumeTicks) {
 				logPlayback("media:seek-to-resume-position", {
-					resumeSeconds: item!.playbackPositionTicks / 10_000_000,
+					resumeSeconds: resumeTicks / 10_000_000,
 					videoState: snapshotMediaState(video),
 				});
-				const resumeAt = item!.playbackPositionTicks / 10_000_000;
+				const resumeAt = resumeTicks / 10_000_000;
 				beginOptimisticSeek(resumeAt);
 				setVideoCurrentTime(resumeAt);
 			}
@@ -1796,23 +1805,25 @@ export function MediaPlayerDialog({
 		}
 	}
 
-	// Back from the theater: carry on from where the viewer got to, or close
-	// the player when the film ended there (closing reports it played). A live
-	// channel simply plays on.
+	// Back from the theater: close the player when the film ended there
+	// (closing reports it played), or carry on from where the viewer got to.
+	// The panel's own stream sat paused all that time and the server may have
+	// dropped it, so start a fresh one there, the way "Try again" does.
 	const theaterClosedRef = useRef<(result: TheaterResult) => void>(() => undefined);
 	theaterClosedRef.current = (result) => {
 		if (result.itemId !== activeItemIdRef.current) return;
-		if (isLive) {
-			void videoRef.current?.play().catch(() => undefined);
-			return;
-		}
-		if (result.ended) {
-			pendingSeekTargetRef.current = null;
-			lastKnownPositionRef.current = result.positionSeconds;
+		pendingSeekTargetRef.current = null;
+		lastKnownPositionRef.current = isLive ? 0 : result.positionSeconds;
+		if (result.ended && !isLive) {
 			onClose();
 			return;
 		}
-		seekToMovieTime(result.positionSeconds);
+		resumeOverrideRef.current = {
+			itemId: result.itemId,
+			ticks: isLive ? 0 : Math.round(result.positionSeconds * 10_000_000),
+		};
+		setPlaybackError(null);
+		setAttempt((value) => value + 1);
 	};
 
 	useEffect(() => {

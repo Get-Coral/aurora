@@ -30,6 +30,24 @@ def lowpass(signal: np.ndarray, cutoff: float) -> np.ndarray:
     return np.fft.irfft(spectrum, signal.size)
 
 
+def bandpass(signal: np.ndarray, low: float, high: float) -> np.ndarray:
+    """Soft band-pass in the frequency domain (circular, loop-safe)."""
+    spectrum = np.fft.rfft(signal)
+    freqs = np.fft.rfftfreq(signal.size, 1 / RATE)
+    spectrum *= 1 / np.sqrt(1 + (freqs / high) ** 4) * (1 - 1 / np.sqrt(1 + (freqs / low) ** 4))
+    return np.fft.irfft(spectrum, signal.size)
+
+
+def bursts(n: int, rate_per_second: float, length: tuple, shape) -> np.ndarray:
+    """Short events at random times, each `shape(samples) -> array`, wrapped around the loop."""
+    out = np.zeros(n)
+    for start in rng.uniform(0, n, int(rate_per_second * n / RATE)):
+        samples = int(rng.uniform(*length) * RATE)
+        idx = (int(start) + np.arange(samples)) % n
+        out[idx] += shape(samples)
+    return out
+
+
 def smooth_random(length: int, points: int, seed_scale: float = 1.0) -> np.ndarray:
     """A slow, smooth random curve in 0..1 (wind gusts, swells)."""
     knots = rng.uniform(0, 1, points + 1) * seed_scale
@@ -85,9 +103,105 @@ def dark_room(seconds: int = 36) -> np.ndarray:
     return normalise(seamless(room + hum + fan, 2.0), 0.35)
 
 
+def grand_theater(seconds: int = 40) -> np.ndarray:
+    """A full cinema before the film: soft, indistinct murmur under a warm room tone."""
+    n = seconds * RATE
+    voices = np.zeros(n)
+    for _ in range(16):
+        # Each voice: speech-band noise, gated into syllables and phrases.
+        syllables = np.clip(smooth_random(n, int(seconds * rng.uniform(3, 5))) * 1.8 - 0.6, 0, 1)
+        phrases = np.clip(smooth_random(n, int(seconds * 0.4)) * 2 - 0.5, 0, 1)
+        centre = rng.uniform(350, 900)
+        voices += bandpass(rng.normal(0, 1, n), centre * 0.6, centre * 2.2) * syllables * phrases * rng.uniform(0.4, 1)
+    # Far away: the hall softens the voices.
+    voices = lowpass(voices, 1300)
+    room = lowpass(rng.normal(0, 1, n), 160) * 0.5
+    return normalise(seamless(voices + room, 2.5), 0.32)
+
+
+def orbital_deck(seconds: int = 40) -> np.ndarray:
+    """A starship at rest: the deep hum of its engines, air moving, now and then a soft chime."""
+    n = seconds * RATE
+    t = np.arange(n) / RATE
+    hum = sum(
+        amp * np.sin(2 * np.pi * round(freq * seconds) / seconds * t + rng.uniform(0, 6))
+        for freq, amp in ((38, 0.5), (57, 0.3), (76.4, 0.2), (114, 0.08))
+    )
+    rumble = lowpass(rng.normal(0, 1, n), 90) * 1.4
+    air = bandpass(rng.normal(0, 1, n), 300, 1200) * 0.12 * (0.7 + 0.3 * smooth_random(n, 6))
+
+    def chime(samples):
+        k = np.arange(samples) / RATE
+        tone = rng.choice([660, 880, 990, 1320])
+        return (np.sin(2 * np.pi * tone * k) + 0.4 * np.sin(2 * np.pi * tone * 1.5 * k)) * np.exp(-k * 7) * 0.06
+
+    chimes = bursts(n, 0.12, (0.5, 0.8), chime)
+    return normalise(seamless(hum + rumble + air + chimes, 2.0), 0.4)
+
+
+def sentinel_hq(seconds: int = 44) -> np.ndarray:
+    """High above a city at night: wind against the glass, far-off traffic rising from below."""
+    n = seconds * RATE
+    traffic = lowpass(rng.normal(0, 1, n), 260) * (0.6 + 0.4 * smooth_random(n, 8))
+    wind = bandpass(rng.normal(0, 1, n), 500, 1600) * smooth_random(n, 7) ** 2 * 0.5
+    hiss = bandpass(rng.normal(0, 1, n), 2500, 6000) * 0.04
+    return normalise(seamless(traffic + wind + hiss, 3.0), 0.38)
+
+
+def arcane_library(seconds: int = 40) -> np.ndarray:
+    """A fire crackling in a stone hearth, in a quiet hall."""
+    n = seconds * RATE
+    roar = lowpass(rng.normal(0, 1, n), 180) * (0.6 + 0.4 * smooth_random(n, 20))
+
+    def crackle(samples):
+        k = np.arange(samples) / RATE
+        return rng.normal(0, 1, samples) * np.exp(-k * rng.uniform(120, 400)) * rng.uniform(0.2, 1)
+
+    crackles = bandpass(bursts(n, 9, (0.01, 0.04), crackle), 900, 7000)
+
+    def pop(samples):
+        k = np.arange(samples) / RATE
+        return rng.normal(0, 1, samples) * np.exp(-k * 60) * 1.4
+
+    pops = bandpass(bursts(n, 0.5, (0.05, 0.1), pop), 400, 4000)
+    room = lowpass(rng.normal(0, 1, n), 120) * 0.3
+    return normalise(seamless(roar + crackles * 0.8 + pops + room, 2.0), 0.45)
+
+
+def biolume_grove(seconds: int = 40) -> np.ndarray:
+    """An alien jungle at night: a chorus of insects, soft calls, leaves stirring."""
+    n = seconds * RATE
+    t = np.arange(n) / RATE
+    chorus = np.zeros(n)
+    for _ in range(7):
+        # A cricket-like chirp: a high tone pulsed quickly, in bursts with rests.
+        carrier = np.sin(2 * np.pi * rng.uniform(3800, 5600) * t)
+        pulse = (np.sin(2 * np.pi * rng.uniform(25, 40) * t) > 0.2).astype(float)
+        period = rng.uniform(0.7, 1.6)
+        burst = ((t + rng.uniform(0, period)) % period) < rng.uniform(0.2, 0.45)
+        chorus += carrier * lowpass(pulse * burst, 600) * rng.uniform(0.3, 1) * (0.5 + 0.5 * smooth_random(n, 5))
+
+    def call(samples):
+        k = np.arange(samples) / RATE
+        f0 = rng.uniform(380, 700)
+        return np.sin(2 * np.pi * (f0 * k - 120 * k**2)) * np.sin(np.pi * k / k[-1]) ** 2 * 0.25
+
+    calls = bursts(n, 0.25, (0.3, 0.6), call)
+    leaves = bandpass(rng.normal(0, 1, n), 800, 3500) * smooth_random(n, 9) ** 3 * 0.35
+    return normalise(seamless(chorus * 0.35 + calls + leaves, 2.5), 0.4)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, make in (("northern_lights", northern_lights), ("dark_room", dark_room)):
+    for name, make in (
+        ("northern_lights", northern_lights),
+        ("dark_room", dark_room),
+        ("grand_theater", grand_theater),
+        ("orbital_deck", orbital_deck),
+        ("sentinel_hq", sentinel_hq),
+        ("arcane_library", arcane_library),
+        ("biolume_grove", biolume_grove),
+    ):
         path = OUT / f"theater_ambience_{name}.ogg"
         sf.write(path, make().astype(np.float32), RATE, format="OGG", subtype="VORBIS")
         print(path.name, path.stat().st_size // 1024, "KB")

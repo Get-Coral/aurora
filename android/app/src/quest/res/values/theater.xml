@@ -12,6 +12,16 @@
     <string name="theater_skip_forward">Forward 30 seconds</string>
     <string name="theater_environments">Environment</string>
     <string name="theater_environments_title">Where do you want to watch?</string>
+    <string name="theater_env_grand_theater">Grand Theater</string>
+    <string name="theater_env_grand_theater_hint">A classic cinema, from the VIP row</string>
+    <string name="theater_env_orbital_deck">Orbital Deck</string>
+    <string name="theater_env_orbital_deck_hint">An observation lounge high above a planet, under a sea of stars</string>
+    <string name="theater_env_sentinel_hq">Sentinel HQ</string>
+    <string name="theater_env_sentinel_hq_hint">A command lounge in a penthouse high above a city at night</string>
+    <string name="theater_env_arcane_library">Arcane Library</string>
+    <string name="theater_env_arcane_library_hint">A moonlit gothic hall, candlelight and a crackling fire</string>
+    <string name="theater_env_biolume_grove">Biolume Grove</string>
+    <string name="theater_env_biolume_grove_hint">A glowing jungle clearing under two moons</string>
     <string name="theater_env_aurora">Northern lights</string>
     <string name="theater_env_aurora_hint">A night sky over a still lake</string>
     <string name="theater_env_dark">Dark room</string>

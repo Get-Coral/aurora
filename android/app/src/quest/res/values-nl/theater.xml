@@ -8,6 +8,16 @@
     <string name="theater_skip_forward">30 seconden vooruit</string>
     <string name="theater_environments">Omgeving</string>
     <string name="theater_environments_title">Waar wil je kijken?</string>
+    <string name="theater_env_grand_theater">Grand Theater</string>
+    <string name="theater_env_grand_theater_hint">Een klassieke bioscoopzaal, vanaf de VIP-rij</string>
+    <string name="theater_env_orbital_deck">Orbitaal dek</string>
+    <string name="theater_env_orbital_deck_hint">Een uitkijklounge hoog boven een planeet, onder een zee van sterren</string>
+    <string name="theater_env_sentinel_hq">Sentinel HQ</string>
+    <string name="theater_env_sentinel_hq_hint">Een commandolounge in een penthouse hoog boven een nachtelijke stad</string>
+    <string name="theater_env_arcane_library">Magische bibliotheek</string>
+    <string name="theater_env_arcane_library_hint">Een gotische zaal vol maanlicht, kaarsen en een knetterend haardvuur</string>
+    <string name="theater_env_biolume_grove">Lichtend woud</string>
+    <string name="theater_env_biolume_grove_hint">Een open plek in een lichtgevende jungle, onder twee manen</string>
     <string name="theater_env_aurora">Poollicht</string>
     <string name="theater_env_aurora_hint">Een nachthemel boven een stil meer</string>
     <string name="theater_env_dark">Donkere zaal</string>
