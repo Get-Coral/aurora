@@ -94,7 +94,7 @@ jobs:
         run: pnpm desktop:build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurora-desktop-${{ matrix.target }}
           path: |
