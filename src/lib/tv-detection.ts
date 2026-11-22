@@ -28,6 +28,20 @@ export function isTvUserAgent(userAgent: string): boolean {
 }
 
 /**
+ * Lower-cased user-agent fragments of a Meta Quest headset. The Android
+ * WebView in the app carries the model ("; Quest 3 Build/..."), the Quest
+ * Browser its own name. Kept next to the TV pattern for the same reason: the
+ * pre-paint script in __root.tsx needs it as plain data.
+ */
+export const QUEST_USER_AGENT_PATTERN_SOURCE = ["; quest\\b", "oculusbrowser"].join("|");
+
+const QUEST_USER_AGENT_PATTERN = new RegExp(QUEST_USER_AGENT_PATTERN_SOURCE);
+
+export function isQuestUserAgent(userAgent: string): boolean {
+	return QUEST_USER_AGENT_PATTERN.test(userAgent.toLowerCase());
+}
+
+/**
  * Set by the native Android shell once it has asked the system whether it
  * runs on a TV (UiModeManager / leanback). Many TV WebViews don't say so in
  * their user agent, so this is the reliable signal inside the app.

@@ -17,7 +17,7 @@ export async function beginPlaybackSessionRuntime(input: {
 	data: {
 		id: string;
 		client?: {
-			platform: "ios" | "android" | "android-tv" | "other";
+			platform: "ios" | "android" | "android-tv" | "quest" | "other";
 			prefersSafeVideo: boolean;
 			prefersTvMode: boolean;
 		};

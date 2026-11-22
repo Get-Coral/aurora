@@ -398,11 +398,30 @@ The Play Store bundle is signed with an upload key that never goes in the repo. 
 pnpm android:bundle:release
 ```
 
-The signed bundle is written to `android/app/build/outputs/bundle/release/app-release.aab`. Without a keystore the release build is left unsigned.
+The signed bundle is written to `android/app/build/outputs/bundle/standardRelease/app-standard-release.aab`. Without a keystore the release build is left unsigned.
 
 The version comes from `package.json`. The versionCode is `major * 1000000 + minor * 10000 + patch * 100 + build`, so 1.14.1 becomes `1140100`. To upload the same version again, raise the build number with `AURORA_BUILD_NUMBER` (0–99), for example `AURORA_BUILD_NUMBER=1 pnpm android:bundle:release`.
 
 Store listing texts, release notes, the icon, the feature graphic, the TV banner and the phone, tablet and TV screenshots live in [`fastlane/metadata/android`](./fastlane/metadata/android). The tablet and TV screenshots come from [`scripts/store/screenshots.mjs`](./scripts/store/screenshots.mjs), which runs the built app as the Android app does (on-device runtime, TV mode at 1080p) against the public Jellyfin demo server, whose films are all public domain or Creative Commons: `pnpm build && node scripts/store/screenshots.mjs`. The privacy policy is in [`docs/privacy-policy.md`](./docs/privacy-policy.md) and is published at https://getcoral.dev/apps/aurora/privacy.
+
+### Meta Quest Builds
+
+The Android project has two product flavors. `standard` is the Play Store app for phones, tablets and TVs. `quest` is the Meta Horizon Store build: the same app as a 2D panel. Its manifest additions live in [`android/app/src/quest/AndroidManifest.xml`](./android/app/src/quest/AndroidManifest.xml): supported headsets, a 16:9 panel size, and no TV banner or leanback entry. In the web app, a Quest reports the `quest` platform (see `src/lib/platform.ts`).
+
+To try it on a headset, turn on developer mode for the Quest in the Meta Horizon phone app, connect it over USB-C (or wireless adb), and run:
+
+```bash
+pnpm android:quest:install
+```
+
+Meta Quest Developer Hub can show the headset view on your computer, and `chrome://inspect` debugs the WebView as on any Android device.
+
+For the store, `pnpm android:quest:release` builds a signed APK (the same keystore setup as above) at `android/app/build/outputs/apk/quest/release/app-quest-release.apk`. Upload it to a release channel with Meta's `ovr-platform-util`:
+
+```bash
+ovr-platform-util upload-quest-build --app-id <APP_ID> --app-secret <APP_SECRET> \
+  --apk android/app/build/outputs/apk/quest/release/app-quest-release.apk --channel ALPHA
+```
 
 The public Android app is [Aurora for Jellyfin](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
 

@@ -1,6 +1,6 @@
-import { isTvUserAgent, readNativeTvFlag } from "./tv-detection";
+import { isQuestUserAgent, isTvUserAgent, readNativeTvFlag } from "./tv-detection";
 
-export type ClientPlatform = "ios" | "android" | "android-tv" | "other";
+export type ClientPlatform = "ios" | "android" | "android-tv" | "quest" | "other";
 
 export interface ClientPlaybackContext {
 	platform: ClientPlatform;
@@ -51,6 +51,17 @@ export function detectClientPlaybackContext(
 		return {
 			platform: isIos ? "ios" : "other",
 			prefersSafeVideo: true,
+			prefersTvMode: false,
+		};
+	}
+
+	// A Meta Quest runs Android, but its panel is driven by a pointer (the
+	// controller ray or a pinch), not a remote, and it decodes HEVC and AV1 in
+	// hardware. Checked before the TV branch: the headset is never a TV.
+	if (isQuestUserAgent(userAgent)) {
+		return {
+			platform: "quest",
+			prefersSafeVideo: false,
 			prefersTvMode: false,
 		};
 	}

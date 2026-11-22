@@ -42,7 +42,7 @@ export function AppBootstrap() {
 	useEffect(() => {
 		const platform = getClientPlaybackContext().platform;
 
-		if (platform !== "android" && platform !== "android-tv") {
+		if (platform !== "android" && platform !== "android-tv" && platform !== "quest") {
 			return;
 		}
 
