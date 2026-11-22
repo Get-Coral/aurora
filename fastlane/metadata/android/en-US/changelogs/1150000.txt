@@ -1,0 +1,1 @@
+Aurora now plays your own IPTV next to Jellyfin: live TV with a guide and catch-up, films and series in rows, and search across both. New on Android TV and Google TV, made for the remote. Smoother live channels and many fixes.

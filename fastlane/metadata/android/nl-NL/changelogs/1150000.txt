@@ -1,0 +1,1 @@
+Aurora speelt nu ook je eigen IPTV naast Jellyfin: live-tv met gids en terugkijken, films en series in rijen, en zoeken in beide. Nieuw op Android TV en Google TV, gemaakt voor de afstandsbediening. Vlottere live-zenders en veel verbeteringen.
