@@ -423,6 +423,17 @@ ovr-platform-util upload-quest-build --app-id <APP_ID> --app-secret <APP_SECRET>
   --apk android/app/build/outputs/apk/quest/release/app-quest-release.apk --channel ALPHA
 ```
 
+#### Theater environments
+
+On the Quest, "Watch in the theater" opens an immersive player (Meta Spatial SDK) in one of several environments. Their images, seats and sounds are committed files in `android/app/src/quest/`, so building the app never needs Blender. They are made by the scripts in [`scripts/quest`](./scripts/quest), which you only run to change or add an environment:
+
+- `blender/env_<name>.py` builds a room in Blender, entirely from code; `blender/render_env.py` renders it as a 360° panorama with its light layers and exports the viewer's seat as glTF: `blender -b --factory-startup -P scripts/quest/blender/render_env.py -- <name>` (add `--preview` for a quick look).
+- `compose.py <name>` turns the renders into the app's sky and additive light-layer textures.
+- `ambience.py` synthesises the ambient sound loops; `environments.py` paints the older northern lights and dark room skies; `icons.mjs` converts the Lucide icons the native controls use.
+- An environment is registered in [`TheaterEnvironments.kt`](./android/app/src/quest/java/dev/getcoral/aurora/TheaterEnvironments.kt), with how each light layer behaves while the film plays.
+
+The Horizon Store listing (texts, images and the answers for the submission form) lives in [`store/horizon`](./store/horizon); `scripts/quest/store_assets.py` makes its images from the environments.
+
 The public Android app is [Aurora Cinema](https://play.google.com/store/apps/details?id=dev.getcoral.aurora) (`dev.getcoral.aurora`).
 
 ### Packaging Notes

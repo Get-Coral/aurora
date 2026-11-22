@@ -1,0 +1,24 @@
+Aurora Cinema turns your headset into a private cinema for the films and series you already have: your own Jellyfin server and the IPTV subscription from your provider.
+
+Browse in a comfortable panel, then step into the theater: the film plays on a big screen, and you sit in a seat of your own.
+
+PLACES TO WATCH
+• Grand Theater: red velvet and a starlit ceiling, from a VIP row
+• Orbital Deck: a lounge above a planet, under a sea of stars
+• Sentinel HQ: a penthouse high above a city at night
+• Arcane Library: floating candles and a crackling fire
+• Biolume Grove: a glowing jungle under two moons
+• Northern lights, a dark room, or your own room
+
+The room reacts to the film: press play and the lights go down; pause and they come back up.
+
+YOUR LIBRARY AND IPTV
+• Continue Watching, favourites, genres and search
+• Progress syncs back to your server
+• Audio and subtitle choice
+• Profiles for shared households
+• Your own M3U, Xtream Codes or stream URL, with a TV guide
+
+Aurora Cinema includes no channels or media of its own: you need your own Jellyfin server or IPTV provider.
+
+No accounts, no ads, no tracking. Open source at github.com/Get-Coral/aurora. Not affiliated with the Jellyfin project.

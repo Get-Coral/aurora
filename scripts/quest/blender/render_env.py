@@ -38,12 +38,11 @@ A.panorama_camera()
 env = importlib.import_module(f"env_{name}")
 env.build()
 
-if preview:
-    scene.render.resolution_x, scene.render.resolution_y = 1536, 768
-    scene.cycles.samples = 24
-else:
-    scene.render.resolution_x, scene.render.resolution_y = 4096, 2048
-    scene.cycles.samples = getattr(env, "SAMPLES", 160)
+# The room at 8192 x 4096 (about 23 px per degree, close to what the Quest 3
+# shows); light layers at half that, as light is soft and they are many.
+BASE_SIZE = (1536, 768) if preview else (8192, 4096)
+LAYER_SIZE = (1536, 768) if preview else (4096, 2048)
+scene.cycles.samples = 24 if preview else getattr(env, "SAMPLES", 160)
 scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_depth = "16"
 
@@ -58,6 +57,7 @@ def render(label: str, enabled: set):
     for coll in layers:
         coll.hide_render = coll.name not in enabled
     seat.hide_render = True  # the seat is a 3D model in the app, not part of the sky
+    scene.render.resolution_x, scene.render.resolution_y = BASE_SIZE if label == "base" else LAYER_SIZE
     scene.render.filepath = str(out / f"{label}.png")
     started = time.time()
     bpy.ops.render.render(write_still=True)

@@ -22,7 +22,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "android/app/src/quest/res/drawable-nodpi"
-LAYER_SIZE = (2048, 1024)
+LAYER_SIZE = (4096, 2048)
 
 
 def load(path: Path) -> np.ndarray:
@@ -49,19 +49,24 @@ def thumbnail(panorama: np.ndarray, look_up: float = 0.0) -> np.ndarray:
 
 def main(name: str, look_up: float = 0.0):
     src = ROOT / ".context/renders" / name
-    base = load(src / "base.png")
-    lit = base.copy()
+    base_image = Image.open(src / "base.png").convert("RGB")
+    base = np.asarray(base_image, dtype=np.float64) / 255
+    lit = None
     for path in sorted(src.glob("*.png")):
         if path.stem == "base":
             continue
         full = load(path)
+        # Layers render at a lower resolution than the room; compare like with like.
+        h, w, _ = full.shape
+        base_at_layer = np.asarray(base_image.resize((w, h), Image.LANCZOS), dtype=np.float64) / 255
         # The layer's own light, as it adds up on screen. Tiny differences
         # are denoiser noise between the two renders, not light.
-        added = np.clip(full - base, 0, 1)
+        added = np.clip(full - base_at_layer, 0, 1)
         added[added < 2.5 / 255] = 0
         save(added, OUT / f"theater_{name}_{path.stem}.jpg", LAYER_SIZE)
-        lit = np.clip(lit + added, 0, 1)
-    save(base, OUT / f"theater_{name}.jpg")
+        lit = (base_at_layer if lit is None else lit) + added
+    save(base, OUT / f"theater_{name}.jpg", quality=86)
+    lit = np.clip(base if lit is None else lit, 0, 1)
     thumb = Image.fromarray((thumbnail(lit, look_up) * 255).astype(np.uint8)).resize((480, 270), Image.LANCZOS)
     thumb.save(OUT / f"theater_{name}_thumb.jpg", quality=88)
 
