@@ -65,7 +65,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
     "esbuild": "0.27.7",
-    "jsdom": "^28.1.0",
+    "jsdom": "^31.0.1",
     "playwright": "1.65.1",
     "typescript": "^5.9.3",
     "vite": "^8.3.1",
