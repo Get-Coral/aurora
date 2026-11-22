@@ -49,6 +49,21 @@ android {
             }
         }
     }
+    // "standard" is the Play Store app for phones, tablets and TVs. "quest" is the
+    // Meta Horizon Store build: the same web app as a 2D panel, with the manifest
+    // in src/quest (supported headsets, panel size, no TV launcher entry).
+    flavorDimensions = ["store"]
+    productFlavors {
+        standard {
+            dimension "store"
+            isDefault = true
+        }
+        quest {
+            dimension "store"
+            // Meta's recommended floor for apps that only target current headsets.
+            minSdkVersion 32
+        }
+    }
     buildTypes {
         release {
             if (releaseStoreFile) {

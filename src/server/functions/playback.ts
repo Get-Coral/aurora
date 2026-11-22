@@ -148,7 +148,7 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 		(input: {
 			id: string;
 			client?: {
-				platform: "ios" | "android" | "android-tv" | "other";
+				platform: "ios" | "android" | "android-tv" | "quest" | "other";
 				prefersSafeVideo: boolean;
 				prefersTvMode: boolean;
 			};

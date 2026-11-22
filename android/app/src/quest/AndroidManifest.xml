@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Merged on top of src/main/AndroidManifest.xml for the Meta Horizon Store build.
+  Aurora runs as a 2D panel app: no head tracking needed, no TV launcher entry.
+  https://developers.meta.com/horizon/resources/publish-mobile-manifest/
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:installLocation="auto">
+
+    <application tools:remove="android:banner">
+
+        <meta-data
+            android:name="com.oculus.supportedDevices"
+            android:value="quest2|questpro|quest3|quest3s" />
+
+        <activity android:name=".MainActivity">
+            <!-- Opens as a 16:9 panel, which suits a video app better than
+                 Horizon OS's 1024x640 default. -->
+            <layout
+                android:defaultWidth="1280dp"
+                android:defaultHeight="720dp"
+                android:minWidth="640dp"
+                android:minHeight="360dp" />
+
+            <intent-filter tools:node="remove">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+    <uses-feature
+        android:name="android.hardware.vr.headtracking"
+        android:required="false"
+        android:version="1" />
+
+    <uses-feature
+        android:name="android.software.leanback"
+        tools:node="remove" />
+</manifest>
