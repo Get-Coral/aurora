@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The theater's control bar, in the web player's style: title and time, a
+     thin timeline, then the transport in the middle and the rest at the side.
+     1000x220dp on a 1.25x0.275m panel below the screen. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/theater_controls_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/theater_glass_bg"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/theater_title"
+                style="@style/TheaterTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="26sp" />
+
+            <TextView
+                android:id="@+id/theater_time"
+                style="@style/TheaterText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:fontFeatureSettings="tnum"
+                android:textSize="18sp" />
+        </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/theater_seek"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_marginStart="-16dp"
+            android:layout_marginEnd="-8dp"
+            android:maxHeight="6dp"
+            android:minHeight="6dp"
+            android:progressDrawable="@drawable/theater_progress"
+            android:splitTrack="false"
+            android:thumb="@drawable/theater_progress_thumb" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/theater_skip_back"
+                    style="@style/TheaterIconButton"
+                    android:contentDescription="@string/theater_skip_back"
+                    android:src="@drawable/theater_icon_skip_back" />
+
+                <ImageButton
+                    android:id="@+id/theater_play_pause"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:background="@drawable/theater_play_button_bg"
+                    android:contentDescription="@string/theater_pause"
+                    android:padding="24dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/theater_icon_pause"
+                    android:tint="@color/theater_void" />
+
+                <ImageButton
+                    android:id="@+id/theater_skip_forward"
+                    style="@style/TheaterIconButton"
+                    android:contentDescription="@string/theater_skip_forward"
+                    android:src="@drawable/theater_icon_skip_forward" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/theater_environments_button"
+                    style="@style/TheaterIconButton"
+                    android:contentDescription="@string/theater_environments"
+                    android:src="@drawable/theater_icon_environments" />
+
+                <ImageButton
+                    android:id="@+id/theater_back"
+                    style="@style/TheaterIconButton"
+                    android:contentDescription="@string/theater_back"
+                    android:src="@drawable/theater_icon_close" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

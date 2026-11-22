@@ -1,20 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Merged on top of src/main/AndroidManifest.xml for the Meta Horizon Store build.
-  Aurora runs as a 2D panel app: no head tracking needed, no TV launcher entry.
+  Aurora is a hybrid app: the 2D panel (MainActivity, the web app) plus an
+  immersive theater (TheaterActivity, Meta Spatial SDK) for watching.
   https://developers.meta.com/horizon/resources/publish-mobile-manifest/
+  https://developers.meta.com/horizon/documentation/spatial-sdk/hybrid-apps-overview
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:horizonos="http://schemas.horizonos/sdk"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="auto">
+
+    <!-- Hybrid apps need Horizon OS v69 or later. -->
+    <horizonos:uses-horizonos-sdk
+        horizonos:minSdkVersion="69"
+        horizonos:targetSdkVersion="69" />
+
+    <uses-feature
+        android:name="android.hardware.vr.headtracking"
+        android:required="true"
+        android:version="1" />
+    <uses-feature
+        android:name="com.oculus.feature.PASSTHROUGH"
+        android:required="false" />
+    <uses-feature
+        android:name="oculus.software.handtracking"
+        android:required="false" />
+    <uses-feature android:glEsVersion="0x00030001" />
+
+    <uses-feature
+        android:name="android.software.leanback"
+        tools:node="remove" />
+
+    <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
 
     <application tools:remove="android:banner">
 
         <meta-data
             android:name="com.oculus.supportedDevices"
             android:value="quest2|questpro|quest3|quest3s" />
+        <meta-data
+            android:name="com.oculus.vr.focusaware"
+            android:value="true" />
+        <meta-data
+            android:name="com.oculus.handtracking.version"
+            android:value="V2.0" />
 
-        <activity android:name=".MainActivity">
+        <uses-native-library
+            android:name="libossdk.oculus.so"
+            android:required="true" />
+
+        <activity
+            android:name=".MainActivity"
+            android:resizeableActivity="true">
             <!-- Opens as a 16:9 panel, which suits a video app better than
                  Horizon OS's 1024x640 default. -->
             <layout
@@ -23,19 +61,38 @@
                 android:minWidth="640dp"
                 android:minHeight="360dp" />
 
+            <!-- The launcher entry, marked as the app's 2D side. -->
+            <intent-filter tools:node="remove">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="com.oculus.intent.category.2D" />
+            </intent-filter>
+
             <intent-filter tools:node="remove">
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The immersive side. configChanges keeps Horizon OS from recreating
+             it on every change, which immersive activities require. -->
+        <activity
+            android:name=".TheaterActivity"
+            android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode"
+            android:excludeFromRecents="false"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+        </activity>
     </application>
-
-    <uses-feature
-        android:name="android.hardware.vr.headtracking"
-        android:required="false"
-        android:version="1" />
-
-    <uses-feature
-        android:name="android.software.leanback"
-        tools:node="remove" />
 </manifest>

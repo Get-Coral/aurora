@@ -451,6 +451,7 @@ export const enMessages: MessageDictionary = {
 	"home.iptvSeries.subtitle": "Recently added",
 	"player.live": "Live",
 	"player.pip": "Picture in picture",
+	"player.theater": "Watch in the theater",
 	"player.audioTrack": "Audio track",
 	"player.iptvUnavailable": "Aurora couldn't prepare this stream. The source may be unavailable.",
 	"search.channel": "Channel",

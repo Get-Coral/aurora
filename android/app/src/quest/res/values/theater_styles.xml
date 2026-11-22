@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Round, borderless icon button, like .icon-button in the web player. -->
+    <style name="TheaterIconButton">
+        <item name="android:layout_width">64dp</item>
+        <item name="android:layout_height">64dp</item>
+        <item name="android:padding">18dp</item>
+        <item name="android:background">@drawable/theater_icon_button_bg</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:tint">@color/theater_ink_muted</item>
+    </style>
+
+    <style name="TheaterTitle">
+        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:textFontWeight">700</item>
+        <item name="android:textColor">@color/theater_ink</item>
+    </style>
+
+    <style name="TheaterText">
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:textColor">@color/theater_ink_muted</item>
+    </style>
+
+    <!-- Panels inside the theater draw their own rounded glass. -->
+    <style name="TheaterPanelTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+    </style>
+</resources>

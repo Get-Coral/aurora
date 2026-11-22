@@ -1,6 +1,7 @@
 import groovy.json.JsonSlurper
 
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
 
 // package.json is the single source of truth for the app version (bumped by release-please).
 // versionCode = major * 1000000 + minor * 10000 + patch * 100 + build, e.g. 1.14.1 build 1 -> 1140101.
@@ -62,7 +63,14 @@ android {
             dimension "store"
             // Meta's recommended floor for apps that only target current headsets.
             minSdkVersion 32
+            // The theater is an immersive activity, and the Horizon Store caps
+            // immersive apps at API 34 (Horizon OS is Android 14).
+            targetSdkVersion 34
         }
+    }
+    // Java 21 comes from capacitor.build.gradle; Kotlin has to match it.
+    kotlinOptions {
+        jvmTarget = '21'
     }
     buildTypes {
         release {
@@ -91,6 +99,13 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Quest only: the immersive theater (Meta Spatial SDK) and its native player.
+    questImplementation "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion"
+    questImplementation "com.meta.spatial:meta-spatial-sdk-toolkit:$metaSpatialSdkVersion"
+    questImplementation "com.meta.spatial:meta-spatial-sdk-vr:$metaSpatialSdkVersion"
+    questImplementation "androidx.media3:media3-exoplayer:$media3Version"
+    questImplementation "androidx.media3:media3-exoplayer-hls:$media3Version"
 }
 
 apply from: 'capacitor.build.gradle'

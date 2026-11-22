@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one bright control: Aurora's accent, a touch brighter when aimed at. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_hovered="true">
+        <shape android:shape="oval">
+            <gradient android:angle="315" android:endColor="@color/theater_accent" android:startColor="@color/theater_accent_strong" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <gradient android:angle="315" android:endColor="#FF5A8FE6" android:startColor="@color/theater_accent" />
+        </shape>
+    </item>
+</selector>

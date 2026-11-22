@@ -13,6 +13,7 @@ import {
 	Pause,
 	PictureInPicture2,
 	Play,
+	Projector,
 	Radio,
 	RotateCcw,
 	RotateCw,
@@ -33,6 +34,13 @@ import {
 	withStreamToken,
 } from "../lib/jellyfin-stream-proxy";
 import type { MediaItem } from "../lib/media";
+import {
+	isTheaterAvailable,
+	onTheaterClosed,
+	openTheater,
+	type TheaterResult,
+	toTheaterUrl,
+} from "../lib/native/theater";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
 	type AttachedStream,
@@ -452,6 +460,17 @@ export function MediaPlayerDialog({
 	// token is item-scoped and dies with the session, so it grants nothing the
 	// page's own cookie doesn't.
 	const streamUrl = baseStreamUrl ? withStreamToken(baseStreamUrl, streamToken) : baseStreamUrl;
+	// The Quest build can hand the film to an immersive theater.
+	const [theaterAvailable, setTheaterAvailable] = useState(false);
+	useEffect(() => {
+		let cancelled = false;
+		void isTheaterAvailable().then((available) => {
+			if (!cancelled) setTheaterAvailable(available);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 	const remote = useRemotePlayback(videoRef, {
 		enabled: open && Boolean(streamUrl),
 		srcKey: streamUrl ?? null,
@@ -1747,6 +1766,69 @@ export function MediaPlayerDialog({
 		setSubtitleFilter("");
 	}
 
+	// The Quest theater plays the same stream natively, Jellyfin and IPTV alike,
+	// once there is a resolved playback session.
+	const canOpenTheater = theaterAvailable && playbackSession != null && streamUrl != null;
+
+	async function enterTheater() {
+		const video = videoRef.current;
+		if (!item || !video || !streamUrl || !canOpenTheater) return;
+		video.pause();
+		const position = isLive
+			? 0
+			: seekPendingRef.current && pendingSeekTargetRef.current != null
+				? pendingSeekTargetRef.current
+				: video.currentTime + startTimeOffsetRef.current;
+		try {
+			await openTheater({
+				itemId: item.id,
+				title: item.title,
+				url: toTheaterUrl(streamUrl),
+				positionSeconds: position,
+				streamOffsetSeconds: isLive ? 0 : startTimeOffsetRef.current,
+				durationSeconds: isLive ? undefined : (getBestDuration() ?? undefined),
+				live: isLive,
+				format: iptvSession?.format,
+				fallbackUrl: iptvSession?.fallbackUrl ? toTheaterUrl(iptvSession.fallbackUrl) : undefined,
+			});
+		} catch {
+			// The headset couldn't switch; the panel player is still here.
+		}
+	}
+
+	// Back from the theater: carry on from where the viewer got to, or close
+	// the player when the film ended there (closing reports it played). A live
+	// channel simply plays on.
+	const theaterClosedRef = useRef<(result: TheaterResult) => void>(() => undefined);
+	theaterClosedRef.current = (result) => {
+		if (result.itemId !== activeItemIdRef.current) return;
+		if (isLive) {
+			void videoRef.current?.play().catch(() => undefined);
+			return;
+		}
+		if (result.ended) {
+			pendingSeekTargetRef.current = null;
+			lastKnownPositionRef.current = result.positionSeconds;
+			onClose();
+			return;
+		}
+		seekToMovieTime(result.positionSeconds);
+	};
+
+	useEffect(() => {
+		if (!open || !theaterAvailable) return;
+		let cancelled = false;
+		let dispose: (() => void) | undefined;
+		void onTheaterClosed((result) => theaterClosedRef.current(result)).then((remove) => {
+			if (cancelled) remove();
+			else dispose = remove;
+		});
+		return () => {
+			cancelled = true;
+			dispose?.();
+		};
+	}, [open, theaterAvailable]);
+
 	// Picture-in-picture: the standard API, or Safari's presentation modes.
 	const pictureInPictureSupported =
 		typeof document !== "undefined" &&
@@ -2860,6 +2942,17 @@ export function MediaPlayerDialog({
 											aria-label={remote.active ? t("player.remoteActive") : t("player.remote")}
 										>
 											{isAirplayPlatform ? <Airplay size={20} /> : <Cast size={20} />}
+										</button>
+									) : null}
+									{canOpenTheater ? (
+										<button
+											type="button"
+											className="icon-button"
+											onClick={() => void enterTheater()}
+											aria-label={t("player.theater")}
+											title={t("player.theater")}
+										>
+											<Projector size={20} />
 										</button>
 									) : null}
 									{pictureInPictureSupported ? (

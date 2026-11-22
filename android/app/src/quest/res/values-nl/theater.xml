@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="theater_live">Live</string>
+    <string name="theater_back">Terug naar het paneel</string>
+    <string name="theater_play">Afspelen</string>
+    <string name="theater_pause">Pauzeren</string>
+    <string name="theater_skip_back">10 seconden terug</string>
+    <string name="theater_skip_forward">30 seconden vooruit</string>
+    <string name="theater_environments">Omgeving</string>
+    <string name="theater_environments_title">Waar wil je kijken?</string>
+    <string name="theater_env_aurora">Poollicht</string>
+    <string name="theater_env_aurora_hint">Een nachthemel boven een stil meer</string>
+    <string name="theater_env_dark">Donkere zaal</string>
+    <string name="theater_env_dark_hint">Niets dan de film</string>
+    <string name="theater_env_passthrough">Je kamer</string>
+    <string name="theater_env_passthrough_hint">Het scherm op je eigen muur</string>
+    <string name="theater_error">Deze video speelt niet af in de bioscoop. Ga terug naar het paneel om hem daar te bekijken.</string>
+</resources>
