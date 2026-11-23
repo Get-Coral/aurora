@@ -1,0 +1,1 @@
+Aurora is now Aurora Cinema. Scrub through a film with preview thumbnails on the progress bar, which also shows how much is already loaded. On TV, home rows scroll sideways and remember where you were. Plus TV layout fixes and smaller improvements.
