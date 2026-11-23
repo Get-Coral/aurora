@@ -1,9 +1,10 @@
+import { formatClock } from "./clock";
 import type { MediaItem, MediaProgramme } from "./media";
 
 type Translate = (key: string, params?: Record<string, string | number | undefined>) => string;
 
 function clock(time: number) {
-	return new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+	return formatClock(time);
 }
 
 /** "Now", "21:30" or "Tomorrow 08:00" for a programme. */

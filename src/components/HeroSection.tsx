@@ -77,12 +77,13 @@ export function HeroSection({
 
 				{i.overview ? <p className="hero-overview">{i.overview}</p> : null}
 
-				<div className="hero-actions">
+				<div className="hero-actions" data-tv-row>
 					<button
 						className="primary-action"
 						onClick={onPlay}
 						type="button"
 						data-tv-focusable="true"
+						data-tv-entry
 					>
 						<Play size={18} fill="currentColor" />
 						{isResumableItem ? t("hero.resumeNow") : t("hero.playNow")}

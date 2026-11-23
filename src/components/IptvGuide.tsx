@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Play, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatClock } from "../lib/clock";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem, MediaProgramme } from "../lib/media";
 import { fetchIptvGuideRowsRuntime } from "../lib/runtime-functions";
@@ -10,7 +11,7 @@ const WINDOW_HOURS = 6;
 const PAGE_SIZE = 30;
 
 function clock(time: number) {
-	return new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+	return formatClock(time);
 }
 
 function select(item: MediaItem) {

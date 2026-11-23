@@ -168,6 +168,7 @@ function IptvPage() {
 			type="button"
 			className={`genre-pill${tab === value ? " genre-pill-active" : ""}`}
 			aria-pressed={tab === value}
+			data-tv-entry={tab === value ? "" : undefined}
 			onClick={() =>
 				update({
 					tab: value,
@@ -196,7 +197,7 @@ function IptvPage() {
 
 	return (
 		<main className="library-shell">
-			<div className="page-wrap library-head">
+			<div className="page-wrap library-head iptv-head">
 				<div className="library-copy">
 					<Link to="/" className="library-backlink" data-tv-focusable="true">
 						<ArrowLeft size={16} /> {t("library.backHome")}
@@ -222,7 +223,9 @@ function IptvPage() {
 			</div>
 
 			<div className="page-wrap library-toolbar iptv-toolbar">
-				<div className="genre-strip">{tabPills}</div>
+				<div className="genre-strip" data-tv-row>
+					{tabPills}
+				</div>
 				<div className="toolbar-controls">
 					<label className="iptv-search">
 						<Search size={15} aria-hidden="true" />
@@ -414,7 +417,11 @@ function IptvRows({
 			rows={rows}
 			loading={isLoading}
 			title={kind === "vod" ? t("iptv.movies") : t("iptv.series")}
-			toolbar={<div className="genre-strip">{tabs}</div>}
+			toolbar={
+				<div className="genre-strip" data-tv-row>
+					{tabs}
+				</div>
+			}
 			onShowAll={() => onFilter({})}
 		/>
 	);

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
+import { useTvMode } from "../lib/tv-mode";
 import { MediaCard } from "./MediaCard";
 
 interface SectionShelfProps {
@@ -38,6 +39,19 @@ export function SectionShelf({
 	emptyCopy,
 }: SectionShelfProps) {
 	const { t } = useI18n();
+	const { tvMode } = useTvMode();
+	// On a TV every card in a row has the same size, so Left/Right walks an
+	// even line: films and series as posters, channels and episodes (and
+	// everything in "continue watching") as wide tiles.
+	const variantFor = (item: MediaItem, index: number): "feature" | "poster" | "standard" => {
+		if (item.type === "channel") return "standard";
+		if (tvMode) {
+			return id !== "continue" && (item.type === "movie" || item.type === "series")
+				? "poster"
+				: "standard";
+		}
+		return index === 0 ? "feature" : index < 3 ? "poster" : "standard";
+	};
 	const linkSearch =
 		browseTo === "/library/movies" || browseTo === "/library/series"
 			? { sort: "DateCreated", order: "Descending", ratings: "", decade: "", minScore: 0 }
@@ -73,15 +87,7 @@ export function SectionShelf({
 							key={item.id}
 							item={item}
 							priority={index < 4}
-							variant={
-								item.type === "channel"
-									? "standard"
-									: index === 0
-										? "feature"
-										: index < 3
-											? "poster"
-											: "standard"
-							}
+							variant={variantFor(item, index)}
 							onClick={() => onSelect(item)}
 							onPlay={onPlay}
 							onToggleFavorite={onToggleFavorite}

@@ -4104,8 +4104,22 @@ html.tv-mode .hero-copy-in {
 
 html.tv-mode {
   font-size: 120%;
-  scroll-padding-top: 6rem;
+  /* The header tucks away once the page scrolls, so a row only needs a
+     little room above it. */
+  scroll-padding-top: 2.5rem;
   --header-h: 72px; /* always single-row pill on TV */
+}
+
+html.tv-mode .app-header {
+  transition: transform 260ms ease, opacity 200ms ease;
+}
+
+/* Scrolled down, the header slides up out of the way; it returns at the top
+   of the page or as soon as the remote moves into it. */
+html.tv-mode .app-header-tucked:not(:focus-within) {
+  transform: translateY(-130%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Title-safe area: many TVs crop the edges of the picture (overscan), so keep
@@ -4206,6 +4220,103 @@ html.tv-mode .shelf-section .section-trailing-button {
   display: none;
 }
 
+/* Channels on a TV, in a row on Home and in the Live tv grid: the logo on
+   top, the name and what's on below, one line each. The row or page already
+   says "Live tv", so the badge and the play button can go. */
+html.tv-mode .shelf-grid > .media-card-channel {
+  flex: 0 0 calc((100% - 3 * 1.25rem) / 3.6);
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+}
+
+html.tv-mode .library-grid.iptv-channel-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html.tv-mode .library-grid.iptv-channel-grid .media-card-channel {
+  grid-column: auto;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+}
+
+html.tv-mode .shelf-grid > .media-card-channel img,
+html.tv-mode .iptv-channel-grid .media-card-channel img {
+  padding: 1rem 18% 3.2rem;
+}
+
+html.tv-mode .shelf-grid > .media-card-channel .card-topline,
+html.tv-mode .shelf-grid > .media-card-channel .card-action,
+html.tv-mode .iptv-channel-grid .media-card-channel .card-topline,
+html.tv-mode .iptv-channel-grid .media-card-channel .card-action {
+  display: none;
+}
+
+html.tv-mode .shelf-grid > .media-card-channel .card-body,
+html.tv-mode .iptv-channel-grid .media-card-channel .card-body {
+  padding: 0.6rem 0.8rem;
+}
+
+html.tv-mode .shelf-grid > .media-card-channel .card-title,
+html.tv-mode .shelf-grid > .media-card-channel .card-subtitle,
+html.tv-mode .iptv-channel-grid .media-card-channel .card-title,
+html.tv-mode .iptv-channel-grid .media-card-channel .card-subtitle {
+  display: block;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.tv-mode .shelf-grid > .media-card-channel .card-subtitle,
+html.tv-mode .iptv-channel-grid .media-card-channel .card-subtitle {
+  font-size: 0.7rem;
+}
+
+/* The Live tv page on a TV: the menu and the tabs already say where you
+   are, so the page title goes and the channels start higher. */
+html.tv-mode .iptv-head {
+  display: none;
+}
+
+html.tv-mode .iptv-toolbar .toolbar-controls {
+  justify-content: flex-start;
+}
+
+/* Films and series are posters on a TV: about five and a half per row, all
+   the same size, artwork first. The rating and the play button stay on the
+   details screen; the poster keeps the title, in two lines at most. */
+html.tv-mode .shelf-grid > .media-card-poster {
+  flex: 0 0 calc((100% - 5 * 1.25rem) / 5.5);
+  aspect-ratio: 2 / 3;
+  min-height: 0;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster .card-topline,
+html.tv-mode .shelf-grid > .media-card-poster .card-action,
+html.tv-mode .browse-row-track > .media-card-poster .card-topline {
+  display: none;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster .card-body,
+html.tv-mode .browse-row-track > .media-card-poster .card-body {
+  padding: 0.75rem;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster .card-title,
+html.tv-mode .browse-row-track > .media-card-poster .card-title {
+  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster .card-subtitle,
+html.tv-mode .browse-row-track > .media-card-poster .card-subtitle {
+  font-size: 0.75rem;
+}
+
 html.tv-mode .shelf-grid > .media-card-feature {
   flex-basis: calc(2 * (100% - 3 * 1.25rem) / 3.35 + 1.25rem);
   aspect-ratio: auto;
@@ -4292,8 +4403,13 @@ html.tv-mode .hero-cta-secondary {
 }
 
 /* Section headers */
+/* Row titles stay modest on a TV: the cards are what the eye looks for. */
 html.tv-mode .section-title {
-  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-size: 1.45rem;
+}
+
+html.tv-mode .shelf-section {
+  margin-top: 2.2rem;
 }
 
 html.tv-mode .section-eyebrow {
