@@ -96,7 +96,26 @@ jobs:
             exit 1
           fi
 
-          payload=$(jq -n --arg d "$SHORT_DESCRIPTION" --rawfile f README.md \
+          # Docker Hub stores at most 25000 bytes of overview. Past that, keep the
+          # whole "## " sections that fit and point to the full README on GitHub.
+          python3 - /tmp/dockerhub-readme.md <<'PY'
+          import os, re, sys
+
+          limit = 25000
+          src = open("README.md", encoding="utf-8").read()
+          if len(src.encode()) > limit:
+              footer = (
+                  "\n---\n\nThe full README, with the mobile, TV and desktop apps, is on "
+                  f"[GitHub](https://github.com/{os.environ['GITHUB_REPOSITORY']}#readme).\n"
+              )
+              budget = limit - len(footer.encode())
+              fits = [m.start() for m in re.finditer(r"(?m)^## ", src) if len(src[: m.start()].encode()) <= budget]
+              head = src[: fits[-1]] if fits else src.encode()[:budget].decode(errors="ignore")
+              src = head.rstrip() + "\n" + footer
+          open(sys.argv[1], "w", encoding="utf-8").write(src)
+          PY
+
+          payload=$(jq -n --arg d "$SHORT_DESCRIPTION" --rawfile f /tmp/dockerhub-readme.md \
                        '{description:$d, full_description:$f}')
 
           code=$(curl -sS -o /tmp/dh.json -w '%{http_code}' -X PATCH \

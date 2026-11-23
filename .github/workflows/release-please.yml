@@ -12,6 +12,13 @@ permissions:
   pull-requests: write
   packages: write
 
+# Run one at a time. When several PRs are merged in quick succession, parallel
+# runs can write a release PR built from an older main; queued runs always end
+# with the newest one.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
