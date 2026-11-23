@@ -93,7 +93,6 @@ export const nlMessages: MessageDictionary = {
 	"card.removeFromMyList": "Verwijderen uit Mijn lijst",
 	"card.inMyList": "In Mijn lijst",
 	"card.myList": "Mijn lijst",
-	"card.instantlyAvailable": "Direct beschikbaar",
 	"dialog.closeDetails": "Details sluiten",
 	"dialog.seriesSpotlight": "Seriespotlight",
 	"dialog.movieSpotlight": "Filmspotlight",

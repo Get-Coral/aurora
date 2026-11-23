@@ -216,7 +216,12 @@ function SettingsPage() {
 					</section>
 				) : null}
 
-				{auth.isAdmin ? <IptvSourcesSection /> : null}
+				{auth.isAdmin ? (
+					// Without Jellyfin, the IPTV sources are what this page is for: first.
+					<div style={{ order: setupStatus.configured ? undefined : -1 }}>
+						<IptvSourcesSection />
+					</div>
+				) : null}
 
 				{setupStatus.configured && (auth.isAdmin || multiUser.multiUserMode) ? (
 					<section className="overview-card" style={{ padding: "2rem", gap: "1.25rem" }}>

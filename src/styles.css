@@ -7737,3 +7737,178 @@ html.tv-mode .browse-row-track .card-title {
 .browse-row {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* ── TV mode: density ────────────────────────────────────────────────────────
+   A 1080p TV lays the page out 960×540 at 2×, so every rem is already twice
+   its size on the glass. Text at the browser's 16 px reads comfortably from
+   the couch; the 120 % this used to add made the screen hold too little.
+   Rows show about seven posters, the hero leaves the first row peeking in. */
+html.tv-mode {
+  font-size: 90%;
+}
+
+html.tv-mode .shelf-grid {
+  gap: 0.9rem;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster {
+  flex-basis: calc((100% - 6 * 0.9rem) / 7.3);
+}
+
+html.tv-mode .shelf-grid > .media-card-channel {
+  flex-basis: calc((100% - 4 * 0.9rem) / 4.6);
+}
+
+html.tv-mode .browse-row-track {
+  grid-auto-columns: calc((100% - 6 * 0.85rem) / 7.3);
+}
+
+html.tv-mode .browse-row-track.browse-row-wide {
+  grid-auto-columns: calc((100% - 3 * 0.85rem) / 4.3);
+}
+
+html.tv-mode .library-grid.iptv-channel-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+html.tv-mode .library-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+html.tv-mode .library-grid .media-card,
+html.tv-mode .library-grid .media-card-feature {
+  min-height: 0;
+}
+
+html.tv-mode .library-grid .media-card-poster,
+html.tv-mode .library-grid .media-card-standard,
+html.tv-mode .library-grid .media-card-feature {
+  grid-column: span 1;
+  aspect-ratio: 2 / 3;
+}
+
+html.tv-mode .library-grid.iptv-channel-grid .media-card-channel {
+  aspect-ratio: 16 / 9;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster .card-title,
+html.tv-mode .browse-row-track > .media-card-poster .card-title {
+  font-size: 0.8rem;
+}
+
+html.tv-mode .shelf-grid > .media-card-poster .card-body,
+html.tv-mode .browse-row-track > .media-card-poster .card-body {
+  padding: 0.6rem;
+}
+
+/* The hero takes about two thirds of the screen, so the first row shows. */
+html.tv-mode .hero-shell,
+html.tv-mode .hero-content,
+html.tv-mode .browse-shell .hero-shell,
+html.tv-mode .browse-shell .hero-content {
+  min-height: 68vh;
+}
+
+html.tv-mode .hero-content {
+  padding-bottom: 2rem;
+}
+
+html.tv-mode .hero-title {
+  font-size: clamp(2rem, 8vh, 3.4rem);
+}
+
+html.tv-mode .hero-logo {
+  max-height: 18vh;
+}
+
+html.tv-mode .hero-overview {
+  max-width: 34rem;
+  font-size: 0.9rem;
+}
+
+html.tv-mode .hero-cta-primary,
+html.tv-mode .hero-cta-secondary,
+html.tv-mode .hero-actions .primary-action,
+html.tv-mode .hero-actions .secondary-action {
+  min-height: 2.8rem;
+  padding: 0 1.4rem;
+  font-size: 0.95rem;
+}
+
+html.tv-mode .section-title {
+  font-size: 1.25rem;
+}
+
+html.tv-mode .shelf-section {
+  margin-top: 1.6rem;
+}
+
+html.tv-mode .section-heading {
+  margin-bottom: 0.6rem;
+}
+
+html.tv-mode .nav-pill {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+}
+
+html.tv-mode .genre-pill {
+  min-height: 2.6rem;
+  padding: 0 1.1rem;
+  font-size: 0.9rem;
+}
+
+/* Row titles alone on a TV: the small label above each ("Recently added",
+   twice in a row) was clutter. */
+html.tv-mode .shelf-section .section-heading .eyebrow {
+  display: none;
+}
+
+html.tv-mode .shelf-grid > .media-card,
+html.tv-mode .browse-row-track > .media-card,
+html.tv-mode .library-grid .media-card {
+  border-radius: 0.9rem;
+}
+
+/* The row's scroll arrows are for a mouse; the remote scrolls by moving. */
+html.tv-mode .browse-row-arrow {
+  display: none;
+}
+
+/* Poster grids (all titles) on a TV: artwork and the title, nothing else
+   squeezed in beside it. */
+html.tv-mode .library-grid .media-card:not(.media-card-channel) .card-topline,
+html.tv-mode .library-grid .media-card:not(.media-card-channel) .card-action {
+  display: none;
+}
+
+html.tv-mode .library-grid .media-card:not(.media-card-channel) .card-body {
+  padding: 0.6rem;
+}
+
+html.tv-mode .library-grid .media-card:not(.media-card-channel) .card-title {
+  font-size: 0.8rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+html.tv-mode .library-grid .media-card:not(.media-card-channel) .card-subtitle {
+  font-size: 0.7rem;
+}
+
+/* Channels mixed into a grid (search results) stay wide tiles. */
+html.tv-mode .library-grid:not(.iptv-channel-grid) .media-card-channel {
+  grid-column: span 2;
+  aspect-ratio: 16 / 9;
+}
+
+/* Pages under the menu start right below it on a TV; the page titles that
+   used to fill this space are gone there. */
+html.tv-mode .library-shell {
+  padding-top: calc(var(--header-h) + var(--safe-top) + 1.5rem);
+}

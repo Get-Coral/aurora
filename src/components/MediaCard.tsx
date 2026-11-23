@@ -195,7 +195,7 @@ export function MediaCard({
 									item.runtimeMinutes ? `${item.runtimeMinutes}m` : null,
 								]
 									.filter(Boolean)
-									.join(" • ") || t("card.instantlyAvailable")}
+									.join(" • ")}
 					</p>
 				</div>
 

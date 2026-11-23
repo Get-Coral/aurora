@@ -93,7 +93,6 @@ export const enMessages: MessageDictionary = {
 	"card.removeFromMyList": "Remove from My List",
 	"card.inMyList": "In My List",
 	"card.myList": "My List",
-	"card.instantlyAvailable": "Instantly available",
 	"dialog.closeDetails": "Close details",
 	"dialog.seriesSpotlight": "Series spotlight",
 	"dialog.movieSpotlight": "Movie spotlight",
