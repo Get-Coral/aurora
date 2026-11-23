@@ -1,0 +1,24 @@
+name: PR title
+
+# release-please builds the changelog from merge commits, which carry the PR title.
+# A title that isn't a conventional commit leaves the change out of the release notes.
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional:
+    name: Conventional PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
