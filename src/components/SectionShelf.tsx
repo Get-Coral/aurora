@@ -20,7 +20,7 @@ interface SectionShelfProps {
 		| "/history"
 		| "/collections"
 		| "/iptv";
-	browseSearch?: { tab?: "live" | "vod" | "series" };
+	browseSearch?: { tab?: "live" | "guide" };
 	emptyTitle?: string;
 	emptyCopy?: string;
 }

@@ -31,6 +31,14 @@ export default function Header() {
 	const { t } = useI18n();
 	const { tvMode } = useTvMode();
 	const pathname = useRouterState({ select: (state) => state.location.pathname });
+	// The IPTV grids of films and series belong under Films and Series; the
+	// Live tv page itself is only live channels and the guide.
+	const iptvTab = useRouterState({
+		select: (state) =>
+			state.location.pathname === "/iptv"
+				? ((state.location.search as { tab?: string }).tab ?? "live")
+				: null,
+	});
 	const multiUser = useMultiUserMode();
 
 	const { data: profile } = useQuery({
@@ -310,7 +318,7 @@ export default function Header() {
 					>
 						{t("nav.home")}
 					</Link>
-					{hasJellyfin ? (
+					{hasJellyfin || hasIptv ? (
 						<>
 							<Link
 								to="/library/movies"
@@ -322,7 +330,8 @@ export default function Header() {
 									minScore: 0,
 									watchStatus: undefined,
 								}}
-								className="nav-pill"
+								className={iptvTab === "vod" ? "nav-pill nav-pill-active" : "nav-pill"}
+								activeOptions={{ includeSearch: false }}
 								activeProps={{ className: "nav-pill nav-pill-active" }}
 								data-tv-focusable="true"
 							>
@@ -338,13 +347,14 @@ export default function Header() {
 									minScore: 0,
 									watchStatus: undefined,
 								}}
-								className="nav-pill"
+								className={iptvTab === "series" ? "nav-pill nav-pill-active" : "nav-pill"}
+								activeOptions={{ includeSearch: false }}
 								activeProps={{ className: "nav-pill nav-pill-active" }}
 								data-tv-focusable="true"
 							>
 								{t("nav.series")}
 							</Link>
-							{!tvMode ? (
+							{hasJellyfin && !tvMode ? (
 								<Link
 									to="/collections"
 									className="nav-pill"
@@ -368,8 +378,13 @@ export default function Header() {
 						<Link
 							to="/iptv"
 							search={{ tab: "live" }}
-							className="nav-pill"
-							activeProps={{ className: "nav-pill nav-pill-active" }}
+							className={
+								iptvTab === "live" || iptvTab === "guide" ? "nav-pill nav-pill-active" : "nav-pill"
+							}
+							// Active is decided above: the guide counts, the film and series grids don't.
+							activeOptions={{ exact: true, includeSearch: true }}
+							activeProps={{}}
+							aria-current={iptvTab === "live" || iptvTab === "guide" ? "page" : undefined}
 							data-tv-focusable="true"
 						>
 							{t("nav.liveTv")}

@@ -224,6 +224,22 @@ describe("moveTvFocus", () => {
 		expect(document.activeElement).toBe(current);
 	});
 
+	it("starts on the page's main control, not on whatever sits top left", () => {
+		button("search", rect(800, 0, 50, 50));
+		const current = button("movies", rect(300, 10, 100, 40));
+		current.setAttribute("aria-current", "page");
+		const play = button("play", rect(0, 300, 200, 60));
+		play.dataset.tvEntry = "";
+
+		press("ArrowDown");
+		expect(document.activeElement).toBe(play);
+
+		play.remove();
+		(document.activeElement as HTMLElement | null)?.blur();
+		press("ArrowDown"); // no main control: the menu's current page
+		expect(document.activeElement).toBe(current);
+	});
+
 	it("only stops in a last-resort area when nothing else lies that way", () => {
 		const header = document.createElement("header");
 		header.dataset.tvLastResort = "true";

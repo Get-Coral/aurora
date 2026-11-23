@@ -468,8 +468,7 @@ function HomePage() {
 						onToggleFavorite={(item) =>
 							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
 						}
-						browseTo="/iptv"
-						browseSearch={{ tab: "vod" }}
+						browseTo="/library/movies"
 					/>
 				) : null}
 				{iptvSeries.length > 0 ? (
@@ -483,8 +482,7 @@ function HomePage() {
 						onToggleFavorite={(item) =>
 							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
 						}
-						browseTo="/iptv"
-						browseSearch={{ tab: "series" }}
+						browseTo="/library/series"
 					/>
 				) : null}
 			</div>

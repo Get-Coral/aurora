@@ -138,7 +138,15 @@ function getInitialTarget(scope: HTMLElement | null) {
 	);
 	if (preferred) return preferred;
 
-	return getTvFocusCandidates(root)
+	// Then the page's main control (the hero's Play), then the menu's current
+	// page, and only then whatever sits top left.
+	const candidates = getTvFocusCandidates(root);
+	const main =
+		candidates.find((element) => element.matches("[data-tv-entry]")) ??
+		candidates.find((element) => element.matches('[aria-current="page"]'));
+	if (main) return main;
+
+	return candidates
 		.map((element) => ({ element, rect: element.getBoundingClientRect() }))
 		.sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left)[0]?.element;
 }
