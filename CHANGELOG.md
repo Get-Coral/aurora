@@ -25,6 +25,40 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.16.0](https://github.com/Get-Coral/aurora/compare/v1.15.0...v1.16.0) (2026-11-23)
+
+
+### Features
+
+* IPTV as a full media source, desktop app, and TV remote support ([b0581da](https://github.com/Get-Coral/aurora/commit/b0581dacc71f6c5826d5c2725603bdfa22427e21))
+* **player:** preview thumbnails and downloaded range on the progress bar ([17270cd](https://github.com/Get-Coral/aurora/commit/17270cdf9e27239334c8d020589b6a2623c277a8))
+* **quest:** run Aurora as a 2D panel app on Meta Quest ([d830c9b](https://github.com/Get-Coral/aurora/commit/d830c9b5b901858e08976105e5b3a27b03f0e1dd))
+* **quest:** run Aurora as a 2D panel app on Meta Quest ([fabc13f](https://github.com/Get-Coral/aurora/commit/fabc13fb34188355ba5ed28df8d035eedbbef9ee))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([672aef2](https://github.com/Get-Coral/aurora/commit/672aef295095f702acfbe9a7e203d2fd595d1a0d))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([95eed5a](https://github.com/Get-Coral/aurora/commit/95eed5ad45a6b1f75cfcbbe988e4141fa1da07da))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([2c6d563](https://github.com/Get-Coral/aurora/commit/2c6d563322336504931872f4423cd9ba0d49af1f))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([a4e4124](https://github.com/Get-Coral/aurora/commit/a4e4124ea388228fc05c755a34c3a033ad8939c8))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([36ebb86](https://github.com/Get-Coral/aurora/commit/36ebb86998e6d21cf187706015bbe227a4cd4958))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([c766e72](https://github.com/Get-Coral/aurora/commit/c766e720055dfe38fd26dbcb04d3e7f6ee43ca96))
+* **quest:** watch in an immersive theater on Meta Quest, with five environments that react to the film ([6aed026](https://github.com/Get-Coral/aurora/commit/6aed026e08278fe64d9f3af7fc0e58877f1bf599))
+* rename the app to Aurora Cinema ([672aef2](https://github.com/Get-Coral/aurora/commit/672aef295095f702acfbe9a7e203d2fd595d1a0d))
+* rename the app to Aurora Cinema ([95eed5a](https://github.com/Get-Coral/aurora/commit/95eed5ad45a6b1f75cfcbbe988e4141fa1da07da))
+* rename the app to Aurora Cinema ([2c6d563](https://github.com/Get-Coral/aurora/commit/2c6d563322336504931872f4423cd9ba0d49af1f))
+* rename the app to Aurora Cinema ([a4e4124](https://github.com/Get-Coral/aurora/commit/a4e4124ea388228fc05c755a34c3a033ad8939c8))
+* rename the app to Aurora Cinema ([36ebb86](https://github.com/Get-Coral/aurora/commit/36ebb86998e6d21cf187706015bbe227a4cd4958))
+* rename the app to Aurora Cinema ([c766e72](https://github.com/Get-Coral/aurora/commit/c766e720055dfe38fd26dbcb04d3e7f6ee43ca96))
+* rename the app to Aurora Cinema ([6aed026](https://github.com/Get-Coral/aurora/commit/6aed026e08278fe64d9f3af7fc0e58877f1bf599))
+* tablet and TV Play Store listing, and TV layout fixes ([5ae14ec](https://github.com/Get-Coral/aurora/commit/5ae14ecaa04c257cf66019738df7644b6ea837b0))
+* **tv:** home rows that scroll sideways and remember where you were ([73f603c](https://github.com/Get-Coral/aurora/commit/73f603c25d44faf47ebae259dee1d4d23aa5a1d7))
+* **tv:** make Aurora usable on Android TV and Google TV with a remote ([b0ac43e](https://github.com/Get-Coral/aurora/commit/b0ac43e2df912363b83cf5e81876fc6ff330a7d7))
+* **tv:** make Aurora usable on Android TV and Google TV with a remote ([7817540](https://github.com/Get-Coral/aurora/commit/781754043d1914fd9bd2cd3b0ea2801fdcf4fd44))
+
+
+### Bug Fixes
+
+* **player:** make the progress bar follow clicks and drags in Safari ([5918b0e](https://github.com/Get-Coral/aurora/commit/5918b0ea657519c25085fd8761df0c7420b03b7c))
+* **player:** make the progress bar follow clicks and drags in Safari ([2c013fe](https://github.com/Get-Coral/aurora/commit/2c013fe71fa514d22349cb1148bff60a0a6c2af2))
+
 ## [1.15.0](https://github.com/Get-Coral/aurora/compare/v1.14.1...v1.15.0) (2026-10-20)
 
 
