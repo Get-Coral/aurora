@@ -44,6 +44,9 @@ const item: MediaItem = {
 	streamUrl: "/api/jellyfin-stream?path=%2Fvideos%2Fabc%2Fstream.mp4",
 };
 
+/** Media elements the player has called load() on. */
+let loaded = new WeakSet<HTMLMediaElement>();
+
 /** jsdom's media element has no clock; give it one the test controls. */
 function instrumentVideo(video: HTMLVideoElement) {
 	let time = 0;
@@ -86,6 +89,11 @@ async function renderPlayer() {
 		() => {
 			const element = view.container.querySelector("video");
 			if (!element) throw new Error("player has no stream yet");
+			// waitFor can see the element as soon as React commits it, before
+			// that commit's effects have run, and an effect attaches the
+			// `timeupdate` listener. The same pass calls load() on the new
+			// element, so once it has, the listeners are there too.
+			if (!loaded.has(element)) throw new Error("player has not wired up the stream yet");
 			return element;
 		},
 		{ timeout: 5000 },
@@ -135,7 +143,10 @@ beforeEach(() => {
 	HTMLElement.prototype.releasePointerCapture = function (this: HTMLElement) {
 		captured.delete(this);
 	};
-	HTMLMediaElement.prototype.load = () => undefined;
+	loaded = new WeakSet<HTMLMediaElement>();
+	HTMLMediaElement.prototype.load = function (this: HTMLMediaElement) {
+		loaded.add(this);
+	};
 	HTMLMediaElement.prototype.pause = () => undefined;
 	HTMLMediaElement.prototype.play = () => Promise.resolve();
 });
