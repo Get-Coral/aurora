@@ -359,19 +359,20 @@ function HomePage() {
 					</section>
 				) : null}
 
-				<SectionShelf
-					id="continue"
-					title={t("home.continue.title")}
-					subtitle={t("home.continue.subtitle")}
-					items={continueWatching}
-					onSelect={dispatchSelect}
-					onPlay={(item) => dispatchPlay(item, continueWatching)}
-					onToggleFavorite={(item) =>
-						favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-					}
-					emptyTitle={t("home.continue.emptyTitle")}
-					emptyCopy={t("home.continue.emptyCopy")}
-				/>
+				{/* An empty "continue watching" only pushes the rows down. */}
+				{continueWatching.length > 0 ? (
+					<SectionShelf
+						id="continue"
+						title={t("home.continue.title")}
+						subtitle={t("home.continue.subtitle")}
+						items={continueWatching}
+						onSelect={dispatchSelect}
+						onPlay={(item) => dispatchPlay(item, continueWatching)}
+						onToggleFavorite={(item) =>
+							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+						}
+					/>
+				) : null}
 				{iptvLive.length > 0 ? (
 					<SectionShelf
 						id="live"
@@ -400,20 +401,20 @@ function HomePage() {
 							}
 							browseTo="/library/movies"
 						/>
-						<SectionShelf
-							id="favorites"
-							title={t("home.favorites.title")}
-							subtitle={t("home.favorites.subtitle")}
-							items={favoriteMovies}
-							onSelect={dispatchSelect}
-							onPlay={(item) => dispatchPlay(item, favoriteMovies)}
-							onToggleFavorite={(item) =>
-								favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
-							}
-							browseTo="/my-list"
-							emptyTitle={t("home.favorites.emptyTitle")}
-							emptyCopy={t("home.favorites.emptyCopy")}
-						/>
+						{favoriteMovies.length > 0 ? (
+							<SectionShelf
+								id="favorites"
+								title={t("home.favorites.title")}
+								subtitle={t("home.favorites.subtitle")}
+								items={favoriteMovies}
+								onSelect={dispatchSelect}
+								onPlay={(item) => dispatchPlay(item, favoriteMovies)}
+								onToggleFavorite={(item) =>
+									favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
+								}
+								browseTo="/my-list"
+							/>
+						) : null}
 						<SectionShelf
 							id="series"
 							title={t("home.series.title")}
@@ -467,8 +468,7 @@ function HomePage() {
 						onToggleFavorite={(item) =>
 							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
 						}
-						browseTo="/iptv"
-						browseSearch={{ tab: "vod" }}
+						browseTo="/library/movies"
 					/>
 				) : null}
 				{iptvSeries.length > 0 ? (
@@ -482,8 +482,7 @@ function HomePage() {
 						onToggleFavorite={(item) =>
 							favoriteMutation.mutate({ id: item.id, isFavorite: Boolean(item.isFavorite) })
 						}
-						browseTo="/iptv"
-						browseSearch={{ tab: "series" }}
+						browseTo="/library/series"
 					/>
 				) : null}
 			</div>

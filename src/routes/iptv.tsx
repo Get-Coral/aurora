@@ -1,28 +1,13 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-	ArrowLeft,
-	CalendarClock,
-	Clapperboard,
-	Film,
-	Heart,
-	Search,
-	Settings2,
-	Tv,
-	X,
-} from "lucide-react";
-import { type ReactNode, useDeferredValue, useEffect, useRef, useState } from "react";
-import { type BrowseRowSpec, BrowseRows } from "../components/BrowseRows";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, CalendarClock, Heart, Search, Settings2, Tv, X } from "lucide-react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { IptvGuide } from "../components/IptvGuide";
 import { MediaCard } from "../components/MediaCard";
 import { useFavoriteAction } from "../components/useFavoriteAction";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
-import {
-	fetchIptvBrowseRowsRuntime,
-	fetchIptvBrowseRuntime,
-	fetchIptvStatusRuntime,
-} from "../lib/runtime-functions";
+import { fetchIptvBrowseRuntime, fetchIptvStatusRuntime } from "../lib/runtime-functions";
 
 type Tab = "live" | "guide" | "vod" | "series";
 type Sort = "default" | "added" | "title" | "rating";
@@ -55,6 +40,24 @@ export const Route = createFileRoute("/iptv")({
 				: undefined,
 		favorites: search.favorites === true || search.favorites === "true" ? true : undefined,
 	}),
+	// Films and series live under Films and Series, next to Jellyfin's; here
+	// only their full grids (a row's "see all") remain.
+	beforeLoad: ({ search }) => {
+		const grid =
+			search.view === "grid" || search.group || search.genre || search.sort || search.favorites;
+		if ((search.tab === "vod" || search.tab === "series") && !grid) {
+			const base = {
+				sort: "DateCreated" as const,
+				order: "Descending" as const,
+				ratings: "",
+				decade: "",
+				minScore: 0,
+				watchStatus: undefined,
+			};
+			if (search.tab === "vod") throw redirect({ to: "/library/movies", search: base });
+			throw redirect({ to: "/library/series", search: base });
+		}
+	},
 	component: IptvPage,
 });
 
@@ -72,7 +75,7 @@ function dispatchPlay(item: MediaItem, list: MediaItem[] = [item]) {
 function IptvPage() {
 	const { t } = useI18n();
 	const navigate = useNavigate({ from: "/iptv" });
-	const { tab, group, genre, sort, favorites, view } = Route.useSearch();
+	const { tab, group, genre, sort, favorites } = Route.useSearch();
 	const [query, setQuery] = useState("");
 	const search = useDeferredValue(query.trim());
 	const favoriteMutation = useFavoriteAction();
@@ -86,15 +89,6 @@ function IptvPage() {
 	useEffect(() => {
 		setQuery("");
 	}, [tab]);
-
-	// Films and series start as rows; filters and "all titles" show the grid.
-	const rowsView =
-		(tab === "vod" || tab === "series") &&
-		view !== "grid" &&
-		!group &&
-		!genre &&
-		!sort &&
-		!favorites;
 
 	const browse = useInfiniteQuery({
 		queryKey: [
@@ -122,7 +116,7 @@ function IptvPage() {
 			const loaded = pages.reduce((sum, page) => sum + page.items.length, 0);
 			return loaded < last.total ? loaded : undefined;
 		},
-		enabled: Boolean(status?.enabled && status.sources > 0) && tab !== "guide" && !rowsView,
+		enabled: Boolean(status?.enabled && status.sources > 0) && tab !== "guide",
 		// Live guide data goes stale; refresh what's on now every few minutes.
 		refetchInterval: tab === "live" ? 5 * 60_000 : false,
 		staleTime: 60_000,
@@ -156,8 +150,6 @@ function IptvPage() {
 	const tabs: { value: Tab; label: string; icon: typeof Tv }[] = [
 		{ value: "live", label: t("iptv.live"), icon: Tv },
 		{ value: "guide", label: t("iptv.guide"), icon: CalendarClock },
-		{ value: "vod", label: t("iptv.movies"), icon: Film },
-		{ value: "series", label: t("iptv.series"), icon: Clapperboard },
 	];
 
 	const unavailable = status && (!status.enabled || status.sources === 0);
@@ -168,6 +160,7 @@ function IptvPage() {
 			type="button"
 			className={`genre-pill${tab === value ? " genre-pill-active" : ""}`}
 			aria-pressed={tab === value}
+			data-tv-entry={tab === value ? "" : undefined}
 			onClick={() =>
 				update({
 					tab: value,
@@ -184,19 +177,9 @@ function IptvPage() {
 		</button>
 	));
 
-	if (rowsView && !unavailable) {
-		return (
-			<IptvRows
-				kind={tab as "vod" | "series"}
-				tabs={tabPills}
-				onFilter={(filter) => update({ ...filter, view: "grid" })}
-			/>
-		);
-	}
-
 	return (
 		<main className="library-shell">
-			<div className="page-wrap library-head">
+			<div className="page-wrap library-head iptv-head">
 				<div className="library-copy">
 					<Link to="/" className="library-backlink" data-tv-focusable="true">
 						<ArrowLeft size={16} /> {t("library.backHome")}
@@ -222,7 +205,11 @@ function IptvPage() {
 			</div>
 
 			<div className="page-wrap library-toolbar iptv-toolbar">
-				<div className="genre-strip">{tabPills}</div>
+				{tab === "live" || tab === "guide" ? (
+					<div className="genre-strip" data-tv-row>
+						{tabPills}
+					</div>
+				) : null}
 				<div className="toolbar-controls">
 					<label className="iptv-search">
 						<Search size={15} aria-hidden="true" />
@@ -373,49 +360,5 @@ function IptvPage() {
 				</div>
 			) : null}
 		</main>
-	);
-}
-
-/** Films or series as rows, like a streaming service's front page. */
-function IptvRows({
-	kind,
-	tabs,
-	onFilter,
-}: {
-	kind: "vod" | "series";
-	tabs: ReactNode;
-	onFilter: (filter: Partial<IptvSearch>) => void;
-}) {
-	const { t, locale } = useI18n();
-	const { data, isLoading } = useQuery({
-		queryKey: ["iptv-rows", kind, locale],
-		queryFn: () => fetchIptvBrowseRowsRuntime({ kind, locale }),
-		staleTime: 5 * 60_000,
-	});
-	const rows: BrowseRowSpec[] = (data?.rows ?? []).map((row) => ({
-		id: row.id,
-		title: row.titleKey ? t(`browse.row.${row.titleKey}`) : (row.title ?? ""),
-		items: row.items,
-		wide: row.titleKey === "continue",
-		onSeeAll:
-			row.titleKey === "continue"
-				? undefined
-				: () =>
-						onFilter({
-							group: row.filter.group,
-							genre: row.filter.genre,
-							sort: row.filter.sort,
-							favorites: row.filter.favorites,
-						}),
-	}));
-	return (
-		<BrowseRows
-			hero={data?.hero ?? []}
-			rows={rows}
-			loading={isLoading}
-			title={kind === "vod" ? t("iptv.movies") : t("iptv.series")}
-			toolbar={<div className="genre-strip">{tabs}</div>}
-			onShowAll={() => onFilter({})}
-		/>
 	);
 }

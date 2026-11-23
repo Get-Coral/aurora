@@ -2,7 +2,7 @@ import type { MessageDictionary } from "../types";
 
 export const enMessages: MessageDictionary = {
 	"brand.wordmark": "Aurora",
-	"brand.forJellyfin": "for Jellyfin",
+	"brand.suffix": "Cinema",
 	"nav.home": "Home",
 	"nav.continue": "Continue",
 	"nav.movies": "Movies",
@@ -47,16 +47,10 @@ export const enMessages: MessageDictionary = {
 	},
 	"home.continue.title": "Resume your queue",
 	"home.continue.subtitle": "Keep momentum",
-	"home.continue.emptyTitle": "Your continue queue is still empty",
-	"home.continue.emptyCopy":
-		"Open a movie or episode from your library and Aurora will surface it here with progress and quick resume.",
 	"home.movies.title": "Recent movie arrivals",
 	"home.movies.subtitle": "Freshly added",
 	"home.favorites.title": "Favorites worth revisiting",
 	"home.favorites.subtitle": "Your picks",
-	"home.favorites.emptyTitle": "No favorites yet",
-	"home.favorites.emptyCopy":
-		"Mark a few movies as favorites in Jellyfin and Aurora will bring them together here.",
 	"home.series.title": "Series worth diving into",
 	"home.series.subtitle": "Just landed",
 	"home.recommended.title": "Because you watched this vibe",
@@ -91,8 +85,6 @@ export const enMessages: MessageDictionary = {
 	"section.emptyCopy":
 		"Start a title and your in-progress picks will show up here for quick access.",
 	"card.series": "Series",
-	"card.tonight": "Tonight",
-	"card.feature": "Feature",
 	"card.favorite": "Favorite",
 	"card.resume": "Resume",
 	"card.play": "Play",
@@ -101,7 +93,6 @@ export const enMessages: MessageDictionary = {
 	"card.removeFromMyList": "Remove from My List",
 	"card.inMyList": "In My List",
 	"card.myList": "My List",
-	"card.instantlyAvailable": "Instantly available",
 	"dialog.closeDetails": "Close details",
 	"dialog.seriesSpotlight": "Series spotlight",
 	"dialog.movieSpotlight": "Movie spotlight",
@@ -263,7 +254,7 @@ export const enMessages: MessageDictionary = {
 	"settings.title": "Settings",
 	"settings.subtitle": "Preferences",
 	"settings.aboutCopy":
-		"Aurora is an open-source front-end for Jellyfin. Found a bug or have an idea? We'd love to hear from you.",
+		"Aurora Cinema is an open-source app for your Jellyfin library and your own IPTV. Found a bug or have an idea? We'd love to hear from you.",
 	"settings.jellyfinSection": "Jellyfin connection",
 	"settings.jellyfinCopy":
 		"Update your Jellyfin server details. Leave API key or password blank to keep the current values.",
@@ -457,6 +448,25 @@ export const enMessages: MessageDictionary = {
 	"search.channel": "Channel",
 	"search.episode": "Episode",
 	"setup.iptvOnly": "No Jellyfin? Use Aurora with IPTV only",
+	"setup.stepOf": (params) => `Step ${params?.step} of ${params?.total}`,
+	"setup.back": "Back",
+	"setup.continue": "Continue",
+	"setup.server.title": "Jellyfin server",
+	"setup.server.subtitle": "Where is your Jellyfin server running?",
+	"setup.server.hint":
+		"Enter the full URL of your server, including the port if needed. For example: http://localhost:8096 or https://jellyfin.myhome.net",
+	"setup.apikey.title": "API key",
+	"setup.apikey.subtitle": "Authorize Aurora to talk to Jellyfin",
+	"setup.apikey.hint":
+		"Open your Jellyfin Dashboard → Administration → API Keys and create a new key. Paste it above.",
+	"setup.apikey.passwordHint":
+		"Leave this empty to sign in with your Jellyfin username and password instead. To use an API key, open your Jellyfin Dashboard → Administration → API Keys and create one.",
+	"setup.account.title": "Your account",
+	"setup.account.subtitle": "Link your Jellyfin account",
+	"setup.account.hint":
+		"Aurora uses your credentials to create a real playback session so watch progress stays in sync with Jellyfin.",
+	"setup.account.passwordHint":
+		"Sign in with your Jellyfin account. Leave the password empty if your account doesn't have one.",
 	"search.airingNow": "Now",
 	"search.collection": "Collection",
 	"search.recent": "Recent searches",

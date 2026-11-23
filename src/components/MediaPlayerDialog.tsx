@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AURORA_BACK_EVENT } from "../lib/back-navigation";
+import { formatClock } from "../lib/clock";
 import { useI18n } from "../lib/i18n";
 import {
 	prepareSeekReloadUrl,
@@ -2570,15 +2571,7 @@ export function MediaPlayerDialog({
 										<span className="player-live-programme">
 											<strong>{liveNow.title}</strong>
 											<small>
-												{new Date(liveNow.start).toLocaleTimeString([], {
-													hour: "2-digit",
-													minute: "2-digit",
-												})}
-												–
-												{new Date(liveNow.end).toLocaleTimeString([], {
-													hour: "2-digit",
-													minute: "2-digit",
-												})}
+												{formatClock(liveNow.start)}–{formatClock(liveNow.end)}
 												{liveNext ? ` · ${t("dialog.upNext")}: ${liveNext.title}` : ""}
 											</small>
 											{liveProgress != null ? (

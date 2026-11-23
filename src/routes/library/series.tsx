@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LibraryBrowse } from "../../components/LibraryBrowse";
 import { LibraryView } from "../../components/LibraryView";
 import { useI18n } from "../../lib/i18n";
-import { fetchSetupStatusRuntime } from "../../lib/runtime-functions";
+import { fetchIptvStatusRuntime, fetchSetupStatusRuntime } from "../../lib/runtime-functions";
 
 type SeriesSort = "SortName" | "DateCreated" | "PremiereDate" | "CommunityRating";
 type SeriesSortOrder = "Ascending" | "Descending";
@@ -34,11 +34,17 @@ export const Route = createFileRoute("/library/series")({
 		...(typeof search.genre === "string" && search.genre ? { genre: search.genre } : {}),
 	}),
 	loaderDeps: ({ search }) => search,
-	loader: async () => {
-		const setupStatus = await fetchSetupStatusRuntime();
-		if (!setupStatus.configured) {
-			throw redirect({ to: "/setup" });
-		}
+	loader: async ({ deps }) => {
+		const [setupStatus, iptvStatus] = await Promise.all([
+			fetchSetupStatusRuntime(),
+			fetchIptvStatusRuntime().catch(() => ({ enabled: false, sources: 0 })),
+		]);
+		if (setupStatus.configured) return;
+		// Without Jellyfin the rows come from IPTV alone, and every title is
+		// its grid.
+		if (!iptvStatus.enabled || iptvStatus.sources === 0) throw redirect({ to: "/setup" });
+		if (deps.view === "grid")
+			throw redirect({ to: "/iptv", search: { tab: "series", view: "grid" } });
 	},
 	component: SeriesLibraryPage,
 });

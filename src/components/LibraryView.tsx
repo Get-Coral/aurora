@@ -6,6 +6,7 @@ import { CURATED_MOVIE_GENRES } from "../lib/genres";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
 import { fetchLibraryRuntime } from "../lib/runtime-functions";
+import { useTvMode } from "../lib/tv-mode";
 import { MediaCard } from "./MediaCard";
 import { MediaPlayerDialog } from "./MediaPlayerDialog";
 import { MediaSpotlightDialog } from "./MediaSpotlightDialog";
@@ -71,6 +72,7 @@ export function LibraryView({
 	customItems,
 }: LibraryViewProps) {
 	const { t } = useI18n();
+	const { tvMode } = useTvMode();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const sort = search.sort ?? "DateCreated";
@@ -470,7 +472,8 @@ export function LibraryView({
 								key={item.id}
 								item={item}
 								priority={index < 8}
-								variant={cardVariant(index)}
+								// An even poster grid on a TV, where the remote walks it.
+								variant={tvMode ? "poster" : cardVariant(index)}
 								onClick={() => setSelectedItem(item)}
 								onPlay={playMedia}
 								onToggleFavorite={handleToggleFavorite}

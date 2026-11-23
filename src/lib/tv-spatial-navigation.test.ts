@@ -200,6 +200,64 @@ describe("moveTvFocus", () => {
 		press("ArrowUp"); // back to where the first row was left
 		expect(document.activeElement).toBe(first[3]);
 	});
+
+	it("enters a row for the first time on the control it names as its main one", () => {
+		const menu = document.createElement("div");
+		menu.dataset.tvRow = "";
+		document.body.appendChild(menu);
+		button("brand", rect(0, 0, 100, 50), menu);
+		const current = button("live", rect(600, 0, 100, 50), menu);
+		current.setAttribute("aria-current", "page");
+		const hero = document.createElement("div");
+		hero.dataset.tvRow = "";
+		document.body.appendChild(hero);
+		const play = button("play", rect(0, 300, 200, 60), hero);
+		play.dataset.tvEntry = "";
+		const info = button("info", rect(600, 300, 200, 60), hero);
+
+		current.focus();
+		press("ArrowDown"); // "info" sits right below, but Play is the hero's main control
+		expect(document.activeElement).toBe(play);
+		press("ArrowRight");
+		expect(document.activeElement).toBe(info);
+		press("ArrowUp"); // into the menu: its current page, not the nearer brand
+		expect(document.activeElement).toBe(current);
+	});
+
+	it("starts on the page's main control, not on whatever sits top left", () => {
+		button("search", rect(800, 0, 50, 50));
+		const current = button("movies", rect(300, 10, 100, 40));
+		current.setAttribute("aria-current", "page");
+		const play = button("play", rect(0, 300, 200, 60));
+		play.dataset.tvEntry = "";
+
+		press("ArrowDown");
+		expect(document.activeElement).toBe(play);
+
+		play.remove();
+		(document.activeElement as HTMLElement | null)?.blur();
+		press("ArrowDown"); // no main control: the menu's current page
+		expect(document.activeElement).toBe(current);
+	});
+
+	it("only stops in a last-resort area when nothing else lies that way", () => {
+		const header = document.createElement("header");
+		header.dataset.tvLastResort = "true";
+		document.body.appendChild(header);
+		// Straight above, so it would win on geometry alone.
+		const menu = button("menu", rect(0, 300, 100, 50), header);
+		const above = button("above", rect(600, 100, 100, 100));
+		const below = button("below", rect(0, 400, 100, 100));
+
+		below.focus();
+		press("ArrowUp");
+		expect(document.activeElement).toBe(above);
+
+		above.remove();
+		below.focus();
+		press("ArrowUp"); // nothing else above: now the header
+		expect(document.activeElement).toBe(menu);
+	});
 });
 
 describe("on-screen keyboard", () => {

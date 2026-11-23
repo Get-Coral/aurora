@@ -2,7 +2,7 @@ import type { MessageDictionary } from "../types";
 
 export const nlMessages: MessageDictionary = {
 	"brand.wordmark": "Aurora",
-	"brand.forJellyfin": "voor Jellyfin",
+	"brand.suffix": "Cinema",
 	"nav.home": "Home",
 	"nav.continue": "Verderkijken",
 	"nav.movies": "Films",
@@ -47,16 +47,10 @@ export const nlMessages: MessageDictionary = {
 	},
 	"home.continue.title": "Ga verder met je wachtrij",
 	"home.continue.subtitle": "Blijf in de flow",
-	"home.continue.emptyTitle": "Je verderkijkrij is nog leeg",
-	"home.continue.emptyCopy":
-		"Open een film of aflevering uit je bibliotheek en Aurora toont die hier met voortgang en snel hervatten.",
 	"home.movies.title": "Recent toegevoegde films",
 	"home.movies.subtitle": "Net toegevoegd",
 	"home.favorites.title": "Favorieten om opnieuw te kijken",
 	"home.favorites.subtitle": "Jouw picks",
-	"home.favorites.emptyTitle": "Nog geen favorieten",
-	"home.favorites.emptyCopy":
-		"Markeer een paar films als favoriet in Jellyfin en Aurora verzamelt ze hier.",
 	"home.series.title": "Series om in te duiken",
 	"home.series.subtitle": "Net binnen",
 	"home.recommended.title": "Omdat je deze sfeer keek",
@@ -91,8 +85,6 @@ export const nlMessages: MessageDictionary = {
 	"section.emptyCopy":
 		"Start een titel en je voortgangstitels verschijnen hier voor snelle toegang.",
 	"card.series": "Serie",
-	"card.tonight": "Vanavond",
-	"card.feature": "Uitgelicht",
 	"card.favorite": "Favoriet",
 	"card.resume": "Hervat",
 	"card.play": "Speel af",
@@ -101,7 +93,6 @@ export const nlMessages: MessageDictionary = {
 	"card.removeFromMyList": "Verwijderen uit Mijn lijst",
 	"card.inMyList": "In Mijn lijst",
 	"card.myList": "Mijn lijst",
-	"card.instantlyAvailable": "Direct beschikbaar",
 	"dialog.closeDetails": "Details sluiten",
 	"dialog.seriesSpotlight": "Seriespotlight",
 	"dialog.movieSpotlight": "Filmspotlight",
@@ -267,7 +258,7 @@ export const nlMessages: MessageDictionary = {
 	"settings.title": "Instellingen",
 	"settings.subtitle": "Voorkeuren",
 	"settings.aboutCopy":
-		"Aurora is een open-source interface voor Jellyfin. Bug gevonden of een idee? We horen graag van je.",
+		"Aurora Cinema is een open-source app voor je Jellyfin-bibliotheek en je eigen IPTV. Bug gevonden of een idee? We horen graag van je.",
 	"settings.jellyfinSection": "Jellyfin-verbinding",
 	"settings.jellyfinCopy":
 		"Werk je Jellyfin-servergegevens bij. Laat API-sleutel of wachtwoord leeg om de huidige waarden te behouden.",
@@ -463,6 +454,25 @@ export const nlMessages: MessageDictionary = {
 	"search.channel": "Zender",
 	"search.episode": "Aflevering",
 	"setup.iptvOnly": "Geen Jellyfin? Gebruik Aurora alleen met IPTV",
+	"setup.stepOf": (params) => `Stap ${params?.step} van ${params?.total}`,
+	"setup.back": "Terug",
+	"setup.continue": "Verder",
+	"setup.server.title": "Jellyfin-server",
+	"setup.server.subtitle": "Waar draait je Jellyfin-server?",
+	"setup.server.hint":
+		"Vul de volledige URL van je server in, met de poort als dat nodig is. Bijvoorbeeld: http://localhost:8096 of https://jellyfin.thuis.be",
+	"setup.apikey.title": "API-sleutel",
+	"setup.apikey.subtitle": "Geef Aurora toegang tot Jellyfin",
+	"setup.apikey.hint":
+		"Open het Jellyfin-dashboard → Beheer → API-sleutels en maak een nieuwe sleutel aan. Plak die hierboven.",
+	"setup.apikey.passwordHint":
+		"Laat dit leeg om in te loggen met je Jellyfin-gebruikersnaam en -wachtwoord. Voor een API-sleutel open je het Jellyfin-dashboard → Beheer → API-sleutels en maak je er een aan.",
+	"setup.account.title": "Je account",
+	"setup.account.subtitle": "Koppel je Jellyfin-account",
+	"setup.account.hint":
+		"Aurora gebruikt je gegevens om een echte afspeelsessie te maken, zodat je kijkvoortgang synchroon blijft met Jellyfin.",
+	"setup.account.passwordHint":
+		"Log in met je Jellyfin-account. Laat het wachtwoord leeg als je account er geen heeft.",
 	"search.airingNow": "Nu",
 	"search.collection": "Collectie",
 	"search.recent": "Recent gezocht",

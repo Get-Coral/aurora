@@ -100,21 +100,22 @@ export function MediaCard({
 			) : null}
 
 			<div className="card-topline">
-				<span className={channel ? "card-format card-format-live" : "card-format"}>
-					{channel ? (
-						<>
-							<Radio size={12} /> {t("card.live")}
-						</>
-					) : item.type === "series" ? (
-						t("card.series")
-					) : item.type === "episode" ? (
-						t("card.episode")
-					) : variant === "feature" ? (
-						t("card.tonight")
-					) : (
-						t("card.feature")
-					)}
-				</span>
+				{/* Only kinds that need saying get a label; a film is the default. */}
+				{channel || item.type === "series" || item.type === "episode" ? (
+					<span className={channel ? "card-format card-format-live" : "card-format"}>
+						{channel ? (
+							<>
+								<Radio size={12} /> {t("card.live")}
+							</>
+						) : item.type === "series" ? (
+							t("card.series")
+						) : (
+							t("card.episode")
+						)}
+					</span>
+				) : (
+					<span />
+				)}
 				<div className="card-badges">
 					{item.isFavorite ? (
 						<span className="card-favorite">
@@ -194,7 +195,7 @@ export function MediaCard({
 									item.runtimeMinutes ? `${item.runtimeMinutes}m` : null,
 								]
 									.filter(Boolean)
-									.join(" • ") || t("card.instantlyAvailable")}
+									.join(" • ")}
 					</p>
 				</div>
 

@@ -46,47 +46,15 @@ export const Route = createFileRoute("/setup")({
 	component: SetupPage,
 });
 
+// Titles, subtitles and hints are i18n keys under setup.<id>.
 const BASE_STEPS = [
-	{
-		id: "server" as const,
-		icon: Globe,
-		title: "Jellyfin Server",
-		subtitle: "Where is your Jellyfin server running?",
-		hint: "Enter the full URL of your server, including the port if needed. For example: http://localhost:8096 or https://jellyfin.myhome.net",
-	},
-	{
-		id: "apikey" as const,
-		icon: Key,
-		title: "API Key",
-		subtitle: "Authorize Aurora to talk to Jellyfin",
-		hint: "Open your Jellyfin Dashboard → Administration → API Keys and create a new key. Paste it above.",
-	},
+	{ id: "server" as const, icon: Globe },
+	{ id: "apikey" as const, icon: Key },
 ];
 
-const MULTIUSER_STEP = {
-	id: "multiuser" as const,
-	icon: Users,
-	title: "User Profiles",
-	subtitle: "Would you like to enable multiple user profiles?",
-	hint: "Enable this if multiple people share this Aurora instance. Each person picks their own profile when opening Aurora.",
-};
+const MULTIUSER_STEP = { id: "multiuser" as const, icon: Users };
 
-const ACCOUNT_STEP = {
-	id: "account" as const,
-	icon: User,
-	title: "Your Account",
-	subtitle: "Link your Jellyfin account",
-	hint: "Aurora uses your credentials to create a real playback session so watch progress stays in sync with Jellyfin.",
-};
-
-// Shown instead of the default hints when the native app can sign in with a
-// username and password, so an API key is optional.
-const PASSWORD_SIGN_IN_HINTS = {
-	apikey:
-		"Leave this empty to sign in with your Jellyfin username and password instead. To use an API key, open your Jellyfin Dashboard → Administration → API Keys and create one.",
-	account:
-		"Sign in with your Jellyfin account. Leave the password empty if your account doesn't have one.",
-};
+const ACCOUNT_STEP = { id: "account" as const, icon: User };
 
 function getSteps(multiUserLocked: boolean, signInWithPassword: boolean) {
 	if (multiUserLocked) {
@@ -127,12 +95,15 @@ function SetupPage() {
 	const totalSteps = steps.length;
 	const current_step = steps[step];
 	const Icon = current_step.icon;
+	// The multi-user step's strings live under setup.multiUser.
+	const stepKey = current_step.id === "multiuser" ? "multiUser" : current_step.id;
+	const stepTitle = t(`setup.${stepKey}.title`);
 	const hint =
 		current_step.id === "apikey" && passwordSignInAvailable
-			? PASSWORD_SIGN_IN_HINTS.apikey
+			? t("setup.apikey.passwordHint")
 			: current_step.id === "account" && signInWithPassword
-				? PASSWORD_SIGN_IN_HINTS.account
-				: current_step.hint;
+				? t("setup.account.passwordHint")
+				: t(`setup.${stepKey}.hint`);
 	const progress = ((step + 1) / totalSteps) * 100;
 
 	const singleUserSetupMutation = useMutation({
@@ -193,15 +164,15 @@ function SetupPage() {
 		<div className="setup-shell">
 			<div className="setup-wordmark">
 				<AuroraMark width={34} height={25} />
-				aurora
+				{t("brand.wordmark")} {t("brand.suffix")}
 			</div>
 
 			<div className="setup-flow">
 				<div className="setup-progress-meta">
 					<span className="setup-step-label">
-						Step {step + 1} of {totalSteps}
+						{t("setup.stepOf", { step: step + 1, total: totalSteps })}
 					</span>
-					<span className="setup-step-label">{current_step.title}</span>
+					<span className="setup-step-label">{stepTitle}</span>
 				</div>
 				<div className="setup-progress-track">
 					<div className="setup-progress-fill" style={{ width: `${progress}%` }} />
@@ -212,8 +183,8 @@ function SetupPage() {
 						<Icon size={22} />
 					</div>
 
-					<h1 className="setup-step-title">{current_step.title}</h1>
-					<p className="setup-step-subtitle">{current_step.subtitle}</p>
+					<h1 className="setup-step-title">{stepTitle}</h1>
+					<p className="setup-step-subtitle">{t(`setup.${stepKey}.subtitle`)}</p>
 
 					{current_step.id === "server" && (
 						<div className="setup-field">
@@ -326,7 +297,7 @@ function SetupPage() {
 								className="setup-back-btn"
 								onClick={() => setStep((s) => s - 1)}
 							>
-								<ArrowLeft size={15} /> Back
+								<ArrowLeft size={15} /> {t("setup.back")}
 							</button>
 						) : null}
 
@@ -336,7 +307,7 @@ function SetupPage() {
 							disabled={!canAdvance() || isPending}
 							onClick={handleNext}
 						>
-							{isPending ? t("setup.saving") : isLastStep ? t("setup.submit") : "Continue"}
+							{isPending ? t("setup.saving") : isLastStep ? t("setup.submit") : t("setup.continue")}
 							{!isPending && !isLastStep ? <ArrowRight size={15} /> : null}
 						</button>
 					</div>

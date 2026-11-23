@@ -123,6 +123,12 @@ function focusElement(element: HTMLElement) {
 	const row = element.closest(ROW_SELECTOR);
 	const section = row?.closest("section") ?? row;
 	section?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	// Something on the first screen of the page (the menu, the hero's
+	// buttons) brings the page back to its top, with the menu showing.
+	const top = element.getBoundingClientRect().top + window.scrollY;
+	if (window.scrollY > 0 && (element.closest(".app-header") || top < window.innerHeight * 0.75)) {
+		window.scrollTo?.({ top: 0 });
+	}
 }
 
 function getInitialTarget(scope: HTMLElement | null) {
@@ -132,7 +138,15 @@ function getInitialTarget(scope: HTMLElement | null) {
 	);
 	if (preferred) return preferred;
 
-	return getTvFocusCandidates(root)
+	// Then the page's main control (the hero's Play), then the menu's current
+	// page, and only then whatever sits top left.
+	const candidates = getTvFocusCandidates(root);
+	const main =
+		candidates.find((element) => element.matches("[data-tv-entry]")) ??
+		candidates.find((element) => element.matches('[aria-current="page"]'));
+	if (main) return main;
+
+	return candidates
 		.map((element) => ({ element, rect: element.getBoundingClientRect() }))
 		.sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left)[0]?.element;
 }
@@ -167,7 +181,10 @@ export function moveTvFocus(
 	let bestScore = Number.POSITIVE_INFINITY;
 	for (const candidate of candidates) {
 		if (candidate === active) continue;
-		const score = getDirectionalScore(currentRect, candidate.getBoundingClientRect(), direction);
+		let score = getDirectionalScore(currentRect, candidate.getBoundingClientRect(), direction);
+		// A last-resort area (the tucked-away header) is only a stop when
+		// nothing else lies in that direction.
+		if (score != null && candidate.closest(LAST_RESORT_SELECTOR)) score += LAST_RESORT_PENALTY;
 		if (score != null && score < bestScore) {
 			bestScore = score;
 			best = candidate;
@@ -180,6 +197,8 @@ export function moveTvFocus(
 }
 
 const ROW_SELECTOR = "[data-tv-row]";
+const LAST_RESORT_SELECTOR = "[data-tv-last-resort]";
+const LAST_RESORT_PENALTY = 100_000_000;
 /** The last focused element of each row, for coming back to it. */
 const lastFocusedInRow = new WeakMap<Element, HTMLElement>();
 
@@ -198,9 +217,14 @@ function rememberedInRow(target: HTMLElement, from: HTMLElement): HTMLElement | 
 	const row = target.closest(ROW_SELECTOR);
 	if (!row || row.contains(from)) return null;
 	const remembered = lastFocusedInRow.get(row);
-	return remembered && remembered !== target && row.contains(remembered) && isNavigable(remembered)
-		? remembered
-		: null;
+	if (remembered && remembered !== target && row.contains(remembered) && isNavigable(remembered)) {
+		return remembered;
+	}
+	// A row seen for the first time starts on its main control, if it names
+	// one (the hero's Play, the menu's current page), not on whichever is
+	// nearest.
+	const entry = row.querySelector<HTMLElement>('[data-tv-entry], [aria-current="page"]');
+	return entry && entry !== target && isNavigable(entry) ? entry : null;
 }
 
 const TEXT_INPUT_TYPES = new Set([
