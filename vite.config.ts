@@ -92,6 +92,7 @@ const config = defineConfig({
 	fmt: {
 		...coralFmt,
 		ignorePatterns: [
+			".claude/**",
 			"src/routeTree.gen.ts",
 			"src/styles.css",
 			"CHANGELOG.md",
