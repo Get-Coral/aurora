@@ -34,6 +34,14 @@
 
         </activity>
 
+        <!-- Native player for IPTV films and series on Android TV (Dolby audio, MKV). -->
+        <activity
+            android:name=".TvPlayerActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/AppTheme.NoActionBar" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

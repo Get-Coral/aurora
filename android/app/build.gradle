@@ -118,12 +118,15 @@ dependencies {
     // Only for the Spatial plugin to find the SDK's shader includes (see configurations above).
     debugCompileClasspath "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion@aar"
 
-    // Quest only: the immersive theater (Meta Spatial SDK) and its native player.
+    // The native player: IPTV films and series on Android TV, and the Quest theater.
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
+    implementation "androidx.media3:media3-ui:$media3Version"
+
+    // Quest only: the immersive theater (Meta Spatial SDK).
     questImplementation "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion"
     questImplementation "com.meta.spatial:meta-spatial-sdk-toolkit:$metaSpatialSdkVersion"
     questImplementation "com.meta.spatial:meta-spatial-sdk-vr:$metaSpatialSdkVersion"
-    questImplementation "androidx.media3:media3-exoplayer:$media3Version"
-    questImplementation "androidx.media3:media3-exoplayer-hls:$media3Version"
 }
 
 apply from: 'capacitor.build.gradle'
