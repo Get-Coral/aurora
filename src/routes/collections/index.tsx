@@ -38,7 +38,7 @@ function CollectionsPage() {
 	const { tvMode } = useTvMode();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const { data: collections = [] } = useSuspenseQuery({
+	const { data: collections } = useSuspenseQuery({
 		queryKey: ["collections"],
 		queryFn: () => fetchCollectionsRuntime(),
 	});

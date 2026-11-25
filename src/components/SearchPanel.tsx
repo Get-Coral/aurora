@@ -185,6 +185,7 @@ export function SearchPanel({ onClose }: { onClose: () => void }) {
 		<div
 			className="search-shell"
 			role="combobox"
+			aria-controls="aurora-search-results"
 			aria-expanded={rows.length > 0}
 			aria-haspopup="listbox"
 		>

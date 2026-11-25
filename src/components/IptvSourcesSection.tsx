@@ -41,13 +41,17 @@ function SourceForm({ source, onDone }: { source?: IptvSourceSummary; onDone: ()
 	function submit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const data = new FormData(event.currentTarget);
-		const value = (name: string) => String(data.get(name) ?? "").trim();
+		const text = (name: string) => {
+			const entry = data.get(name);
+			return typeof entry === "string" ? entry : "";
+		};
+		const value = (name: string) => text(name).trim();
 		save.mutate({
 			kind,
 			name: value("name"),
 			url: value("url"),
 			username: value("username"),
-			password: String(data.get("password") ?? ""),
+			password: text("password"),
 			epgUrl: value("epgUrl"),
 		});
 	}
@@ -318,7 +322,7 @@ function SourceCategories({ id, onDone }: { id: string; onDone: () => void }) {
 export function IptvSourcesSection() {
 	const { t } = useI18n();
 	const queryClient = useQueryClient();
-	const [editing, setEditing] = useState<string | "new" | null>(null);
+	const [editing, setEditing] = useState<string | null>(null); // a source id, or "new"
 	const [categories, setCategories] = useState<string | null>(null);
 	const { data, isLoading } = useQuery({
 		queryKey: ["iptv-sources"],

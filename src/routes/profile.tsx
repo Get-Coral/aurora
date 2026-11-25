@@ -89,7 +89,7 @@ function ProfilePage() {
 
 	const refreshAvatar = () => {
 		// Prefix match also refreshes the header's ["current-profile", userId] query.
-		queryClient.invalidateQueries({ queryKey: ["current-profile"] });
+		void queryClient.invalidateQueries({ queryKey: ["current-profile"] });
 	};
 
 	const candidatesQuery = useQuery({

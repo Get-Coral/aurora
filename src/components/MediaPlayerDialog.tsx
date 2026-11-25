@@ -1654,7 +1654,8 @@ export function MediaPlayerDialog({
 
 			if (e.key === " " || e.key === "k") {
 				e.preventDefault();
-				video.paused ? void video.play() : video.pause();
+				if (video.paused) void video.play();
+				else video.pause();
 			} else if (
 				isLive &&
 				["ArrowUp", "ArrowDown", "PageUp", "PageDown", "ChannelUp", "ChannelDown"].includes(e.key)
@@ -1791,7 +1792,8 @@ export function MediaPlayerDialog({
 		}
 		switch (key) {
 			case "MediaPlayPause":
-				video.paused ? void video.play() : video.pause();
+				if (video.paused) void video.play();
+				else video.pause();
 				return true;
 			case "MediaPlay":
 				void video.play();
@@ -2102,7 +2104,8 @@ export function MediaPlayerDialog({
 	function togglePlay() {
 		const video = videoRef.current;
 		if (!video) return;
-		video.paused ? void video.play() : video.pause();
+		if (video.paused) void video.play();
+		else video.pause();
 	}
 
 	function handleVideoClick() {

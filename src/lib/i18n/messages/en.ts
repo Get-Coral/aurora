@@ -1,4 +1,4 @@
-import type { MessageDictionary } from "../types";
+import type { MessageDictionary, MessageParams } from "../types";
 
 export const enMessages: MessageDictionary = {
 	"brand.wordmark": "Aurora",
@@ -385,9 +385,9 @@ export const enMessages: MessageDictionary = {
 	"iptv.edit": "Edit source",
 	"iptv.refresh": "Reload catalog",
 	"iptv.remove": "Remove source",
-	"iptv.removeConfirm": ({ name } = {}) =>
+	"iptv.removeConfirm": ({ name }: MessageParams = {}) =>
 		`Remove ${name}? Watch progress and My List entries for it stay until you add it again.`,
-	"iptv.counts": ({ live, movies, series } = {}) =>
+	"iptv.counts": ({ live, movies, series }: MessageParams = {}) =>
 		`${live} channels · ${movies} films · ${series} series`,
 	"iptv.sourcesSection": "IPTV sources",
 	"iptv.sourcesCopy":
@@ -400,7 +400,7 @@ export const enMessages: MessageDictionary = {
 	"iptv.signInFailed": "The provider did not accept this username and password.",
 	"iptv.blockedOrigin":
 		"Aurora blocked the IPTV server. Add its address to AURORA_IPTV_ORIGINS on the Aurora server.",
-	"iptv.providerError": ({ status } = {}) =>
+	"iptv.providerError": ({ status }: MessageParams = {}) =>
 		`The IPTV server returned HTTP ${status}. Check your subscription and source details.`,
 	"iptv.providerRefused":
 		"The provider refused the stream. Your subscription may be expired or already in use on another device.",
@@ -427,7 +427,7 @@ export const enMessages: MessageDictionary = {
 	"nav.liveTv": "Live TV",
 	"card.live": "Live",
 	"card.episode": "Episode",
-	"card.onNow": ({ title } = {}) => `Now: ${title}`,
+	"card.onNow": ({ title }: MessageParams = {}) => `Now: ${title}`,
 	"dialog.liveSpotlight": "Live channel",
 	"dialog.watchLive": "Watch live",
 	"dialog.onNow": "On now",
@@ -489,10 +489,10 @@ export const enMessages: MessageDictionary = {
 	"search.noResultsEyebrow": "Nothing found",
 	"search.noResultsHint": "Check the spelling or try fewer words.",
 	"search.topResult": "Top result",
-	"search.airingTomorrow": ({ time } = {}) => `Tomorrow ${time}`,
-	"search.emptyFor": ({ query } = {}) => `No results for “${query}”.`,
-	"search.allResults": ({ query } = {}) => `All results for “${query}”`,
-	"search.showAll": ({ count } = {}) => `Show all ${count}`,
+	"search.airingTomorrow": ({ time }: MessageParams = {}) => `Tomorrow ${time}`,
+	"search.emptyFor": ({ query }: MessageParams = {}) => `No results for “${query}”.`,
+	"search.allResults": ({ query }: MessageParams = {}) => `All results for “${query}”`,
+	"search.showAll": ({ count }: MessageParams = {}) => `Show all ${count}`,
 	"iptv.categories": "Categories",
 	"iptv.categoriesCopy":
 		"Choose which categories appear in Aurora. Hidden categories stay out of Home, Live TV and search.",
@@ -504,9 +504,9 @@ export const enMessages: MessageDictionary = {
 	"iptv.account.trial": "Trial",
 	"iptv.connectionLimit":
 		"Your IPTV subscription is already streaming on another device, and it allows only so many at once. Stop the other stream and try again.",
-	"iptv.account.expires": ({ date } = {}) => `Active until ${date}`,
-	"iptv.account.expired": ({ date } = {}) => `Expired on ${date}`,
-	"iptv.account.connections": ({ count } = {}) =>
+	"iptv.account.expires": ({ date }: MessageParams = {}) => `Active until ${date}`,
+	"iptv.account.expired": ({ date }: MessageParams = {}) => `Expired on ${date}`,
+	"iptv.account.connections": ({ count }: MessageParams = {}) =>
 		`${count} ${Number(count) === 1 ? "connection" : "connections"}`,
 	"dialog.schedule": "TV guide",
 	"dialog.watchBack": "Watch back",
@@ -519,7 +519,7 @@ export const enMessages: MessageDictionary = {
 	"iptv.guideLater": "Later",
 	"iptv.guideNow": "Now",
 	"iptv.guideEmpty": "No channels with a TV guide here.",
-	"player.trackNumber": ({ number } = {}) => `Track ${number}`,
+	"player.trackNumber": ({ number }: MessageParams = {}) => `Track ${number}`,
 	"player.subtitlesSdh": "SDH",
 	"player.subtitlesForced": "Forced",
 	"player.channels": "Channels",

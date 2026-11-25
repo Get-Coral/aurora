@@ -31,7 +31,7 @@ function text(value: unknown) {
 }
 
 function pidOf(value: unknown) {
-	const id = String(value ?? "");
+	const id = typeof value === "number" || typeof value === "string" ? String(value) : "";
 	return /^\d+$/.test(id) ? id : null;
 }
 

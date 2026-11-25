@@ -135,7 +135,8 @@ export function cleanTitle(raw: string) {
 }
 
 export function parseNumber(value: unknown) {
-	const number = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+	const number =
+		typeof value === "number" ? value : typeof value === "string" ? Number.parseFloat(value) : NaN;
 	return Number.isFinite(number) ? number : undefined;
 }
 
