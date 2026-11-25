@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The native TV player, in the colours of the web player (src/styles.css :root). -->
+<resources>
+    <color name="aurora_ink">#F5F7FF</color>
+    <color name="aurora_ink_muted">#B8E4EBFF</color>
+    <color name="aurora_ink_faint">#6BDCE5FF</color>
+    <color name="aurora_accent">#70A8FF</color>
+    <color name="aurora_accent_strong">#8FD1FF</color>
+    <color name="aurora_accent_warm">#FF9D66</color>
+    <color name="aurora_line">#29A0B8FF</color>
+    <color name="aurora_surface_strong">#EB131C34</color>
+    <color name="aurora_track">#40FFFFFF</color>
+    <color name="aurora_buffered">#47FFFFFF</color>
+    <color name="aurora_focus_fill">#14FFFFFF</color>
+</resources>

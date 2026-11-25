@@ -19,4 +19,62 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
     </style>
+
+    <!-- The native TV player's buttons: .icon-button in TV mode (3.5rem targets, accent focus ring). -->
+    <style name="AuroraPlayerIconButton">
+        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:background">@drawable/aurora_player_button_bg</item>
+        <item name="android:focusable">true</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:tint">@color/aurora_player_button_tint</item>
+    </style>
+
+    <style name="AuroraPlayerSkipButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:background">@drawable/aurora_player_button_bg</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">18dp</item>
+    </style>
+
+    <style name="AuroraPlayerSkipIcon">
+        <item name="android:layout_width">20dp</item>
+        <item name="android:layout_height">20dp</item>
+        <item name="android:duplicateParentState">true</item>
+        <item name="android:tint">@color/aurora_player_button_tint</item>
+    </style>
+
+    <style name="AuroraPlayerSkipLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:duplicateParentState">true</item>
+        <item name="android:fontFamily">@font/aurora_manrope_semibold</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="android:textColor">@color/aurora_player_button_tint</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="AuroraPlayerOption">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:background">@drawable/aurora_player_option_bg</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:fontFamily">@font/aurora_manrope_medium</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:textColor">@color/aurora_player_option_text</item>
+        <item name="android:textSize">16sp</item>
+    </style>
 </resources>

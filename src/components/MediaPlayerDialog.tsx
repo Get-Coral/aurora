@@ -639,6 +639,21 @@ export function MediaPlayerDialog({
 			result = await playInTvPlayer({
 				itemId: target.id,
 				title: target.title,
+				subtitle:
+					target.type === "episode" && target.seriesTitle
+						? `${target.seriesTitle}${target.episodeNumber ? ` · E${target.episodeNumber}` : ""}`
+						: undefined,
+				locale,
+				labels: {
+					nowPlaying: t("player.nowPlaying"),
+					close: t("player.close"),
+					skipBack: t("player.skipBack"),
+					skipForward: t("player.skipForward"),
+					audioTrack: t("player.audioTrack"),
+					subtitles: t("player.subtitles"),
+					subtitlesOff: t("player.subtitlesOff"),
+					trackNumber: t("player.trackNumber", { number: "{number}" }),
+				},
 				url: session.streamUrl,
 				positionSeconds: resumeSeconds,
 				durationSeconds: session.durationSeconds,

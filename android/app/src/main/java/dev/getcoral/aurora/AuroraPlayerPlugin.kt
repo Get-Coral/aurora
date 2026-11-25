@@ -2,6 +2,7 @@ package dev.getcoral.aurora
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Bundle
 import androidx.activity.result.ActivityResult
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -29,6 +30,9 @@ class AuroraPlayerPlugin : Plugin() {
         Intent(context, TvPlayerActivity::class.java).apply {
           putExtra(TvPlayerActivity.EXTRA_ITEM_ID, itemId)
           putExtra(TvPlayerActivity.EXTRA_TITLE, call.getString("title", ""))
+          putExtra(TvPlayerActivity.EXTRA_SUBTITLE, call.getString("subtitle", ""))
+          putExtra(TvPlayerActivity.EXTRA_LOCALE, call.getString("locale", ""))
+          putExtra(TvPlayerActivity.EXTRA_LABELS, labels(call.getObject("labels")))
           putExtra(TvPlayerActivity.EXTRA_URL, url)
           putExtra(TvPlayerActivity.EXTRA_POSITION_MS, call.getDouble("positionMs", 0.0)!!.toLong())
           putExtra(TvPlayerActivity.EXTRA_DURATION_MS, call.getDouble("durationMs", 0.0)!!.toLong())
@@ -38,6 +42,13 @@ class AuroraPlayerPlugin : Plugin() {
         }
     startActivityForResult(call, intent, "playerClosed")
   }
+
+  /** The web app's own words for the controls, so the player speaks the viewer's language. */
+  private fun labels(labels: JSObject?): Bundle =
+      Bundle().apply {
+        val keys = labels?.keys() ?: return@apply
+        for (key in keys) labels.getString(key)?.let { putString(key, it) }
+      }
 
   @ActivityCallback
   private fun playerClosed(call: PluginCall?, result: ActivityResult) {

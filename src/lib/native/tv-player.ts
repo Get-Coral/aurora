@@ -9,9 +9,27 @@
 import { getClientPlaybackContext } from "../platform";
 import { isNativeShell } from "../runtime-mode";
 
+/** The player's words, in the web app's language. */
+export interface TvPlayerLabels {
+	nowPlaying: string;
+	close: string;
+	skipBack: string;
+	skipForward: string;
+	audioTrack: string;
+	subtitles: string;
+	subtitlesOff: string;
+	/** With `{number}` where the track number goes. */
+	trackNumber: string;
+}
+
 export interface TvPlayerRequest {
 	itemId: string;
 	title: string;
+	/** The line under the title: the series and episode. */
+	subtitle?: string;
+	/** BCP 47 tag the player names audio and subtitle languages in. */
+	locale: string;
+	labels: TvPlayerLabels;
 	/** Absolute URL the native player can fetch without cookies. */
 	url: string;
 	/** Where to start, in seconds. */
@@ -45,6 +63,9 @@ interface AuroraPlayerPlugin {
 	open(options: {
 		itemId: string;
 		title: string;
+		subtitle: string;
+		locale: string;
+		labels: TvPlayerLabels;
 		url: string;
 		positionMs: number;
 		durationMs: number;
@@ -106,6 +127,9 @@ export async function playInTvPlayer(request: TvPlayerRequest): Promise<TvPlayer
 	const native = await loaded.player.open({
 		itemId: request.itemId,
 		title: request.title,
+		subtitle: request.subtitle ?? "",
+		locale: request.locale,
+		labels: request.labels,
 		url: new URL(request.url, window.location.href).toString(),
 		positionMs: Math.max(0, Math.round(request.positionSeconds * 1000)),
 		durationMs: Math.max(0, Math.round((request.durationSeconds ?? 0) * 1000)),
