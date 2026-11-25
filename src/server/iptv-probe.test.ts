@@ -20,6 +20,20 @@ const output = JSON.stringify({
 			tags: { language: "nld" },
 		},
 		{ index: 5, codec_type: "subtitle", codec_name: "ass", tags: { language: "nld" } },
+		{
+			index: 6,
+			codec_type: "subtitle",
+			codec_name: "subrip",
+			tags: { language: "eng" },
+			disposition: { forced: 0, hearing_impaired: 1 },
+		},
+		{
+			index: 7,
+			codec_type: "subtitle",
+			codec_name: "subrip",
+			tags: { language: "eng" },
+			disposition: { forced: 1, hearing_impaired: 0 },
+		},
 	],
 });
 
@@ -34,7 +48,16 @@ describe("IPTV media probe", () => {
 		expect(media.subtitles.map((track) => [track.index, track.codec])).toEqual([
 			[0, "subrip"],
 			[2, "ass"],
+			[3, "subrip"],
+			[4, "subrip"],
 		]);
+	});
+
+	it("marks SDH and forced subtitles", () => {
+		const [plain, , sdh, forced] = parseProbe(output).subtitles;
+		expect([plain?.hearingImpaired, plain?.forced]).toEqual([undefined, undefined]);
+		expect(sdh?.hearingImpaired).toBe(true);
+		expect(forced?.forced).toBe(true);
 	});
 
 	it("repackages browser-ready video and stereo AAC, converts the rest", () => {

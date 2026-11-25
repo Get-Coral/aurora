@@ -48,6 +48,7 @@ import {
 	attachStream,
 	browserEngineSupport,
 	choosePlaybackEngine,
+	distinctLabels,
 	type StreamTrack,
 	trackLabel,
 	withStartOffset,
@@ -887,13 +888,29 @@ export function MediaPlayerDialog({
 
 	// Audio streams inside an IPTV file: Aurora's converter switches between them.
 	const mediaAudio = iptvSession?.media?.audio;
+	// Subtitle streams inside an IPTV file, told apart when they share a language.
+	const embeddedSubtitleLabels = distinctLabels(
+		(iptvSession?.media?.subtitles ?? []).map((track, index) => {
+			const label = trackLabel(track, locale, t("player.trackNumber", { number: index + 1 }));
+			const tags = [
+				track.hearingImpaired ? t("player.subtitlesSdh") : "",
+				track.forced ? t("player.subtitlesForced") : "",
+			].filter((tag) => tag && !label.toLowerCase().includes(tag.toLowerCase()));
+			return tags.length ? `${label} (${tags.join(", ")})` : label;
+		}),
+	);
 	useEffect(() => {
 		if (!mediaAudio || mediaAudio.length < 2) return;
+		const labels = distinctLabels(
+			mediaAudio.map((track, index) =>
+				trackLabel(track, locale, t("player.trackNumber", { number: index + 1 })),
+			),
+		);
 		setEngineTracks((current) => ({
 			...current,
 			audio: mediaAudio.map((track, index) => ({
 				id: track.id,
-				label: trackLabel(track, locale, t("player.trackNumber", { number: index + 1 })),
+				label: labels[index] ?? "",
 				language: track.language,
 			})),
 		}));
@@ -906,22 +923,29 @@ export function MediaPlayerDialog({
 		if (embeddedSubtitle == null || !iptvSession?.transcoded || !streamUrl) return;
 		let cancelled = false;
 		const url = withStreamParams(streamUrl, { subtitle: embeddedSubtitle, start: null });
+		let loaded = false;
+		let timer: ReturnType<typeof setTimeout>;
 		const load = async () => {
 			try {
 				const response = await fetch(url);
-				if (!response.ok) return;
-				const cues = parseVtt(await response.text());
-				if (!cancelled && cues.length) setOnlineCues(cues);
+				if (response.ok) {
+					const cues = parseVtt(await response.text());
+					if (!cancelled && cues.length) {
+						setOnlineCues(cues);
+						loaded = true;
+					}
+				}
 			} catch {
 				// Try again on the next tick.
 			}
+			// Picking a track can restart the converter, which isn't writing yet on
+			// the first request: ask again soon until the first lines are there.
+			if (!cancelled) timer = setTimeout(load, loaded ? 15_000 : 2000);
 		};
-		const first = setTimeout(load, 1500);
-		const timer = setInterval(load, 15_000);
+		timer = setTimeout(load, 1500);
 		return () => {
 			cancelled = true;
-			clearTimeout(first);
-			clearInterval(timer);
+			clearTimeout(timer);
 		};
 	}, [embeddedSubtitle, iptvSession?.transcoded, streamUrl]);
 
@@ -2847,11 +2871,7 @@ export function MediaPlayerDialog({
 																className={`player-subtitle-option${embeddedSubtitle === track.id ? " active" : ""}`}
 																onClick={() => selectEmbeddedSubtitle(track.id)}
 															>
-																{trackLabel(
-																	track,
-																	locale,
-																	t("player.trackNumber", { number: index + 1 }),
-																)}
+																{embeddedSubtitleLabels[index]}
 															</button>
 														))}
 														{engineTracks.subtitles.map((track) => (

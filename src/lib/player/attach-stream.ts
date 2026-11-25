@@ -238,6 +238,22 @@ const BIBLIOGRAPHIC: Record<string, string> = {
 	wel: "cy",
 };
 
+/**
+ * Number labels that would read the same ("English", "English 2"): files often
+ * carry several subtitle tracks in one language without saying how they differ.
+ */
+export function distinctLabels(labels: string[]) {
+	const totals = new Map<string, number>();
+	for (const label of labels) totals.set(label, (totals.get(label) ?? 0) + 1);
+	const seen = new Map<string, number>();
+	return labels.map((label) => {
+		if ((totals.get(label) ?? 0) < 2) return label;
+		const count = (seen.get(label) ?? 0) + 1;
+		seen.set(label, count);
+		return count === 1 ? label : `${label} ${count}`;
+	});
+}
+
 /** "Dutch", "English (Director's commentary)", or the track title. */
 export function trackLabel(
 	track: { language?: string; title?: string },

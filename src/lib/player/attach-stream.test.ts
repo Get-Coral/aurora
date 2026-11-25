@@ -38,7 +38,7 @@ describe("withStartOffset", () => {
 });
 
 describe("track labels and stream params", async () => {
-	const { trackLabel, withStreamParams } = await import("./attach-stream");
+	const { distinctLabels, trackLabel, withStreamParams } = await import("./attach-stream");
 	it("names languages from bibliographic and ISO codes", () => {
 		expect(trackLabel({ language: "ger" }, "en", "Track 1")).toBe("German");
 		expect(trackLabel({ language: "dut" }, "nl", "Spoor 1")).toBe("Nederlands");
@@ -46,6 +46,15 @@ describe("track labels and stream params", async () => {
 			"English (Commentary)",
 		);
 		expect(trackLabel({ language: "und" }, "en", "Track 2")).toBe("Track 2");
+	});
+	it("numbers tracks that would read the same", () => {
+		expect(distinctLabels(["English", "English (SDH)", "English", "French", "English"])).toEqual([
+			"English",
+			"English (SDH)",
+			"English 2",
+			"French",
+			"English 3",
+		]);
 	});
 	it("sets and clears stream parameters", () => {
 		expect(withStreamParams("/api/iptv?id=a&start=5", { audio: 1, remux: "1", start: null })).toBe(

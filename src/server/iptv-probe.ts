@@ -5,7 +5,16 @@ import path from "node:path";
 export interface ProbedMedia {
 	video?: { codec: string; pixFmt?: string };
 	audio: { index: number; codec: string; channels?: number; language?: string; title?: string }[];
-	subtitles: { index: number; codec: string; language?: string; title?: string }[];
+	subtitles: {
+		index: number;
+		codec: string;
+		language?: string;
+		title?: string;
+		/** Only the lines in another language (signs, foreign dialogue). */
+		forced?: boolean;
+		/** SDH: also describes sounds, for deaf and hard-of-hearing viewers. */
+		hearingImpaired?: boolean;
+	}[];
 }
 
 /** Subtitle formats ffmpeg can turn into WebVTT (not bitmap ones like PGS). */
@@ -28,6 +37,7 @@ interface ProbeStream {
 	pix_fmt?: string;
 	channels?: number;
 	tags?: { language?: string; title?: string };
+	disposition?: { forced?: number; hearing_impaired?: number };
 }
 
 export function parseProbe(output: string): ProbedMedia {
@@ -53,6 +63,8 @@ export function parseProbe(output: string): ProbedMedia {
 				codec: stream.codec_name as string,
 				language: stream.tags?.language,
 				title: stream.tags?.title,
+				forced: stream.disposition?.forced === 1 || undefined,
+				hearingImpaired: stream.disposition?.hearing_impaired === 1 || undefined,
 			}))
 			.filter((stream) => TEXT_SUBTITLES.has(stream.codec)),
 	};
@@ -73,7 +85,7 @@ export function probeIptvMedia(key: string, url: URL, ffmpeg: string): Promise<P
 				"-user_agent",
 				"Aurora IPTV",
 				"-show_entries",
-				"stream=index,codec_type,codec_name,pix_fmt,channels:stream_tags=language,title",
+				"stream=index,codec_type,codec_name,pix_fmt,channels:stream_disposition=forced,hearing_impaired:stream_tags=language,title",
 				"-of",
 				"json",
 				url.href,
