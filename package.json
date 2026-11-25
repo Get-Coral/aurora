@@ -1,21 +1,21 @@
 {
   "name": "aurora-ui",
+  "version": "1.17.0",
   "private": false,
   "type": "module",
-  "packageManager": "pnpm@10.32.1",
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "build": "vite build",
+    "dev": "vp dev --port 3000",
+    "build": "vp build",
     "start": "node server.mjs",
-    "preview": "vite preview",
-    "test": "vitest run --passWithNoTests",
+    "preview": "vp preview",
+    "test": "vp test run --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "check": "biome check .",
-    "lint": "biome lint . --write",
-    "format": "biome format . --write",
+    "check": "vp check",
+    "lint": "vp lint --fix",
+    "format": "vp fmt",
     "cap:sync": "pnpm build && cap sync",
     "cap:copy": "pnpm build && cap copy",
     "android:assemble:debug": "cd android && ./gradlew assembleDebug",
@@ -50,17 +50,18 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.11",
     "@capacitor/android": "^8.3.5",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/ios": "^8.3.0",
-    "@get-coral/biome-config": "^0.2.0",
+    "@get-coral/oxfmt-config": "^0.1.0",
+    "@get-coral/oxlint-config": "^0.1.0",
     "@get-coral/tsconfig": "^0.2.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-vite": "^0.8.7",
     "@tauri-apps/cli": "^2.12.6",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.19.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
@@ -68,9 +69,9 @@
     "jsdom": "^28.1.0",
     "playwright": "1.65.1",
     "typescript": "^5.9.3",
-    "vite": "^8.3.1",
-    "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^5.0.2"
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vite-tsconfig-paths": "^6.1.1"
   },
-  "version": "1.17.0"
+  "packageManager": "pnpm@10.32.1"
 }

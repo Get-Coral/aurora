@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
 import { useTvMode } from "../lib/tv-mode";
@@ -135,7 +136,7 @@ export function BrowseRow({ row }: { row: BrowseRowSpec }) {
 							))
 						: Array.from({ length: 6 }, (_, index) => (
 								<div
-									// biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
+									// oxlint-disable-next-line react/no-array-index-key -- placeholders have no identity
 									key={index}
 									className="media-card media-card-poster media-card-skeleton"
 									aria-hidden="true"
@@ -223,7 +224,7 @@ export function BrowseRows({
 				{loading
 					? Array.from({ length: 3 }, (_, index) => (
 							<BrowseRow
-								// biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
+								// oxlint-disable-next-line react/no-array-index-key -- placeholders have no identity
 								key={index}
 								row={{ id: `loading-${index}`, title: "", load: () => new Promise(() => {}) }}
 							/>

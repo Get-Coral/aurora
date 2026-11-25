@@ -101,7 +101,7 @@ function findFile(dir, name) {
 async function bundleServer() {
   if (!flag('--skip-web')) {
     // The server build, as in the Docker image (no SPA shell for Capacitor).
-    run('npx', ['vite', 'build'], { AURORA_DISABLE_SPA_PRERENDER: 'true' });
+    run('npx', ['vp', 'build'], { AURORA_DISABLE_SPA_PRERENDER: 'true' });
   }
   const out = path.join(tauriDir, 'resources', 'server');
   fs.rmSync(out, { recursive: true, force: true });

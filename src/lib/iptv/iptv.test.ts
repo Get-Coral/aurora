@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { cleanTitle } from "./catalog";
 import { episodePid, iptvId, parseIptvId, splitEpisodePid, stableHash } from "./ids";
 import { parseIptvPlaylist } from "./m3u";

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { findTopOverlayClose, returnToTopOfHome } from "./back-navigation";
 
 function visible<T extends HTMLElement>(element: T): T {

@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+
+import { afterAll, beforeEach, describe, expect, it } from "vite-plus/test";
 
 // Point the store at a throwaway data dir before importing it (the DB path is
 // resolved from AURORA_DATA_DIR and the connection is cached on first use).

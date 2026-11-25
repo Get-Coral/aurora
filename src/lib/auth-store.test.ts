@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+
+import { afterAll, beforeEach, describe, expect, it } from "vite-plus/test";
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "aurora-auth-"));
 process.env.AURORA_DATA_DIR = dataDir;

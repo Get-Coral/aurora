@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { startSeconds, transcodeArgs } from "./iptv-transcode";
 
 const source = new URL("http://provider.example/movie/u/p/1.mp4");

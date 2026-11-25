@@ -1,4 +1,9 @@
 allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
-  - '@get-coral/jellyfin'
+  - "@get-coral/jellyfin"
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8001
+  vite-plus: 1.8.0
+overrides:
+  vite@*: "catalog:"

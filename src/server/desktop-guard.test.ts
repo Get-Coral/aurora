@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { createDesktopGuard, DESKTOP_ENTRY_PATH } from "../../desktop-guard.mjs";
 
 const token = "a".repeat(43);

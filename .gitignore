@@ -16,3 +16,4 @@ todo.md
 
 # Python bytecode (scripts/quest)
 __pycache__/
+.vitest/

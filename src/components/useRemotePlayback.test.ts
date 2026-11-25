@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
+
 import { useRemotePlayback } from "./useRemotePlayback";
 
 type AvailabilityCallback = (available: boolean) => void;

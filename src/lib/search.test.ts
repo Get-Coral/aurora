@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import type { MediaItem } from "./media";
 import {
 	mergeSearchResults,

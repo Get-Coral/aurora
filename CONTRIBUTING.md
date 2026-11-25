@@ -45,7 +45,7 @@ Aurora's strings live in `src/lib/i18n/messages/`. To add a new language:
 
 ## Code style
 
-Aurora uses [Biome](https://biomejs.dev/) for formatting and linting. Your editor will pick it up automatically if you have the Biome extension installed. CI will fail on lint errors.
+Aurora uses [Vite+](https://viteplus.dev/): [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) formats and [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) lints, both configured in `vite.config.ts` with Coral's shared presets. Run `pnpm check` before you push (`pnpm format` fixes formatting, `pnpm lint` applies lint fixes). The repository recommends the Oxc VS Code extension, which formats on save. CI will fail on lint errors.
 
 ## Reporting bugs / requesting features
 
