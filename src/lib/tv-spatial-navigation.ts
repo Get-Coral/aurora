@@ -340,11 +340,67 @@ export function installTvSpatialNavigation() {
 	let currentScope: HTMLElement | null = getActiveTvScope();
 	const returnFocus = new WeakMap<HTMLElement, HTMLElement>();
 	let frame = 0;
+	/**
+	 * A layer that opened before its preferred control existed (the player
+	 * while the stream loads has only its close button) got focus on a stand-in.
+	 * It moves to the preferred control once that appears, unless the viewer
+	 * has moved on: otherwise OK on the stand-in would close the player.
+	 */
+	let standIn: { scope: HTMLElement; element: HTMLElement } | null = null;
+	/** Frames left to keep looking for a control after focus was lost in a layer. */
+	let recoveryFrames = 0;
+
+	function focusNewScope(scope: HTMLElement) {
+		focusTvScope(scope);
+		const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		standIn =
+			active && scope.contains(active) && !active.matches(AUTOFOCUS_SELECTOR)
+				? { scope, element: active }
+				: null;
+	}
+
+	function upgradeStandIn() {
+		if (!standIn) return;
+		const active = document.activeElement;
+		// The stand-in can also be swapped out with the view it was in (the
+		// player's loading screen), which leaves focus on the page itself.
+		const stillThere =
+			active === standIn.element ||
+			(!standIn.element.isConnected && (!active || active === document.body));
+		if (standIn.scope !== currentScope || !stillThere) {
+			standIn = null;
+			return;
+		}
+		const preferred = Array.from(
+			standIn.scope.querySelectorAll<HTMLElement>(AUTOFOCUS_SELECTOR),
+		).find(isNavigable);
+		if (!preferred) return;
+		standIn = null;
+		focusElement(preferred);
+	}
 
 	function syncScope() {
 		frame = 0;
 		const nextScope = getActiveTvScope();
-		if (nextScope === currentScope) return;
+		if (nextScope === currentScope) {
+			if (!isTvModeActive()) return;
+			upgradeStandIn();
+			// The focused control went away inside an open layer (its view was
+			// replaced): pick up again on the layer's preferred control rather
+			// than leaving the remote with nothing focused.
+			const isLost = () => !document.activeElement || document.activeElement === document.body;
+			if (nextScope && isLost()) {
+				focusNewScope(nextScope);
+				// Its controls may still be on their way (rendered in steps): look
+				// again on the next frames, for up to about a second.
+				if (isLost()) {
+					recoveryFrames = recoveryFrames > 0 ? recoveryFrames - 1 : 60;
+					if (recoveryFrames > 0 && !frame) frame = requestAnimationFrame(syncScope);
+				} else recoveryFrames = 0;
+			}
+			return;
+		}
+		standIn = null;
 		const previousScope = currentScope;
 		currentScope = nextScope;
 		if (!isTvModeActive()) return;
@@ -365,7 +421,7 @@ export function installTvSpatialNavigation() {
 			// its origin back if that lives inside it.
 			const origin = previousClosed ? returnFocus.get(previousScope) : undefined;
 			if (origin?.isConnected && nextScope.contains(origin)) focusElement(origin);
-			else focusTvScope(nextScope);
+			else focusNewScope(nextScope);
 			return;
 		}
 
@@ -385,7 +441,7 @@ export function installTvSpatialNavigation() {
 		childList: true,
 		subtree: true,
 		attributes: true,
-		attributeFilter: ["aria-modal", "data-tv-scope", "inert"],
+		attributeFilter: ["aria-modal", "data-tv-scope", "inert", "data-tv-autofocus"],
 	});
 
 	const handleFocusIn = (event: FocusEvent) => {

@@ -260,6 +260,60 @@ describe("moveTvFocus", () => {
 	});
 });
 
+describe("a layer whose preferred control comes later", () => {
+	const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+	function openLoadingPlayer() {
+		button("Hero", rect(100, 600, 200, 60));
+		(document.body.lastElementChild as HTMLElement).focus();
+		const dialog = document.createElement("div");
+		dialog.setAttribute("aria-modal", "true");
+		place(dialog, rect(0, 0, 1920, 1080));
+		document.body.appendChild(dialog);
+		const close = button("Close", rect(1800, 40, 60, 60), dialog);
+		return { dialog, close };
+	}
+
+	function addPlay(dialog: Element) {
+		const play = button("Play", rect(80, 980, 60, 60), dialog);
+		play.setAttribute("data-tv-autofocus", "");
+		return play;
+	}
+
+	it("moves from the stand-in to it once it appears", async () => {
+		const { dialog, close } = openLoadingPlayer();
+		await nextFrame();
+		expect(document.activeElement).toBe(close);
+
+		const play = addPlay(dialog);
+		await nextFrame();
+		expect(document.activeElement).toBe(play);
+	});
+
+	it("also when the stand-in is replaced along with the view it was in", async () => {
+		const { dialog, close } = openLoadingPlayer();
+		await nextFrame();
+		expect(document.activeElement).toBe(close);
+
+		close.remove();
+		const play = addPlay(dialog);
+		button("Close", rect(1800, 40, 60, 60), dialog);
+		await nextFrame();
+		expect(document.activeElement).toBe(play);
+	});
+
+	it("leaves focus where the viewer moved it in the meantime", async () => {
+		const { dialog } = openLoadingPlayer();
+		await nextFrame();
+		const other = button("Subtitles", rect(1700, 980, 60, 60), dialog);
+		other.focus();
+
+		addPlay(dialog);
+		await nextFrame();
+		expect(document.activeElement).toBe(other);
+	});
+});
+
 describe("on-screen keyboard", () => {
 	function field(box: DOMRect, parent: Element = document.body) {
 		const input = document.createElement("input");
