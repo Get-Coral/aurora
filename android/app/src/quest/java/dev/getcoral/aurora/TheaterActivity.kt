@@ -257,7 +257,7 @@ class TheaterActivity : AppSystemActivity() {
             .setAllowCrossProtocolRedirects(true)
             .apply { if (userAgent.isNotBlank()) setUserAgent(userAgent) }
     player =
-        ExoPlayer.Builder(this)
+        ExoPlayer.Builder(this, auroraRenderers(this))
             .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(http))
             .build()
             .apply {

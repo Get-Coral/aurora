@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldUseTvPlayer, toTvPlayerResult } from "./tv-player";
+import { hasNativePlayer, shouldUseTvPlayer, toTvPlayerResult } from "./tv-player";
 
 describe("shouldUseTvPlayer", () => {
 	it("takes IPTV films and episodes", () => {
@@ -37,5 +37,18 @@ describe("toTvPlayerResult", () => {
 		expect(
 			toTvPlayerResult({ positionMs: 0, durationMs: 0, ended: true, error: "ERROR_CODE_IO" }),
 		).toEqual({ positionSeconds: 0, durationSeconds: null, ended: true, error: "ERROR_CODE_IO" });
+	});
+});
+
+describe("hasNativePlayer", () => {
+	it("is the Android app on TVs, phones and tablets", () => {
+		expect(hasNativePlayer("android-tv")).toBe(true);
+		expect(hasNativePlayer("android")).toBe(true);
+	});
+
+	it("leaves the Quest (its theater), iOS and browsers alone", () => {
+		expect(hasNativePlayer("quest")).toBe(false);
+		expect(hasNativePlayer("ios")).toBe(false);
+		expect(hasNativePlayer("other")).toBe(false);
 	});
 });

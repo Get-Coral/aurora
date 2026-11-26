@@ -1,12 +1,13 @@
 /**
- * The native player of the Android TV app (the AuroraPlayer plugin, Media3
+ * The native player of the Android app (the AuroraPlayer plugin, Media3
  * ExoPlayer). The WebView plays provider files with Chromium's decoders,
  * which leave out Dolby audio (AC3/E-AC3: no sound at all) and let the sound
- * drift away from the picture in some MKV files. On a TV, IPTV films and
- * episodes are handed to the native player instead, which uses the device's
- * own decoders and passes Dolby through to the TV or receiver.
+ * drift away from the picture in some MKV files. On Android TVs, phones and
+ * tablets, IPTV films and episodes are handed to the native player instead.
+ * It uses the device's own decoders (passing Dolby through to the TV or
+ * receiver), and FFmpeg's where the device has none, as on most phones.
  */
-import { getClientPlaybackContext } from "../platform";
+import { type ClientPlatform, getClientPlaybackContext } from "../platform";
 import { isNativeShell } from "../runtime-mode";
 
 /** The player's words, in the web app's language. */
@@ -100,6 +101,16 @@ export function toTvPlayerResult(native: NativeTvPlayerResult): TvPlayerResult {
 	};
 }
 
+/**
+ * The Android app's own platforms. Not the Quest: its panel has the immersive
+ * theater for the same job.
+ */
+const NATIVE_PLAYER_PLATFORMS = new Set<ClientPlatform>(["android-tv", "android"]);
+
+export function hasNativePlayer(platform: ClientPlatform) {
+	return NATIVE_PLAYER_PLATFORMS.has(platform);
+}
+
 // Wrapped in an object: a Capacitor plugin is a proxy that answers every
 // property, `then` included, so resolving a promise with it directly makes
 // JavaScript treat it as a thenable and call the missing native `then()`.
@@ -107,7 +118,7 @@ let plugin: Promise<{ player: AuroraPlayerPlugin } | null> | null = null;
 
 function loadPlugin(): Promise<{ player: AuroraPlayerPlugin } | null> {
 	plugin ??= (async () => {
-		if (!isNativeShell() || getClientPlaybackContext().platform !== "android-tv") return null;
+		if (!isNativeShell() || !hasNativePlayer(getClientPlaybackContext().platform)) return null;
 		const { Capacitor, registerPlugin } = await import("@capacitor/core");
 		// App versions from before the native player don't have it.
 		if (!Capacitor.isPluginAvailable("AuroraPlayer")) return null;

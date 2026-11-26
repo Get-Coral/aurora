@@ -627,7 +627,7 @@ export function MediaPlayerDialog({
 	onCloseRef.current = onClose;
 
 	/**
-	 * Plays an IPTV film or episode in the Android TV app's native player and,
+	 * Plays an IPTV film or episode in the Android app's native player and,
 	 * once the viewer is back, saves where they got to and closes the player.
 	 * False when the native player couldn't play it: the WebView tries then.
 	 */
@@ -753,7 +753,7 @@ export function MediaPlayerDialog({
 						setDuration(session.durationSeconds);
 					}
 					const resumeSeconds = session.live ? 0 : resumeTicksFor(item) / 10_000_000;
-					// Android TV: films and episodes play in the native player, which
+					// Android: films and episodes play in the native player, which
 					// has the Dolby decoders and MKV handling the WebView lacks.
 					if (shouldUseTvPlayer(session) && (await isTvPlayerAvailable())) {
 						if (cancelled) return;
