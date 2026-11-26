@@ -8,8 +8,10 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -72,6 +74,9 @@ class TvPlayerActivity : AppCompatActivity() {
     const val EXTRA_LABELS = "dev.getcoral.aurora.player.LABELS"
     const val EXTRA_ENDED = "dev.getcoral.aurora.player.ENDED"
     const val EXTRA_ERROR = "dev.getcoral.aurora.player.ERROR"
+    const val EXTRA_ARTWORK_URL = "dev.getcoral.aurora.player.ARTWORK_URL"
+
+    private const val ARTWORK_FADE_MS = 400L
 
     // The web player's skips (seekBack / seekForward in MediaPlayerDialog).
     private const val SKIP_BACK_MS = 15_000L
@@ -109,6 +114,7 @@ class TvPlayerActivity : AppCompatActivity() {
   private val format by lazy { intent.getStringExtra(EXTRA_FORMAT).orEmpty() }
   private val fallbackUrl by lazy { intent.getStringExtra(EXTRA_FALLBACK_URL).orEmpty() }
   private val userAgent by lazy { intent.getStringExtra(EXTRA_USER_AGENT).orEmpty() }
+  private val artworkUrl by lazy { intent.getStringExtra(EXTRA_ARTWORK_URL).orEmpty() }
   private val labels by lazy { Labels(intent.getBundleExtra(EXTRA_LABELS)) }
   private val displayLocale by lazy {
     intent.getStringExtra(EXTRA_LOCALE)?.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag)
@@ -129,6 +135,10 @@ class TvPlayerActivity : AppCompatActivity() {
   private var finishing = false
   /** Where the viewer was, kept for when the player is already released. */
   private var lastPositionMs = 0L
+  /** The title's artwork, shown from the start until the film's first frame. */
+  private var artworkView: ImageView? = null
+  private var artworkLoader: ArtworkLoader? = null
+  private var firstFrameShown = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -152,6 +162,7 @@ class TvPlayerActivity : AppCompatActivity() {
     pickerList = findViewById(R.id.aurora_picker_list)
     pickerScroll = findViewById(R.id.aurora_picker_scroll)
     setUpPlayerView()
+    setUpArtwork()
 
     onBackPressedDispatcher.addCallback(
         this,
@@ -247,23 +258,15 @@ class TvPlayerActivity : AppCompatActivity() {
         PlayerView.ControllerVisibilityListener { visibility ->
           if (visibility == View.VISIBLE) {
             showTime(player?.currentPosition ?: lastPositionMs)
-            // Land on play/pause, as the web player's TV mode does.
-            if (openPicker == null && currentFocus?.let { isInside(it, playerView) } != true) {
+            // Land on play/pause, as the web player's TV mode does, never on the close button
+            // at the top (Android's first focusable): OK right away must not end the film.
+            if (openPicker == null) {
               findViewById<View>(androidx.media3.ui.R.id.exo_play_pause)?.requestFocus()
             }
           } else if (openPicker != null) {
             closePicker()
           }
         })
-  }
-
-  private fun isInside(view: View, ancestor: View): Boolean {
-    var current: View? = view
-    while (current != null) {
-      if (current === ancestor) return true
-      current = current.parent as? View
-    }
-    return false
   }
 
   private fun startPlayer() {
@@ -314,8 +317,56 @@ class TvPlayerActivity : AppCompatActivity() {
           .apply { if (format == "hls") setMimeType(MimeTypes.APPLICATION_M3U8) }
           .build()
 
+  /**
+   * The artwork goes right above PlayerView's shutter (the black that covers the video until its
+   * first frame), so the buffering spinner, subtitles and controls stay on top of it. It fades in
+   * once loaded, and out on the first frame; if the film is quicker, it never shows.
+   */
+  private fun setUpArtwork() {
+    if (artworkUrl.isBlank()) return
+    val shutter = playerView.findViewById<View>(androidx.media3.ui.R.id.exo_shutter) ?: return
+    val parent = shutter.parent as? ViewGroup ?: return
+    val view =
+        ImageView(this).apply {
+          scaleType = ImageView.ScaleType.FIT_CENTER
+          alpha = 0f
+          importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+    parent.addView(
+        view,
+        parent.indexOfChild(shutter) + 1,
+        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+    )
+    artworkView = view
+    artworkLoader =
+        ArtworkLoader(userAgent).apply {
+          load(artworkUrl) { bitmap ->
+            if (firstFrameShown) return@load
+            view.setImageBitmap(bitmap)
+            view.animate().alpha(1f).setDuration(ARTWORK_FADE_MS).start()
+          }
+        }
+  }
+
+  private fun hideArtwork() {
+    firstFrameShown = true
+    artworkLoader?.cancel()
+    val view = artworkView ?: return
+    view.animate().cancel()
+    view.animate()
+        .alpha(0f)
+        .setDuration(ARTWORK_FADE_MS)
+        .withEndAction {
+          view.visibility = View.GONE
+          view.setImageDrawable(null)
+        }
+        .start()
+  }
+
   private val listener =
       object : Player.Listener {
+        override fun onRenderedFirstFrame() = hideArtwork()
+
         override fun onPlaybackStateChanged(playbackState: Int) {
           if (playbackState == Player.STATE_ENDED) finishWithResult(ended = true)
         }
@@ -569,6 +620,7 @@ class TvPlayerActivity : AppCompatActivity() {
   }
 
   override fun onDestroy() {
+    artworkLoader?.cancel()
     releasePlayer()
     super.onDestroy()
   }

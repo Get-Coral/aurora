@@ -90,6 +90,11 @@ class TheaterActivity : AppSystemActivity() {
     const val EXTRA_FORMAT = "dev.getcoral.aurora.theater.FORMAT"
     const val EXTRA_FALLBACK_URL = "dev.getcoral.aurora.theater.FALLBACK_URL"
     const val EXTRA_USER_AGENT = "dev.getcoral.aurora.theater.USER_AGENT"
+    const val EXTRA_ARTWORK_URL = "dev.getcoral.aurora.theater.ARTWORK_URL"
+
+    // The artwork sits a hair in front of the screen, where the film will appear.
+    private val ARTWORK_POSITION = Vector3(0f, 1.6f, 4.99f)
+    private const val ARTWORK_FADE_MS = 400L
 
     /** The action of the intent that brings the 2D panel back. */
     const val ACTION_CLOSED = "dev.getcoral.aurora.theater.CLOSED"
@@ -134,6 +139,7 @@ class TheaterActivity : AppSystemActivity() {
   private val format by lazy { intent.getStringExtra(EXTRA_FORMAT).orEmpty() }
   private val fallbackUrl by lazy { intent.getStringExtra(EXTRA_FALLBACK_URL).orEmpty() }
   private val userAgent by lazy { intent.getStringExtra(EXTRA_USER_AGENT).orEmpty() }
+  private val artworkUrl by lazy { intent.getStringExtra(EXTRA_ARTWORK_URL).orEmpty() }
 
   private var player: ExoPlayer? = null
   private lateinit var ambience: TheaterAmbience
@@ -148,6 +154,11 @@ class TheaterActivity : AppSystemActivity() {
   private var seat: Entity? = null
   private var controlsEntity: Entity? = null
   private var pickerEntity: Entity? = null
+  /** The title's artwork on the screen until the film's first frame (not for live channels). */
+  private var artworkEntity: Entity? = null
+  private var artworkImage: ImageView? = null
+  private var artworkLoader: ArtworkLoader? = null
+  private var firstFrameShown = false
 
   private var controlsRoot: View? = null
   private var pickerRoot: View? = null
@@ -205,6 +216,10 @@ class TheaterActivity : AppSystemActivity() {
     pickerEntity =
         Entity.create(
             Panel(R.id.theater_environments), Transform(Pose(PICKER_POSITION)), Visible(false))
+    if (artworkUrl.isNotBlank() && !live) {
+      artworkEntity =
+          Entity.create(Panel(R.id.theater_artwork), Transform(Pose(ARTWORK_POSITION)))
+    }
     applyEnvironment(environment)
   }
 
@@ -233,6 +248,18 @@ class TheaterActivity : AppSystemActivity() {
                 )
               },
               panelSetupWithRootView = { root, _, _ -> bindControls(root) },
+          ),
+          LayoutXMLPanelRegistration(
+              R.id.theater_artwork,
+              layoutIdCreator = { R.layout.theater_artwork },
+              settingsCreator = {
+                UIPanelSettings(
+                    shape = QuadShapeOptions(width = SCREEN_WIDTH, height = SCREEN_HEIGHT),
+                    display = DpDisplayOptions(width = 1280f, height = 720f),
+                    style = PanelStyleOptions(themeResourceId = R.style.TheaterPanelTheme),
+                )
+              },
+              panelSetupWithRootView = { root, _, _ -> bindArtwork(root) },
           ),
           LayoutXMLPanelRegistration(
               R.id.theater_environments,
@@ -312,6 +339,8 @@ class TheaterActivity : AppSystemActivity() {
 
         override fun onVideoSizeChanged(videoSize: VideoSize) = fitScreen(videoSize)
 
+        override fun onRenderedFirstFrame() = hideArtwork()
+
         override fun onPlayerError(error: PlaybackException) {
           Log.e(TAG, "Playback failed", error)
           val player = player ?: return
@@ -344,6 +373,44 @@ class TheaterActivity : AppSystemActivity() {
     ambience.setFilmPlaying(playing)
     if (playing) scheduleHide() else setControlsShown(true)
     updateControls()
+  }
+
+  // ---- Artwork ----
+
+  private fun bindArtwork(root: View) {
+    val image = root.findViewById<ImageView>(R.id.theater_artwork_image)
+    artworkImage = image
+    if (firstFrameShown) return
+    artworkLoader =
+        ArtworkLoader(userAgent).apply {
+          load(artworkUrl) { bitmap ->
+            if (firstFrameShown) return@load
+            image.setImageBitmap(bitmap)
+            image.animate().alpha(1f).setDuration(ARTWORK_FADE_MS).start()
+          }
+        }
+  }
+
+  /** The film is on screen: fade the artwork out and take its panel away. */
+  private fun hideArtwork() {
+    if (firstFrameShown) return
+    firstFrameShown = true
+    artworkLoader?.cancel()
+    val entity = artworkEntity ?: return
+    val image = artworkImage
+    if (image == null) {
+      entity.setComponent(Visible(false))
+      return
+    }
+    image.animate().cancel()
+    image.animate()
+        .alpha(0f)
+        .setDuration(ARTWORK_FADE_MS)
+        .withEndAction {
+          entity.setComponent(Visible(false))
+          image.setImageDrawable(null)
+        }
+        .start()
   }
 
   /** Letterbox or pillarbox the screen to the film instead of stretching it. */
@@ -713,6 +780,7 @@ class TheaterActivity : AppSystemActivity() {
 
   override fun onDestroy() {
     handler.removeCallbacksAndMessages(null)
+    artworkLoader?.cancel()
     player?.release()
     player = null
     if (!leaving && ::ambience.isInitialized) ambience.release()

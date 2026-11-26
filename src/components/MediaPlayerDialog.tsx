@@ -662,6 +662,7 @@ export function MediaPlayerDialog({
 				durationSeconds: session.durationSeconds,
 				format: session.format,
 				fallbackUrl: session.fallbackUrl,
+				artworkUrl: target.backdropUrl ?? target.posterUrl,
 			});
 		} catch {
 			return false;
@@ -1901,6 +1902,7 @@ export function MediaPlayerDialog({
 				live: isLive,
 				format: iptvSession?.format,
 				fallbackUrl: iptvSession?.fallbackUrl ? toTheaterUrl(iptvSession.fallbackUrl) : undefined,
+				artworkUrl: item.backdropUrl ?? item.posterUrl,
 			});
 		} catch {
 			// The headset couldn't switch; the panel player is still here.

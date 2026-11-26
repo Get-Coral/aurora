@@ -3,6 +3,7 @@
     <item name="theater_screen" type="id" />
     <item name="theater_controls" type="id" />
     <item name="theater_environments" type="id" />
+    <item name="theater_artwork" type="id" />
 
     <string name="theater_live">Live</string>
     <string name="theater_back">Back to panel</string>

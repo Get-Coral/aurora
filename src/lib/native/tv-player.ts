@@ -9,6 +9,7 @@
  */
 import { type ClientPlatform, getClientPlaybackContext } from "../platform";
 import { isNativeShell } from "../runtime-mode";
+import { nativeArtworkUrl } from "./artwork";
 
 /** The player's words, in the web app's language. */
 export interface TvPlayerLabels {
@@ -40,6 +41,8 @@ export interface TvPlayerRequest {
 	format?: "hls" | "ts" | "file";
 	/** Tried when the main URL fails. */
 	fallbackUrl?: string;
+	/** Shown while the stream loads, until the film's first frame. */
+	artworkUrl?: string;
 }
 
 export interface TvPlayerResult {
@@ -73,6 +76,7 @@ interface AuroraPlayerPlugin {
 		format: string;
 		fallbackUrl: string;
 		userAgent: string;
+		artworkUrl: string;
 	}): Promise<NativeTvPlayerResult>;
 }
 
@@ -151,6 +155,7 @@ export async function playInTvPlayer(request: TvPlayerRequest): Promise<TvPlayer
 		// Some IPTV providers turn away players they don't know; the native
 		// player introduces itself the way the WebView does.
 		userAgent: navigator.userAgent,
+		artworkUrl: nativeArtworkUrl(request.artworkUrl) ?? "",
 	});
 	return toTvPlayerResult(native);
 }
