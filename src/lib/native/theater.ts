@@ -7,6 +7,7 @@
  */
 import { getClientPlaybackContext } from "../platform";
 import { isNativeShell } from "../runtime-mode";
+import { nativeArtworkUrl } from "./artwork";
 
 export type TheaterEnvironment = "aurora" | "dark" | "passthrough";
 
@@ -29,6 +30,8 @@ export interface TheaterRequest {
 	format?: "hls" | "ts" | "file";
 	/** Tried when the main URL fails (an IPTV provider's MPEG-TS stream). */
 	fallbackUrl?: string;
+	/** Shown on the screen while the film loads, until its first frame. */
+	artworkUrl?: string;
 }
 
 export interface TheaterResult {
@@ -56,6 +59,7 @@ interface AuroraTheaterPlugin {
 		format: string;
 		fallbackUrl: string;
 		userAgent: string;
+		artworkUrl: string;
 	}): Promise<void>;
 	addListener(
 		event: "closed",
@@ -103,6 +107,7 @@ export async function openTheater(request: TheaterRequest): Promise<void> {
 		// Some IPTV providers turn away players they don't know; the native
 		// player introduces itself the way the WebView does.
 		userAgent: navigator.userAgent,
+		artworkUrl: nativeArtworkUrl(request.artworkUrl) ?? "",
 	});
 }
 

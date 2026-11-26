@@ -39,6 +39,7 @@ class AuroraPlayerPlugin : Plugin() {
           putExtra(TvPlayerActivity.EXTRA_FORMAT, call.getString("format", ""))
           putExtra(TvPlayerActivity.EXTRA_FALLBACK_URL, call.getString("fallbackUrl", ""))
           putExtra(TvPlayerActivity.EXTRA_USER_AGENT, call.getString("userAgent", ""))
+          putExtra(TvPlayerActivity.EXTRA_ARTWORK_URL, call.getString("artworkUrl", ""))
         }
     startActivityForResult(call, intent, "playerClosed")
   }

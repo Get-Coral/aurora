@@ -39,6 +39,7 @@ class AuroraTheaterPlugin : Plugin() {
           putExtra(TheaterActivity.EXTRA_FORMAT, call.getString("format", ""))
           putExtra(TheaterActivity.EXTRA_FALLBACK_URL, call.getString("fallbackUrl", ""))
           putExtra(TheaterActivity.EXTRA_USER_AGENT, call.getString("userAgent", ""))
+          putExtra(TheaterActivity.EXTRA_ARTWORK_URL, call.getString("artworkUrl", ""))
         }
     activity.startActivity(intent)
     call.resolve()
