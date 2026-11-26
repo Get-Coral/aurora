@@ -130,3 +130,61 @@ export function browserCanPlayAudio(codec: string | undefined, options: { dolby:
 	if (!codec) return true;
 	return BROWSER_AUDIO.has(codec) || (options.dolby && DOLBY_AUDIO.has(codec));
 }
+
+const keyframes = new Map<string, number>();
+
+/** The first video packet's time in ffprobe CSV output (`pts_time,flags`), if it is a keyframe. */
+export function parseKeyframe(output: string): number | undefined {
+	const [time, flags] = output.trim().split("\n")[0]?.split(",") ?? [];
+	const seconds = Number(time);
+	return Number.isFinite(seconds) && seconds >= 0 && flags?.startsWith("K") ? seconds : undefined;
+}
+
+/**
+ * The keyframe a conversion that seeks to `seconds` really starts at. Copied
+ * video can only begin on a keyframe, so the player uses this as its clock's
+ * start instead of the time asked for; otherwise the bar, the resume point and
+ * embedded subtitles are off by up to a keyframe interval. Reads the file's
+ * index and one packet. Cached per item and second.
+ */
+export function keyframeAt(
+	key: string,
+	url: URL,
+	ffmpeg: string,
+	seconds: number,
+): Promise<number> {
+	const cacheKey = `${key}@${seconds}`;
+	const hit = keyframes.get(cacheKey);
+	if (hit != null) return Promise.resolve(hit);
+	return new Promise((resolve, reject) => {
+		execFile(
+			ffprobeBinary(ffmpeg),
+			[
+				"-v",
+				"error",
+				"-protocol_whitelist",
+				"http,https,tcp,tls,crypto",
+				"-user_agent",
+				"Aurora IPTV",
+				"-read_intervals",
+				`${seconds}%+#1`,
+				"-select_streams",
+				"v:0",
+				"-show_entries",
+				"packet=pts_time,flags",
+				"-of",
+				"csv=p=0",
+				url.href,
+			],
+			{ timeout: 15_000, maxBuffer: 64 * 1024, windowsHide: true },
+			(error, stdout) => {
+				if (error) return reject(error);
+				const keyframe = parseKeyframe(stdout);
+				if (keyframe == null) return reject(new Error("No keyframe"));
+				keyframes.set(cacheKey, keyframe);
+				if (keyframes.size > 500) keyframes.delete(keyframes.keys().next().value as string);
+				resolve(keyframe);
+			},
+		);
+	});
+}

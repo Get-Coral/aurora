@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { choosePlaybackEngine, LIVE_MPEGTS_CONFIG, withStartOffset } from "./attach-stream";
+import {
+	choosePlaybackEngine,
+	iptvStartAt,
+	LIVE_MPEGTS_CONFIG,
+	withStartOffset,
+} from "./attach-stream";
 
 const chrome = { canPlayType: () => "", mse: true };
 const safari = {
@@ -28,12 +33,49 @@ describe("choosePlaybackEngine", () => {
 describe("withStartOffset", () => {
 	it("sets and clears the start offset on relative and absolute URLs", () => {
 		expect(withStartOffset("/api/iptv?id=iptv:a:vod:1&st=x", 61.7)).toBe(
-			"/api/iptv?id=iptv%3Aa%3Avod%3A1&st=x&start=61",
+			"/api/iptv?id=iptv%3Aa%3Avod%3A1&st=x&start=61.7",
 		);
 		expect(withStartOffset("/api/iptv?id=a&start=5", 0)).toBe("/api/iptv?id=a");
 		expect(withStartOffset("http://provider.example/movie/1.mp4", 10)).toBe(
 			"http://provider.example/movie/1.mp4?start=10",
 		);
+	});
+});
+
+describe("iptvStartAt", () => {
+	const stream = "/api/iptv?id=iptv%3Aa%3Avod%3A1&remux=1&st=x&start=5";
+	const answering = (body: unknown, ok = true) => {
+		const calls: string[] = [];
+		const fetchImpl = (async (url: string) => {
+			calls.push(url);
+			return { ok, json: async () => body } as Response;
+		}) as unknown as typeof fetch;
+		return { calls, fetchImpl };
+	};
+
+	it("asks the converter for the keyframe and starts the clock there", async () => {
+		const { calls, fetchImpl } = answering({ start: 2618.042 });
+		expect(await iptvStartAt(stream, 2620.5, fetchImpl)).toBe(2618.042);
+		// The same stream (token, remux) with the keyframe question instead of a start.
+		expect(calls).toEqual(["/api/iptv?id=iptv%3Aa%3Avod%3A1&remux=1&st=x&keyframe=2620.5"]);
+	});
+
+	it("keeps the time asked for when the server can't tell", async () => {
+		expect(await iptvStartAt(stream, 60, answering({}, false).fetchImpl)).toBe(60);
+		expect(await iptvStartAt(stream, 60, answering({ start: "x" }).fetchImpl)).toBe(60);
+		// A keyframe far from the seek is not trusted.
+		expect(await iptvStartAt(stream, 60, answering({ start: 400 }).fetchImpl)).toBe(60);
+		const failing = (async () => {
+			throw new Error("offline");
+		}) as unknown as typeof fetch;
+		expect(await iptvStartAt(stream, 60, failing)).toBe(60);
+	});
+
+	it("doesn't ask for the start of the film or for streams without a converter", async () => {
+		const { calls, fetchImpl } = answering({ start: 1 });
+		expect(await iptvStartAt(stream, 0, fetchImpl)).toBe(0);
+		expect(await iptvStartAt("http://provider.example/movie/1.mkv", 30, fetchImpl)).toBe(30);
+		expect(calls).toEqual([]);
 	});
 });
 

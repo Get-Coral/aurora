@@ -207,9 +207,39 @@ export async function attachStream(
 /** Add or replace the `start` offset (seconds) on an Aurora IPTV stream URL. */
 export function withStartOffset(streamUrl: string, seconds: number) {
 	const url = new URL(streamUrl, "http://aurora.local");
-	if (seconds > 0) url.searchParams.set("start", String(Math.floor(seconds)));
+	// To the millisecond: a keyframe rarely sits on a whole second.
+	if (seconds > 0) url.searchParams.set("start", String(Math.round(seconds * 1000) / 1000));
 	else url.searchParams.delete("start");
 	return url.origin === "http://aurora.local" ? url.pathname + url.search : url.href;
+}
+
+/**
+ * Where Aurora's converter will really start a stream asked to start at
+ * `seconds`: the keyframe there (copied video can't start anywhere else).
+ * The player uses it as its clock's start, so the bar, the resume point and
+ * embedded subtitles match the picture. Falls back to `seconds` when the
+ * server can't tell, and for streams that don't go through the converter.
+ */
+export async function iptvStartAt(
+	streamUrl: string,
+	seconds: number,
+	fetchImpl: typeof fetch = fetch,
+): Promise<number> {
+	if (!(seconds > 0) || !/^\/api\/iptv\b/.test(streamUrl)) return Math.max(0, seconds);
+	try {
+		const response = await fetchImpl(
+			withStreamParams(streamUrl, { keyframe: seconds, start: null, subtitle: null }),
+			{ signal: AbortSignal.timeout(10_000) },
+		);
+		if (!response.ok) return seconds;
+		const { start } = (await response.json()) as { start?: unknown };
+		// A keyframe more than a minute away is not one this seek should land on.
+		return typeof start === "number" && Number.isFinite(start) && Math.abs(start - seconds) < 60
+			? start
+			: seconds;
+	} catch {
+		return seconds;
+	}
 }
 
 /** Set or clear query parameters on an Aurora IPTV stream URL. */

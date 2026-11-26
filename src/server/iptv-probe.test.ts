@@ -4,6 +4,7 @@ import {
 	canCopyAudio,
 	canCopyVideo,
 	ffprobeBinary,
+	parseKeyframe,
 	parseProbe,
 } from "./iptv-probe";
 
@@ -84,6 +85,12 @@ describe("IPTV media probe", () => {
 		expect(browserCanPlayAudio("truehd", { dolby: true })).toBe(false);
 		// No audio track: nothing to convert.
 		expect(browserCanPlayAudio(undefined, { dolby: false })).toBe(true);
+	});
+
+	it("reads the keyframe a seek lands on", () => {
+		expect(parseKeyframe("2618.041667,K_\n")).toBe(2618.041667);
+		expect(parseKeyframe("12.5,__\n")).toBeUndefined();
+		expect(parseKeyframe("")).toBeUndefined();
 	});
 
 	it("finds ffprobe beside ffmpeg", () => {

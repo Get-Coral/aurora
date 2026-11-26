@@ -80,6 +80,36 @@ async function subtitle(itemId: string, index: number) {
 	}
 }
 
+/**
+ * Where a conversion asked to start at `seconds` really begins: the keyframe
+ * there, rounded up to the millisecond so ffmpeg's seek lands on it rather
+ * than the one before. Without ffmpeg, or when the file can't be read, the
+ * time asked for.
+ */
+async function keyframeStart(request: Request, target: URL, itemId: string, seconds: number) {
+	const answer = (start: number) =>
+		new Response(JSON.stringify({ start }), {
+			headers: corsHeaders(new Headers({ ...baseHeaders, "content-type": "application/json" })),
+		});
+	const asked = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+	const ffmpeg = process.env.AURORA_IPTV_FFMPEG;
+	if (!ffmpeg || asked === 0) return answer(asked);
+	const [{ stopTranscode }, probe] = await Promise.all([
+		import("./iptv-transcode"),
+		import("./iptv-probe"),
+	]);
+	// The running conversion is about to be replaced, and most providers allow
+	// only one connection: stop it before reading the index.
+	stopTranscode();
+	try {
+		const url = await finalUrl(request.signal, target, false);
+		const keyframe = await probe.keyframeAt(itemId, url, ffmpeg, asked);
+		return answer(Math.ceil(keyframe * 1000) / 1000);
+	} catch {
+		return answer(asked);
+	}
+}
+
 async function proxy(
 	request: Request,
 	target: URL,
@@ -250,6 +280,9 @@ export async function iptvRequest(request: Request) {
 		const useFallback = params.get("fallback") === "1" && target.fallback;
 		const subtitleIndex = params.get("subtitle");
 		if (subtitleIndex != null) return await subtitle(id, Number(subtitleIndex));
+		const keyframe = params.get("keyframe");
+		if (keyframe != null && !target.live)
+			return await keyframeStart(request, target.url, id, Number(keyframe));
 		const start = Number(params.get("start") ?? 0);
 		const audio = Number(params.get("audio") ?? 0);
 		return await proxy(request, useFallback ? (target.fallback as URL) : target.url, id, {
