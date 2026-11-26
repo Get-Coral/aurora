@@ -1,11 +1,11 @@
 {
-  "extends": "@get-coral/tsconfig/react-start.json",
-  "include": ["**/*.ts", "**/*.tsx"],
-  "compilerOptions": {
-    "paths": {
-      "#/*": ["./src/*"],
-      "@/*": ["./src/*"]
-    },
-    "types": ["vite/client"]
-  }
+	"extends": "@get-coral/tsconfig/react-start.json",
+	"include": ["**/*.ts", "**/*.tsx"],
+	"compilerOptions": {
+		"paths": {
+			"#/*": ["./src/*"],
+			"@/*": ["./src/*"]
+		},
+		"types": ["vite/client"]
+	}
 }

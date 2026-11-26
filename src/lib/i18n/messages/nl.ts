@@ -1,4 +1,4 @@
-import type { MessageDictionary } from "../types";
+import type { MessageDictionary, MessageParams } from "../types";
 
 export const nlMessages: MessageDictionary = {
 	"brand.wordmark": "Aurora",
@@ -390,9 +390,9 @@ export const nlMessages: MessageDictionary = {
 	"iptv.edit": "Bron bewerken",
 	"iptv.refresh": "Catalogus opnieuw laden",
 	"iptv.remove": "Bron verwijderen",
-	"iptv.removeConfirm": ({ name } = {}) =>
+	"iptv.removeConfirm": ({ name }: MessageParams = {}) =>
 		`${name} verwijderen? Kijkvoortgang en Mijn lijst blijven bewaard tot je de bron opnieuw toevoegt.`,
-	"iptv.counts": ({ live, movies, series } = {}) =>
+	"iptv.counts": ({ live, movies, series }: MessageParams = {}) =>
 		`${live} zenders · ${movies} films · ${series} series`,
 	"iptv.sourcesSection": "IPTV-bronnen",
 	"iptv.sourcesCopy":
@@ -405,7 +405,7 @@ export const nlMessages: MessageDictionary = {
 	"iptv.signInFailed": "De provider aanvaardde deze gebruikersnaam en dit wachtwoord niet.",
 	"iptv.blockedOrigin":
 		"Aurora blokkeerde de IPTV-server. Voeg het adres toe aan AURORA_IPTV_ORIGINS op de Aurora-server.",
-	"iptv.providerError": ({ status } = {}) =>
+	"iptv.providerError": ({ status }: MessageParams = {}) =>
 		`De IPTV-server gaf HTTP ${status}. Controleer je abonnement en de gegevens van de bron.`,
 	"iptv.providerRefused":
 		"De provider weigerde de stream. Je abonnement is misschien verlopen of al in gebruik op een ander toestel.",
@@ -432,7 +432,7 @@ export const nlMessages: MessageDictionary = {
 	"nav.liveTv": "Live tv",
 	"card.live": "Live",
 	"card.episode": "Aflevering",
-	"card.onNow": ({ title } = {}) => `Nu: ${title}`,
+	"card.onNow": ({ title }: MessageParams = {}) => `Nu: ${title}`,
 	"dialog.liveSpotlight": "Live zender",
 	"dialog.watchLive": "Live kijken",
 	"dialog.onNow": "Nu",
@@ -495,10 +495,10 @@ export const nlMessages: MessageDictionary = {
 	"search.noResultsEyebrow": "Niets gevonden",
 	"search.noResultsHint": "Controleer de spelling of probeer minder woorden.",
 	"search.topResult": "Beste resultaat",
-	"search.airingTomorrow": ({ time } = {}) => `Morgen ${time}`,
-	"search.emptyFor": ({ query } = {}) => `Geen resultaten voor “${query}”.`,
-	"search.allResults": ({ query } = {}) => `Alle resultaten voor “${query}”`,
-	"search.showAll": ({ count } = {}) => `Toon alle ${count}`,
+	"search.airingTomorrow": ({ time }: MessageParams = {}) => `Morgen ${time}`,
+	"search.emptyFor": ({ query }: MessageParams = {}) => `Geen resultaten voor “${query}”.`,
+	"search.allResults": ({ query }: MessageParams = {}) => `Alle resultaten voor “${query}”`,
+	"search.showAll": ({ count }: MessageParams = {}) => `Toon alle ${count}`,
 	"iptv.categories": "Categorieën",
 	"iptv.categoriesCopy":
 		"Kies welke categorieën in Aurora verschijnen. Verborgen categorieën blijven weg uit Home, Live tv en zoeken.",
@@ -510,9 +510,9 @@ export const nlMessages: MessageDictionary = {
 	"iptv.account.trial": "Proefperiode",
 	"iptv.connectionLimit":
 		"Je IPTV-abonnement streamt al op een ander toestel en laat maar een beperkt aantal tegelijk toe. Stop de andere stream en probeer opnieuw.",
-	"iptv.account.expires": ({ date } = {}) => `Actief tot ${date}`,
-	"iptv.account.expired": ({ date } = {}) => `Verlopen op ${date}`,
-	"iptv.account.connections": ({ count } = {}) =>
+	"iptv.account.expires": ({ date }: MessageParams = {}) => `Actief tot ${date}`,
+	"iptv.account.expired": ({ date }: MessageParams = {}) => `Verlopen op ${date}`,
+	"iptv.account.connections": ({ count }: MessageParams = {}) =>
 		`${count} ${Number(count) === 1 ? "verbinding" : "verbindingen"}`,
 	"dialog.schedule": "Tv-gids",
 	"dialog.watchBack": "Terugkijken",
@@ -525,7 +525,7 @@ export const nlMessages: MessageDictionary = {
 	"iptv.guideLater": "Later",
 	"iptv.guideNow": "Nu",
 	"iptv.guideEmpty": "Geen zenders met een tv-gids hier.",
-	"player.trackNumber": ({ number } = {}) => `Spoor ${number}`,
+	"player.trackNumber": ({ number }: MessageParams = {}) => `Spoor ${number}`,
 	"player.subtitlesSdh": "SDH",
 	"player.subtitlesForced": "Geforceerd",
 	"player.channels": "Zenders",

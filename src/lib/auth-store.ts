@@ -1,10 +1,12 @@
 import crypto from "node:crypto";
+
 import {
 	authenticateUserByName,
 	createClient,
 	JellyfinError,
 	logoutUserSession,
 } from "@get-coral/jellyfin";
+
 import {
 	getAppDatabase,
 	getEffectiveServerConnectionSettings,

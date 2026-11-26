@@ -1,5 +1,6 @@
 import { Clock3, Play, Sparkles, Star } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { useI18n } from "../lib/i18n";
 import { isResumable, type MediaItem } from "../lib/media";
 import { useTvMode } from "../lib/tv-mode";

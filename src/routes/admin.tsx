@@ -24,6 +24,7 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
+
 import {
 	createAdminUserRuntime,
 	deleteAdminUserRuntime,
@@ -370,7 +371,7 @@ function UserManager({
 		mutationFn: (userId: string) => deleteAdminUserRuntime({ data: { userId } }),
 		onSuccess: () => {
 			setConfirmDelete(null);
-			queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
 		},
 	});
 
@@ -381,7 +382,7 @@ function UserManager({
 			setShowAddForm(false);
 			setNewName("");
 			setNewPassword("");
-			queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
 		},
 	});
 
@@ -593,7 +594,7 @@ function ParentalControlsPanel({ userId, onClose }: { userId: string; onClose: (
 				},
 			}),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["user-policy", userId] });
+			void queryClient.invalidateQueries({ queryKey: ["user-policy", userId] });
 			onClose();
 		},
 	});
@@ -629,6 +630,7 @@ function ParentalControlsPanel({ userId, onClose }: { userId: string; onClose: (
 					<button
 						type="button"
 						role="switch"
+						aria-label="Allow remote access"
 						aria-checked={policy.EnableRemoteAccess}
 						className={`toggle-switch${policy.EnableRemoteAccess ? " toggle-switch-on" : ""}`}
 						onClick={() => set("EnableRemoteAccess", !policy.EnableRemoteAccess)}
@@ -673,6 +675,7 @@ function ParentalControlsPanel({ userId, onClose }: { userId: string; onClose: (
 					<button
 						type="button"
 						role="switch"
+						aria-label="Allow content deletion"
 						aria-checked={policy.EnableContentDeletion}
 						className={`toggle-switch${policy.EnableContentDeletion ? " toggle-switch-on" : ""}`}
 						onClick={() => set("EnableContentDeletion", !policy.EnableContentDeletion)}
@@ -685,6 +688,7 @@ function ParentalControlsPanel({ userId, onClose }: { userId: string; onClose: (
 					<button
 						type="button"
 						role="switch"
+						aria-label="Allow Live TV access"
 						aria-checked={policy.EnableLiveTvAccess}
 						className={`toggle-switch${policy.EnableLiveTvAccess ? " toggle-switch-on" : ""}`}
 						onClick={() => set("EnableLiveTvAccess", !policy.EnableLiveTvAccess)}

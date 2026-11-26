@@ -8,6 +8,7 @@ import {
 	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
+
 import { AppBootstrap } from "../components/AppBootstrap";
 import { ErrorPage } from "../components/ErrorPage";
 import Footer from "../components/Footer";
@@ -20,6 +21,7 @@ import {
 	QUEST_USER_AGENT_PATTERN_SOURCE,
 	TV_USER_AGENT_PATTERN_SOURCE,
 } from "../lib/tv-detection";
+
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {
@@ -47,9 +49,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 		if (SKIP_PROFILE_GUARD.some((p) => location.pathname.startsWith(p))) return;
 
-		const { fetchMultiUserSettingsRuntime, fetchSetupStatusRuntime } = await import(
-			"../lib/runtime-functions"
-		);
+		const { fetchMultiUserSettingsRuntime, fetchSetupStatusRuntime } =
+			await import("../lib/runtime-functions");
 		const multiUser = await fetchMultiUserSettingsRuntime();
 		if (multiUser.multiUserMode && !multiUser.activeUserId) {
 			const setup = await fetchSetupStatusRuntime();

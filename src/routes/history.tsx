@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { MediaCard } from "../components/MediaCard";
 import { MediaPlayerDialog } from "../components/MediaPlayerDialog";
 import { MediaSpotlightDialog } from "../components/MediaSpotlightDialog";

@@ -57,6 +57,7 @@ import {
 	uploadUserPrimaryImage as uploadUserPrimaryImageBase,
 } from "@get-coral/jellyfin";
 import { getCookie } from "@tanstack/react-start/server";
+
 import {
 	type AuthSession,
 	getSessionByToken,

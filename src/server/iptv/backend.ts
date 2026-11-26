@@ -1,3 +1,9 @@
+import {
+	getIptvSource,
+	getIptvSourceOptions,
+	listIptvSourceIds,
+} from "../../lib/iptv-source-store";
+import { createIptvStateStore, iptvUserKey } from "../../lib/iptv-user-store";
 import type {
 	CatalogChannel,
 	EpgProgramme,
@@ -11,12 +17,6 @@ import type { GuideMatch, IptvBackend } from "../../lib/iptv/service";
 import { loadSourceCatalog } from "../../lib/iptv/source";
 import { tmdbArtwork } from "../../lib/iptv/urls";
 import { getChannelSchedule, getSeriesInfo, getShortEpg, getVodInfo } from "../../lib/iptv/xtream";
-import {
-	getIptvSource,
-	getIptvSourceOptions,
-	listIptvSourceIds,
-} from "../../lib/iptv-source-store";
-import { createIptvStateStore, iptvUserKey } from "../../lib/iptv-user-store";
 import { normalizeSearchText, type PreparedQuery, scoreText } from "../../lib/search";
 import { readCached, removeCached, writeCached } from "./disk-cache";
 import { iptvEnabled, providerFetchers } from "./network";

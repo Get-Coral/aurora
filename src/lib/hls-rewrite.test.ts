@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { buildProxyPath, isAllowedMediaPath, rewriteHlsManifest } from "./hls-rewrite";
 
 const ITEM = "3fa85f6457174562b3fc2c963f66afa6";

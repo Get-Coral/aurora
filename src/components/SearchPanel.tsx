@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Clock, Film, Search, Tv, User, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
 import { fetchSearchResultsRuntime } from "../lib/runtime-functions";
@@ -185,6 +186,7 @@ export function SearchPanel({ onClose }: { onClose: () => void }) {
 		<div
 			className="search-shell"
 			role="combobox"
+			aria-controls="aurora-search-results"
 			aria-expanded={rows.length > 0}
 			aria-haspopup="listbox"
 		>

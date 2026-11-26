@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+
 import type { MediaItem } from "../lib/media";
 import { fetchItemDetailsRuntime, fetchSeriesDetailsRuntime } from "../lib/runtime-functions";
 
@@ -26,13 +27,12 @@ export function usePrefetchMediaDetails() {
 		preloadMediaImages(item);
 
 		if (item.type === "series") {
-			const data = await queryClient.prefetchQuery({
+			await queryClient.prefetchQuery({
 				queryKey: ["series-details", item.id],
 				queryFn: () => fetchSeriesDetailsRuntime({ data: { id: item.id } }),
 				staleTime: 5 * 60 * 1000,
 			});
 
-			void data;
 			const cached = queryClient.getQueryData<
 				Awaited<ReturnType<typeof fetchSeriesDetailsRuntime>>
 			>(["series-details", item.id]);
@@ -49,13 +49,12 @@ export function usePrefetchMediaDetails() {
 			return;
 		}
 
-		const data = await queryClient.prefetchQuery({
+		await queryClient.prefetchQuery({
 			queryKey: ["item-details", item.id],
 			queryFn: () => fetchItemDetailsRuntime({ data: { id: item.id } }),
 			staleTime: 5 * 60 * 1000,
 		});
 
-		void data;
 		const cached = queryClient.getQueryData<Awaited<ReturnType<typeof fetchItemDetailsRuntime>>>([
 			"item-details",
 			item.id,

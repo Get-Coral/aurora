@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+
 import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
 
 export const fetchSetupStatus = createServerFn({ method: "GET" })
@@ -15,9 +16,8 @@ export const saveSetupConfiguration = createServerFn({ method: "POST" })
 			input,
 	)
 	.handler(async ({ data }) => {
-		const { validateJellyfinSettings, saveJellyfinSettings, isAuroraConfigured } = await import(
-			"@/lib/config-store"
-		);
+		const { validateJellyfinSettings, saveJellyfinSettings, isAuroraConfigured } =
+			await import("@/lib/config-store");
 		const validated = await validateJellyfinSettings({
 			url: data.url,
 			apiKey: data.apiKey,

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { WifiOff } from "lucide-react";
+
 import { useI18n } from "../lib/i18n";
 
 export const Route = createFileRoute("/offline")({

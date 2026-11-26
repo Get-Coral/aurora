@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "aurora-iptv-"));
 process.env.AURORA_DATA_DIR = dataDir;

@@ -451,6 +451,7 @@ The public Android app is [Aurora Cinema](https://play.google.com/store/apps/det
   ```
 
   where `ExportOptions.plist` sets `method` to `app-store-connect`, `destination` to `upload` and `teamID` to `N5YCFWUSWU`.
+
 - The same Android build runs on Android TV and Google TV. It appears in the TV launcher (`LEANBACK_LAUNCHER`, with the banner in `res/drawable-xhdpi/tv_banner.png`) and asks the system whether it runs on a TV, so TV mode switches on even when the WebView's user agent doesn't mention one. To ship it to TVs, opt in to the Android TV form factor in the Play Console (Release → Advanced settings → Form factors); the TV screenshots and the store banner are in `fastlane/metadata/android/*/images` (`tvScreenshots`, `tvBanner.png`), and Google reviews TV apps separately before they show up on TVs.
 - To try the TV build, create an Android TV device in Android Studio's Device Manager (Television, 1080p) and run `pnpm cap:run:android` with it selected. In a desktop browser, Settings → TV mode gives the same layout, driven with the arrow keys and Enter.
 - On a TV the remote does everything: the arrows move between controls, OK opens a text field's keyboard (fields reached with the arrows keep it closed, so it doesn't take over the remote), Back goes back, and in the player Up/Down and the channel keys zap through live channels.

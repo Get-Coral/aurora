@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+
 import { authRequiredMiddleware } from "../auth-middleware";
 
 const DECADE_RANGES: Record<string, { min: string; max: string }> = {

@@ -48,6 +48,7 @@ import {
 	updateUserPolicy,
 	uploadUserPrimaryImage,
 } from "@get-coral/jellyfin";
+
 import {
 	getClientDeviceId,
 	getClientOpenSubtitlesApiKey,

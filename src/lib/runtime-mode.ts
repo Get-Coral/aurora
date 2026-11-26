@@ -9,8 +9,8 @@ export function isNativeShell() {
 
 	return Boolean(
 		runtimeWindow.Capacitor?.isNativePlatform?.() ||
-			window.location.protocol === "capacitor:" ||
-			window.location.protocol === "ionic:",
+		window.location.protocol === "capacitor:" ||
+		window.location.protocol === "ionic:",
 	);
 }
 

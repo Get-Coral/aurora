@@ -1,4 +1,5 @@
 import { Bug } from "lucide-react";
+
 import { useI18n } from "../lib/i18n";
 
 export default function Footer() {

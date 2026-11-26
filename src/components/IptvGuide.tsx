@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Play, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { formatClock } from "../lib/clock";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem, MediaProgramme } from "../lib/media";

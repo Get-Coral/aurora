@@ -25,6 +25,7 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { AURORA_BACK_EVENT } from "../lib/back-navigation";
 import { formatClock } from "../lib/clock";
 import { useI18n } from "../lib/i18n";
@@ -45,6 +46,13 @@ import {
 import { isTvPlayerAvailable, playInTvPlayer, shouldUseTvPlayer } from "../lib/native/tv-player";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
+	clampProgress,
+	isTimeBuffered,
+	ratioFromPointer,
+	resolveDuration,
+	watchedRatio,
+} from "../lib/player-timeline";
+import {
 	type AttachedStream,
 	attachStream,
 	browserDecodesDolby,
@@ -57,13 +65,6 @@ import {
 	withStartOffset,
 	withStreamParams,
 } from "../lib/player/attach-stream";
-import {
-	clampProgress,
-	isTimeBuffered,
-	ratioFromPointer,
-	resolveDuration,
-	watchedRatio,
-} from "../lib/player-timeline";
 import {
 	beginIptvPlaybackRuntime,
 	beginPlaybackSessionRuntime,
@@ -1654,7 +1655,8 @@ export function MediaPlayerDialog({
 
 			if (e.key === " " || e.key === "k") {
 				e.preventDefault();
-				video.paused ? void video.play() : video.pause();
+				if (video.paused) void video.play();
+				else video.pause();
 			} else if (
 				isLive &&
 				["ArrowUp", "ArrowDown", "PageUp", "PageDown", "ChannelUp", "ChannelDown"].includes(e.key)
@@ -1791,7 +1793,8 @@ export function MediaPlayerDialog({
 		}
 		switch (key) {
 			case "MediaPlayPause":
-				video.paused ? void video.play() : video.pause();
+				if (video.paused) void video.play();
+				else video.pause();
 				return true;
 			case "MediaPlay":
 				void video.play();
@@ -2102,7 +2105,8 @@ export function MediaPlayerDialog({
 	function togglePlay() {
 		const video = videoRef.current;
 		if (!video) return;
-		video.paused ? void video.play() : video.pause();
+		if (video.paused) void video.play();
+		else video.pause();
 	}
 
 	function handleVideoClick() {

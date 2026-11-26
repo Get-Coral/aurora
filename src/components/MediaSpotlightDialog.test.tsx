@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { I18nProvider } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
 import { MediaSpotlightDialog } from "./MediaSpotlightDialog";
