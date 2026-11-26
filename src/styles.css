@@ -1489,6 +1489,21 @@ html.tv-mode .hero-copy-in {
   object-fit: contain;
 }
 
+/* A channel's artwork is its logo, often a small one: show it as a logo,
+   centered on the app's backdrop, rather than blown up to the whole screen. */
+.player-poster-logo {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(99, 133, 255, 0.16), transparent 55%),
+    var(--deep);
+}
+
+.player-poster-logo .player-poster-image {
+  width: min(28vw, 22rem);
+  height: min(28vh, 14rem);
+}
+
 .player-buffering-overlay {
   position: absolute;
   inset: 0;
