@@ -439,7 +439,18 @@ The public Android app is [Aurora Cinema](https://play.google.com/store/apps/det
 ### Packaging Notes
 
 - Android release bundles are built with `pnpm android:bundle:release` (see above). Android Studio is still useful for running and debugging.
-- iOS packaging happens from Xcode after opening the generated project.
+- iOS (iPhone and iPad, `dev.getcoral.aurora`, team `N5YCFWUSWU`): the version comes from `package.json` at build time, with the same build number as Android's versionCode (`AURORA_BUILD_NUMBER` raises it for a re-upload), and `ITSAppUsesNonExemptEncryption` is set, so App Store Connect doesn't ask about encryption for each build. After `pnpm build && npx cap sync ios`, archive and upload to App Store Connect (TestFlight) with Xcode → Product → Archive → Distribute App, or from the command line:
+
+  ```bash
+  cd ios/App
+  xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+    -destination "generic/platform=iOS" -archivePath build/Aurora.xcarchive \
+    -allowProvisioningUpdates archive
+  xcodebuild -exportArchive -archivePath build/Aurora.xcarchive \
+    -exportOptionsPlist ExportOptions.plist -exportPath build/export -allowProvisioningUpdates
+  ```
+
+  where `ExportOptions.plist` sets `method` to `app-store-connect`, `destination` to `upload` and `teamID` to `N5YCFWUSWU`.
 - The same Android build runs on Android TV and Google TV. It appears in the TV launcher (`LEANBACK_LAUNCHER`, with the banner in `res/drawable-xhdpi/tv_banner.png`) and asks the system whether it runs on a TV, so TV mode switches on even when the WebView's user agent doesn't mention one. To ship it to TVs, opt in to the Android TV form factor in the Play Console (Release → Advanced settings → Form factors); the TV screenshots and the store banner are in `fastlane/metadata/android/*/images` (`tvScreenshots`, `tvBanner.png`), and Google reviews TV apps separately before they show up on TVs.
 - To try the TV build, create an Android TV device in Android Studio's Device Manager (Television, 1080p) and run `pnpm cap:run:android` with it selected. In a desktop browser, Settings → TV mode gives the same layout, driven with the arrow keys and Enter.
 - On a TV the remote does everything: the arrows move between controls, OK opens a text field's keyboard (fields reached with the arrows keep it closed, so it doesn't take over the remote), Back goes back, and in the player Up/Down and the channel keys zap through live channels.

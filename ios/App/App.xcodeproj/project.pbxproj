@@ -84,6 +84,7 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				A0C0FA11DE5E7AE5A0A0C001 /* Version from package.json */,
 			);
 			buildRules = (
 			);
@@ -149,6 +150,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A0C0FA11DE5E7AE5A0A0C001 /* Version from package.json */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../../package.json",
+			);
+			name = "Version from package.json";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n# The app version comes from package.json, like the Android build's: the\n# version string as is, and the build number as major * 1000000 + minor * 10000\n# + patch * 100 + AURORA_BUILD_NUMBER (0-99, to upload the same version again).\nversion=$(/usr/bin/plutil -extract version raw -o - \"${SRCROOT}/../../package.json\")\nbuild=${AURORA_BUILD_NUMBER:-0}\ncase \"$build\" in ''|*[!0-9]*) echo \"error: AURORA_BUILD_NUMBER must be 0-99\"; exit 1;; esac\nif [ \"$build\" -gt 99 ]; then echo \"error: AURORA_BUILD_NUMBER must be 0-99\"; exit 1; fi\nIFS=. read -r major minor patch <<EOV\n${version%%-*}\nEOV\ncode=$((major * 1000000 + minor * 10000 + patch * 100 + build))\nplist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $version\" -c \"Set :CFBundleVersion $code\" \"$plist\"\necho \"Aurora $version ($code)\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		504EC3001FED79650016851F /* Sources */ = {
@@ -294,6 +319,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = N5YCFWUSWU;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -317,6 +344,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = N5YCFWUSWU;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
