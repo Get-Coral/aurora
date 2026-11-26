@@ -2540,7 +2540,7 @@ export function MediaPlayerDialog({
 				<>
 					{(item.backdropUrl ?? item.posterUrl) ? (
 						<div
-							className={`player-poster-layer${isBuffering || remote.active ? " visible" : ""}`}
+							className={`player-poster-layer${item.type === "channel" ? " player-poster-logo" : ""}${isBuffering || remote.active ? " visible" : ""}`}
 							aria-hidden={!(isBuffering || remote.active)}
 						>
 							<img
@@ -3106,7 +3106,10 @@ export function MediaPlayerDialog({
 			) : isPreparingStream ? (
 				<>
 					{(item.backdropUrl ?? item.posterUrl) ? (
-						<div className="player-poster-layer visible" aria-hidden="true">
+						<div
+							className={`player-poster-layer visible${item.type === "channel" ? " player-poster-logo" : ""}`}
+							aria-hidden="true"
+						>
 							<img
 								src={item.backdropUrl ?? item.posterUrl}
 								alt=""
