@@ -51,6 +51,7 @@ import {
 	browserEngineSupport,
 	choosePlaybackEngine,
 	distinctLabels,
+	iptvStartAt,
 	type StreamTrack,
 	trackLabel,
 	withStartOffset,
@@ -762,11 +763,14 @@ export function MediaPlayerDialog({
 					}
 					let streamUrl = session.streamUrl;
 					if (session.transcoded && resumeSeconds > 0) {
-						// Aurora's converter seeks on the provider; the new stream starts there.
+						// Aurora's converter seeks on the provider and starts at the
+						// keyframe there, which becomes the clock's start.
+						const start = await iptvStartAt(streamUrl, resumeSeconds);
+						if (cancelled) return;
 						startTimeOffsetRef.current = 0;
 						seekPendingRef.current = true;
-						pendingSeekTargetRef.current = resumeSeconds;
-						streamUrl = withStartOffset(streamUrl, resumeSeconds);
+						pendingSeekTargetRef.current = start;
+						streamUrl = withStartOffset(streamUrl, start);
 					}
 					setPlaybackSession({
 						streamUrl,
@@ -1989,25 +1993,34 @@ export function MediaPlayerDialog({
 	 * Restart an IPTV file through Aurora's converter at the current position,
 	 * with other parameters (an audio track, or to get its subtitles out).
 	 */
-	function switchIptvStream(params: Record<string, string | number | null>) {
+	async function switchIptvStream(params: Record<string, string | number | null>) {
 		const session = playbackSession;
 		const video = videoRef.current;
 		if (!session?.iptv || !video) return;
+		const requestId = ++seekReloadRequestIdRef.current;
 		const position = video.currentTime + startTimeOffsetRef.current;
-		startTimeOffsetRef.current = 0;
-		seekPendingRef.current = position > 0;
-		pendingSeekTargetRef.current = position > 0 ? position : null;
-		lastReportedSecondRef.current = 0;
+		// The old stream would otherwise play on while the new start is found.
+		if (!video.paused) {
+			suppressPauseReportRef.current = true;
+			video.pause();
+		}
 		setIsBuffering(true);
+		const streamUrl = withStreamParams(session.streamUrl, {
+			...params,
+			// A converted stream keeps its own remux (audio converted for the browser).
+			...(session.iptv.transcoded ? {} : { remux: "1" }),
+		});
+		// The converter restarts at the keyframe at this position.
+		const start = position > 0 ? await iptvStartAt(streamUrl, position) : 0;
+		if (requestId !== seekReloadRequestIdRef.current) return;
+		startTimeOffsetRef.current = 0;
+		seekPendingRef.current = start > 0;
+		pendingSeekTargetRef.current = start > 0 ? start : null;
+		lastReportedSecondRef.current = 0;
 		setPlaybackSession({
 			...session,
 			playMethod: "Transcode",
-			streamUrl: withStreamParams(session.streamUrl, {
-				...params,
-				// A converted stream keeps its own remux (audio converted for the browser).
-				...(session.iptv.transcoded ? {} : { remux: "1" }),
-				start: position > 0 ? Math.floor(position) : null,
-			}),
+			streamUrl: withStartOffset(streamUrl, start),
 			iptv: { ...session.iptv, transcoded: true },
 		});
 	}
@@ -2016,7 +2029,7 @@ export function MediaPlayerDialog({
 		setAudioPickerOpen(false);
 		setActiveAudio(id);
 		if ((iptvSession?.media?.audio.length ?? 0) > 1) {
-			switchIptvStream({ audio: id });
+			void switchIptvStream({ audio: id });
 			return;
 		}
 		if (iptvEngine === "hls.js") {
@@ -2116,11 +2129,14 @@ export function MediaPlayerDialog({
 
 		const requestId = ++seekReloadRequestIdRef.current;
 		if (playbackSession?.iptv) {
-			// Aurora's converter restarts on the provider at the new position.
-			setPlaybackSession({
-				...playbackSession,
-				streamUrl: withStartOffset(playbackSession.streamUrl, targetMovieTime),
-			});
+			// Aurora's converter restarts on the provider at the keyframe at the
+			// new position; that keyframe is where the clock starts.
+			const start = await iptvStartAt(playbackSession.streamUrl, targetMovieTime);
+			if (requestId !== seekReloadRequestIdRef.current) return;
+			pendingSeekTargetRef.current = start;
+			setPlaybackSession((current) =>
+				current ? { ...current, streamUrl: withStartOffset(current.streamUrl, start) } : current,
+			);
 			return;
 		}
 		const client = getClientPlaybackContext();
@@ -2236,7 +2252,7 @@ export function MediaPlayerDialog({
 		subtitleOffsetRef.current = 0;
 		setEmbeddedSubtitle(id);
 		// Subtitles come out of the converter, so a direct file switches to it.
-		if (!iptvSession?.transcoded) switchIptvStream({});
+		if (!iptvSession?.transcoded) void switchIptvStream({});
 		closePickers();
 	}
 
