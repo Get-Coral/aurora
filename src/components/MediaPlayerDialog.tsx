@@ -118,6 +118,14 @@ const TRANSCODE_QUALITY_LADDER: TranscodeQualityProfile[] = [
 const BUFFER_DOWNGRADE_DELAY_MS = 1500;
 const STABLE_PLAYBACK_UPGRADE_DELAY_MS = 45000;
 const CONTROLS_HIDE_DELAY_MS = 3000;
+/**
+ * A transparent 1x1 GIF as the <video> poster. Without one, Android WebViews
+ * (the TV, phone and Quest apps) draw their own grey play-button placeholder
+ * until the first frame, right over the artwork the player shows while the
+ * stream loads (.player-poster-layer, beneath the video).
+ */
+const TRANSPARENT_POSTER =
+	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 // While a seek is on its way, timeupdates further than this from the target
 // come from the old position (or the stream that is being replaced) and must
 // not drag the bar back.
@@ -2546,6 +2554,7 @@ export function MediaPlayerDialog({
 						key={streamUrl}
 						ref={videoRef}
 						className="player-fullscreen-video"
+						poster={TRANSPARENT_POSTER}
 						autoPlay
 						playsInline
 						preload="metadata"

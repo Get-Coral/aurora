@@ -230,6 +230,13 @@ describe("MediaPlayerDialog progress bar", () => {
 	});
 });
 
+describe("MediaPlayerDialog while the stream loads", () => {
+	it("gives the video a transparent poster, so Android's placeholder can't cover the artwork", async () => {
+		const { video } = await renderPlayer();
+		expect(video.getAttribute("poster")).toMatch(/^data:image\/gif;base64,/);
+	});
+});
+
 describe("MediaPlayerDialog scrub preview", () => {
 	const trickplay = {
 		width: 320,
