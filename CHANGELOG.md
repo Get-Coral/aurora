@@ -25,6 +25,34 @@
 
 * document Android back handling, Java 21 requirements, and native Android debug assembly
 
+## [1.17.0](https://github.com/Get-Coral/aurora/compare/v1.16.0...v1.17.0) (2026-11-26)
+
+
+### Features
+
+* **android:** native player on phones too, with FFmpeg audio where the device has no Dolby decoder ([825e764](https://github.com/Get-Coral/aurora/commit/825e764ef14d30d762496e357a0e6a89fac27c8a))
+* IPTV films and series under Films and Series, next to Jellyfin's ([c264b29](https://github.com/Get-Coral/aurora/commit/c264b297b37c27cc76bb45d0dd682ddcc28eb719))
+* **native-player:** show the title's artwork while the stream loads ([e1ece98](https://github.com/Get-Coral/aurora/commit/e1ece98245daee9650ee25f6134dd58d38141918))
+* **native-player:** show the title's artwork while the stream loads ([3df26e9](https://github.com/Get-Coral/aurora/commit/3df26e909aa094698a734accaa6086a790f033e0))
+* **tv:** a lighter TV mode that is easier to drive with the remote ([969086f](https://github.com/Get-Coral/aurora/commit/969086f97480cd66a8a91184a04d8e24925c8a7c))
+* **tv:** denser TV layout that fits more on screen ([b11f670](https://github.com/Get-Coral/aurora/commit/b11f670b25ed1d8ed9fdf81ae789bf7d03b44970))
+* **tv:** give the native IPTV player the web player's look ([954e402](https://github.com/Get-Coral/aurora/commit/954e40288e3a4663731d1d1690b477f21797650a))
+* **tv:** lighter TV mode, and IPTV films and series next to Jellyfin's ([dab8ff4](https://github.com/Get-Coral/aurora/commit/dab8ff41e9e8d16f2f0523e2886dd3d43806e475))
+
+
+### Bug Fixes
+
+* **iptv:** converted streams keep their clock after a seek, and sound in sync from the start ([deb2095](https://github.com/Get-Coral/aurora/commit/deb2095070be550fbb5a013fc9627a7788225ec1))
+* **iptv:** Dolby audio and sync for IPTV on Android and in the browser ([c5ee6eb](https://github.com/Get-Coral/aurora/commit/c5ee6eb962c6047e22c9c6e012840a5e6f3a7c83))
+* **iptv:** keep the clock after a seek, and sound in sync from the start ([9c138c3](https://github.com/Get-Coral/aurora/commit/9c138c3081abac9b849789bad4d52dde17ace431))
+* **iptv:** sound in the browser for Dolby audio, in sync after a seek ([ba103c4](https://github.com/Get-Coral/aurora/commit/ba103c4f02b21c7b231424f8874432f0b63f2a7f))
+* **player:** proper artwork while a stream loads, no Android placeholder ([e549039](https://github.com/Get-Coral/aurora/commit/e549039eec806b7fcc97a9079da8624876670225))
+* **player:** show a channel's logo small and centered while it loads ([8f4baa2](https://github.com/Get-Coral/aurora/commit/8f4baa205a7406f87b41ea413af08080e4961d7c))
+* **player:** show the artwork, not Android's placeholder, while a stream loads ([f9be84c](https://github.com/Get-Coral/aurora/commit/f9be84cb3c661f16739b330f70508efc7409f960))
+* **tv:** land on Play when the player's controls arrive after it opens ([3161439](https://github.com/Get-Coral/aurora/commit/316143965a95f128d049daf9c0a8292cb46d6fe1))
+* **tv:** land on Play when the player's controls arrive after it opens ([8cfb9a8](https://github.com/Get-Coral/aurora/commit/8cfb9a8cc594aae3de742c848be1c1a8d423d1c6))
+* **tv:** play IPTV films and series in a native player on Android TV ([9d771f7](https://github.com/Get-Coral/aurora/commit/9d771f781e371330a94348fff44f5aa11577c83e))
+
 ## [1.16.0](https://github.com/Get-Coral/aurora/compare/v1.15.0...v1.16.0) (2026-11-23)
 
 
