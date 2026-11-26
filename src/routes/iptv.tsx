@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarClock, Heart, Search, Settings2, Tv, X } from "lucide-react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
+
 import { IptvGuide } from "../components/IptvGuide";
 import { MediaCard } from "../components/MediaCard";
 import { useFavoriteAction } from "../components/useFavoriteAction";

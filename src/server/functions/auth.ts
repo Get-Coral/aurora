@@ -18,12 +18,10 @@ async function setSessionCookie(token: string) {
 }
 
 export const fetchAuthStatus = createServerFn({ method: "GET" }).handler(async () => {
-	const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } = await import(
-		"@/lib/auth-store"
-	);
-	const { getRequireLogin, isRequireLoginLocked, isAuroraConfigured } = await import(
-		"@/lib/config-store"
-	);
+	const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } =
+		await import("@/lib/auth-store");
+	const { getRequireLogin, isRequireLoginLocked, isAuroraConfigured } =
+		await import("@/lib/config-store");
 	const { getCookie } = await import("@tanstack/react-start/server");
 
 	const required = isLoginEnforced();
@@ -112,9 +110,8 @@ export const setRequireLoginServerFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const { isLoginEnforced, getSessionByToken, createAuthSession, SESSION_COOKIE_NAME } =
 			await import("@/lib/auth-store");
-		const { isRequireLoginLocked, setRequireLogin, getEffectiveJellyfinSettings } = await import(
-			"@/lib/config-store"
-		);
+		const { isRequireLoginLocked, setRequireLogin, getEffectiveJellyfinSettings } =
+			await import("@/lib/config-store");
 		const { getCookie } = await import("@tanstack/react-start/server");
 
 		if (isRequireLoginLocked()) {

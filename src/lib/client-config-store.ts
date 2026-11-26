@@ -73,10 +73,10 @@ function areSettingsComplete(
 	// separately for playback. Session sign-ins already hold a token.
 	return Boolean(
 		settings.url &&
-			settings.apiKey &&
-			settings.userId &&
-			settings.username &&
-			(settings.password || settings.accessToken),
+		settings.apiKey &&
+		settings.userId &&
+		settings.username &&
+		(settings.password || settings.accessToken),
 	);
 }
 

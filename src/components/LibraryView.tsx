@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowLeft, ArrowUp, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { CURATED_MOVIE_GENRES } from "../lib/genres";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";

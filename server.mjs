@@ -1,257 +1,255 @@
-import fs from 'node:fs';
-import http from 'node:http';
-import path from 'node:path';
-import { Readable } from 'node:stream';
-import { fileURLToPath } from 'node:url';
-import { createDesktopGuard } from './desktop-guard.mjs';
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { Readable } from "node:stream";
+import { fileURLToPath } from "node:url";
+
+import { createDesktopGuard } from "./desktop-guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const MIME_TYPES = {
-  '.js': 'application/javascript; charset=utf-8',
-  '.mjs': 'application/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.html': 'text/html; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.json': 'application/json; charset=utf-8',
+	".js": "application/javascript; charset=utf-8",
+	".mjs": "application/javascript; charset=utf-8",
+	".css": "text/css; charset=utf-8",
+	".html": "text/html; charset=utf-8",
+	".svg": "image/svg+xml",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".ico": "image/x-icon",
+	".woff": "font/woff",
+	".woff2": "font/woff2",
+	".json": "application/json; charset=utf-8",
 };
 
-const CLIENT_DIR = path.join(__dirname, 'dist', 'client');
+const CLIENT_DIR = path.join(__dirname, "dist", "client");
 const sockets = new Set();
 
 /** The built client file a request asks for, if there is one. */
 function findStaticFile(url) {
-  const filePath = path.join(CLIENT_DIR, url.pathname);
+	const filePath = path.join(CLIENT_DIR, url.pathname);
 
-  // Prevent path traversal
-  if (!filePath.startsWith(CLIENT_DIR)) return null;
+	// Prevent path traversal
+	if (!filePath.startsWith(CLIENT_DIR)) return null;
 
-  try {
-    const stat = fs.statSync(filePath);
-    return stat.isFile() ? { filePath, stat } : null;
-  } catch {
-    return null;
-  }
+	try {
+		const stat = fs.statSync(filePath);
+		return stat.isFile() ? { filePath, stat } : null;
+	} catch {
+		return null;
+	}
 }
 
 function serveStatic(file, url, response) {
-  const { filePath, stat } = file;
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
+	const { filePath, stat } = file;
+	const ext = path.extname(filePath).toLowerCase();
+	const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
-  // Long-lived cache for hashed assets
-  const isHashed = /\.[a-zA-Z0-9]{8,}\.\w+$/.test(url.pathname);
-  const cacheControl = isHashed
-    ? 'public, max-age=31536000, immutable'
-    : 'public, max-age=3600';
+	// Long-lived cache for hashed assets
+	const isHashed = /\.[a-zA-Z0-9]{8,}\.\w+$/.test(url.pathname);
+	const cacheControl = isHashed ? "public, max-age=31536000, immutable" : "public, max-age=3600";
 
-  response.writeHead(200, {
-    'content-type': contentType,
-    'cache-control': cacheControl,
-    'content-length': stat.size,
-  });
-  fs.createReadStream(filePath).pipe(response);
+	response.writeHead(200, {
+		"content-type": contentType,
+		"cache-control": cacheControl,
+		"content-length": stat.size,
+	});
+	fs.createReadStream(filePath).pipe(response);
 }
 
 function loadEnvFile(filename) {
-  const filePath = path.join(__dirname, filename);
+	const filePath = path.join(__dirname, filename);
 
-  if (!fs.existsSync(filePath)) return;
+	if (!fs.existsSync(filePath)) return;
 
-  const contents = fs.readFileSync(filePath, 'utf8');
+	const contents = fs.readFileSync(filePath, "utf8");
 
-  for (const rawLine of contents.split('\n')) {
-    const line = rawLine.trim();
+	for (const rawLine of contents.split("\n")) {
+		const line = rawLine.trim();
 
-    if (!line || line.startsWith('#')) continue;
+		if (!line || line.startsWith("#")) continue;
 
-    const separatorIndex = line.indexOf('=');
-    if (separatorIndex === -1) continue;
+		const separatorIndex = line.indexOf("=");
+		if (separatorIndex === -1) continue;
 
-    const key = line.slice(0, separatorIndex).trim();
-    let value = line.slice(separatorIndex + 1).trim();
+		const key = line.slice(0, separatorIndex).trim();
+		let value = line.slice(separatorIndex + 1).trim();
 
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
+		if (
+			(value.startsWith('"') && value.endsWith('"')) ||
+			(value.startsWith("'") && value.endsWith("'"))
+		) {
+			value = value.slice(1, -1);
+		}
 
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
+		if (!(key in process.env)) {
+			process.env[key] = value;
+		}
+	}
 }
 
-loadEnvFile('.env');
-loadEnvFile('.env.local');
+loadEnvFile(".env");
+loadEnvFile(".env.local");
 
-const { default: serverEntry } = await import('./dist/server/server.js');
+const { default: serverEntry } = await import("./dist/server/server.js");
 
-const host = process.env.HOST ?? '0.0.0.0';
-const port = Number.parseInt(process.env.PORT ?? '3200', 10);
+const host = process.env.HOST ?? "0.0.0.0";
+const port = Number.parseInt(process.env.PORT ?? "3200", 10);
 // Set by the desktop app, which runs this server for its own window only.
 const desktopGuard = createDesktopGuard({
-  token: process.env.AURORA_DESKTOP_TOKEN,
-  port,
+	token: process.env.AURORA_DESKTOP_TOKEN,
+	port,
 });
 
 function getOrigin(request) {
-  const forwardedProto = request.headers['x-forwarded-proto'];
-  const protocol = Array.isArray(forwardedProto)
-    ? forwardedProto[0]
-    : (forwardedProto?.split(',')[0] ?? 'http');
+	const forwardedProto = request.headers["x-forwarded-proto"];
+	const protocol = Array.isArray(forwardedProto)
+		? forwardedProto[0]
+		: (forwardedProto?.split(",")[0] ?? "http");
 
-  const forwardedHost = request.headers['x-forwarded-host'];
-  const hostHeader = Array.isArray(forwardedHost)
-    ? forwardedHost[0]
-    : (forwardedHost ?? request.headers.host ?? `${host}:${port}`);
+	const forwardedHost = request.headers["x-forwarded-host"];
+	const hostHeader = Array.isArray(forwardedHost)
+		? forwardedHost[0]
+		: (forwardedHost ?? request.headers.host ?? `${host}:${port}`);
 
-  return `${protocol}://${hostHeader}`;
+	return `${protocol}://${hostHeader}`;
 }
 
 const nodeServer = http.createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url ?? '/', getOrigin(request));
+	try {
+		const url = new URL(request.url ?? "/", getOrigin(request));
 
-    const file = findStaticFile(url);
-    const refusal = desktopGuard?.(request.headers, url, {
-      publicFile: file != null,
-    });
-    if (refusal) {
-      response.writeHead(refusal.status, refusal.headers);
-      response.end(refusal.body);
-      return;
-    }
+		const file = findStaticFile(url);
+		const refusal = desktopGuard?.(request.headers, url, {
+			publicFile: file != null,
+		});
+		if (refusal) {
+			response.writeHead(refusal.status, refusal.headers);
+			response.end(refusal.body);
+			return;
+		}
 
-    if (url.pathname === '/healthz') {
-      response.writeHead(204, {
-        'cache-control': 'no-store, no-cache, must-revalidate',
-      });
-      response.end();
-      return;
-    }
+		if (url.pathname === "/healthz") {
+			response.writeHead(204, {
+				"cache-control": "no-store, no-cache, must-revalidate",
+			});
+			response.end();
+			return;
+		}
 
-    if (file) {
-      serveStatic(file, url, response);
-      return;
-    }
-    const headers = new Headers();
+		if (file) {
+			serveStatic(file, url, response);
+			return;
+		}
+		const headers = new Headers();
 
-    for (const [key, value] of Object.entries(request.headers)) {
-      if (value == null) continue;
-      if (Array.isArray(value)) {
-        for (const item of value) headers.append(key, item);
-      } else {
-        headers.set(key, value);
-      }
-    }
+		for (const [key, value] of Object.entries(request.headers)) {
+			if (value == null) continue;
+			if (Array.isArray(value)) {
+				for (const item of value) headers.append(key, item);
+			} else {
+				headers.set(key, value);
+			}
+		}
 
-    const webRequest = new Request(url, {
-      method: request.method,
-      headers,
-      body:
-        request.method &&
-        !['GET', 'HEAD'].includes(request.method.toUpperCase())
-          ? Readable.toWeb(request)
-          : undefined,
-      duplex: 'half',
-    });
+		const webRequest = new Request(url, {
+			method: request.method,
+			headers,
+			body:
+				request.method && !["GET", "HEAD"].includes(request.method.toUpperCase())
+					? Readable.toWeb(request)
+					: undefined,
+			duplex: "half",
+		});
 
-    const webResponse = await serverEntry.fetch(webRequest);
+		const webResponse = await serverEntry.fetch(webRequest);
 
-    response.statusCode = webResponse.status;
-    response.statusMessage = webResponse.statusText;
+		response.statusCode = webResponse.status;
+		response.statusMessage = webResponse.statusText;
 
-    webResponse.headers.forEach((value, key) => {
-      response.setHeader(key, value);
-    });
+		webResponse.headers.forEach((value, key) => {
+			response.setHeader(key, value);
+		});
 
-    if (!webResponse.body) {
-      response.end();
-      return;
-    }
+		if (!webResponse.body) {
+			response.end();
+			return;
+		}
 
-    // Pipe the SSR/web-response stream, handling errors on the source. The
-    // router's SSR transform errors this stream if it exceeds its lifetime
-    // (default 120s); without a handler that surfaces as an unhandled 'error'
-    // event and crashes the whole process. Instead, log it and tear down just
-    // this response.
-    const bodyStream = Readable.fromWeb(webResponse.body);
-    bodyStream.on('error', (streamError) => {
-      console.error('Aurora response stream error:', streamError);
-      if (!response.headersSent) response.statusCode = 500;
-      response.destroy();
-    });
-    // If the client disconnects, stop pulling from the source.
-    response.on('close', () => bodyStream.destroy());
-    bodyStream.pipe(response);
-  } catch (error) {
-    console.error(error);
-    response.statusCode = 500;
-    response.setHeader('content-type', 'text/plain; charset=utf-8');
-    response.end('Aurora failed to handle the request.');
-  }
+		// Pipe the SSR/web-response stream, handling errors on the source. The
+		// router's SSR transform errors this stream if it exceeds its lifetime
+		// (default 120s); without a handler that surfaces as an unhandled 'error'
+		// event and crashes the whole process. Instead, log it and tear down just
+		// this response.
+		const bodyStream = Readable.fromWeb(webResponse.body);
+		bodyStream.on("error", (streamError) => {
+			console.error("Aurora response stream error:", streamError);
+			if (!response.headersSent) response.statusCode = 500;
+			response.destroy();
+		});
+		// If the client disconnects, stop pulling from the source.
+		response.on("close", () => bodyStream.destroy());
+		bodyStream.pipe(response);
+	} catch (error) {
+		console.error(error);
+		response.statusCode = 500;
+		response.setHeader("content-type", "text/plain; charset=utf-8");
+		response.end("Aurora failed to handle the request.");
+	}
 });
 
-nodeServer.on('connection', (socket) => {
-  sockets.add(socket);
-  socket.on('close', () => {
-    sockets.delete(socket);
-  });
+nodeServer.on("connection", (socket) => {
+	sockets.add(socket);
+	socket.on("close", () => {
+		sockets.delete(socket);
+	});
 });
 
-nodeServer.on('error', (error) => {
-  console.error(error);
-  process.exit(1);
+nodeServer.on("error", (error) => {
+	console.error(error);
+	process.exit(1);
 });
 
 // Last-resort safety net: a single request's stray async/stream error must not
 // take the whole container down. These are per-request faults (e.g. an SSR
 // stream aborting), not global state corruption, so log and keep serving.
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception (kept server alive):', error);
+process.on("uncaughtException", (error) => {
+	console.error("Uncaught exception (kept server alive):", error);
 });
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection (kept server alive):', reason);
+process.on("unhandledRejection", (reason) => {
+	console.error("Unhandled rejection (kept server alive):", reason);
 });
 
 let shuttingDown = false;
 
 function shutdown(signal) {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log(`\nReceived ${signal}. Shutting down Aurora server...`);
-  nodeServer.close((error) => {
-    if (error) {
-      console.error(error);
-      process.exit(1);
-    }
-    process.exit(0);
-  });
-  setTimeout(() => {
-    for (const socket of sockets) socket.destroy();
-  }, 5000).unref();
+	if (shuttingDown) return;
+	shuttingDown = true;
+	console.log(`\nReceived ${signal}. Shutting down Aurora server...`);
+	nodeServer.close((error) => {
+		if (error) {
+			console.error(error);
+			process.exit(1);
+		}
+		process.exit(0);
+	});
+	setTimeout(() => {
+		for (const socket of sockets) socket.destroy();
+	}, 5000).unref();
 }
 
-for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
-  process.on(signal, () => shutdown(signal));
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+	process.on(signal, () => shutdown(signal));
 }
 
 // The desktop app holds this process's stdin open; when the app goes away,
 // even without a chance to stop the server, stdin closes and the server stops.
-if (process.env.AURORA_EXIT_WITH_STDIN === '1') {
-  process.stdin.on('end', () => shutdown('stdin closed'));
-  process.stdin.resume();
+if (process.env.AURORA_EXIT_WITH_STDIN === "1") {
+	process.stdin.on("end", () => shutdown("stdin closed"));
+	process.stdin.resume();
 }
 
 nodeServer.listen(port, host, () => {
-  console.log(`Aurora listening on http://${host}:${port}`);
+	console.log(`Aurora listening on http://${host}:${port}`);
 });

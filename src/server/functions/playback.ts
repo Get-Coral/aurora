@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+
 import { authRequiredMiddleware } from "../auth-middleware";
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -155,12 +156,10 @@ export const beginPlaybackSession = createServerFn({ method: "POST" })
 		}) => input,
 	)
 	.handler(async ({ data }) => {
-		const { createPlaybackSession, getJellyfinServerUrl, getTrickplayManifest } = await import(
-			"@/lib/jellyfin"
-		);
-		const { jellyfinStreamProxyUrl, setTranscodeQuality } = await import(
-			"@/lib/jellyfin-stream-proxy"
-		);
+		const { createPlaybackSession, getJellyfinServerUrl, getTrickplayManifest } =
+			await import("@/lib/jellyfin");
+		const { jellyfinStreamProxyUrl, setTranscodeQuality } =
+			await import("@/lib/jellyfin-stream-proxy");
 		const { buildTrickplayPreview } = await import("@/lib/trickplay");
 		const [session, trickplayManifest] = await Promise.all([
 			createPlaybackSession(data.id, data.client),

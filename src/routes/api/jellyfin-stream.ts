@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { isAllowedMediaPath, rewriteHlsManifest } from "../../lib/hls-rewrite";
 
 function copyHeaderIfPresent(target: Headers, source: Headers, key: string) {
@@ -19,16 +20,14 @@ async function proxyJellyfinStreamRequest(request: Request) {
 	const requestUrl = new URL(request.url);
 	const rawStreamToken = requestUrl.searchParams.get("st");
 
-	const { OPEN_SESSION_REF, itemIdFromMediaPath, verifyStreamToken } = await import(
-		"../../lib/stream-token"
-	);
+	const { OPEN_SESSION_REF, itemIdFromMediaPath, verifyStreamToken } =
+		await import("../../lib/stream-token");
 	// A TV playing over AirPlay/Cast fetches this URL itself, with no session
 	// cookie, so a signed token is the alternative credential.
 	const claims = rawStreamToken ? verifyStreamToken(rawStreamToken) : null;
 
-	const { getSessionByTokenHash, getSessionFromRequest, isRequestAuthorized } = await import(
-		"../../lib/auth-store"
-	);
+	const { getSessionByTokenHash, getSessionFromRequest, isRequestAuthorized } =
+		await import("../../lib/auth-store");
 	if (!claims && !isRequestAuthorized(request)) {
 		return new Response("Unauthorized.", { status: 401 });
 	}

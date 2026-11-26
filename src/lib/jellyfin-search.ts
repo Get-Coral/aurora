@@ -1,4 +1,5 @@
 import type { JellyfinClient, JellyfinItem } from "@get-coral/jellyfin";
+
 import type { MediaItem } from "./media";
 import type { SearchPerson, SearchResults } from "./search";
 
@@ -57,13 +58,11 @@ export function librarySearchParts(
 		series: media.filter((item) => item.type === "series"),
 		episodes: media.filter((item) => item.type === "episode"),
 		collections: media.filter((item) => item.type === "collection"),
-		people: found.people.map(
-			(person): SearchPerson => ({
-				id: person.Id,
-				name: person.Name,
-				imageUrl: person.ImageTags?.Primary ? personImage(person) : undefined,
-			}),
-		),
+		people: found.people.map((person): SearchPerson => ({
+			id: person.Id,
+			name: person.Name,
+			imageUrl: person.ImageTags?.Primary ? personImage(person) : undefined,
+		})),
 	};
 }
 

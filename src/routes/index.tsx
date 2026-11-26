@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+
 import { HeroSection } from "../components/HeroSection";
 import { SectionShelf } from "../components/SectionShelf";
 import { useFavoriteAction } from "../components/useFavoriteAction";

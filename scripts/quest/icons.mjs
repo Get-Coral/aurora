@@ -61,9 +61,13 @@ function toPathData([tag, attrs]) {
 			return `M${attrs.x1},${attrs.y1}L${attrs.x2},${attrs.y2}`;
 		case "polyline":
 		case "polygon": {
-			const points = attrs.points.trim().split(/[\s,]+/).map(Number);
+			const points = attrs.points
+				.trim()
+				.split(/[\s,]+/)
+				.map(Number);
 			let d = "";
-			for (let i = 0; i < points.length; i += 2) d += `${i ? "L" : "M"}${points[i]},${points[i + 1]}`;
+			for (let i = 0; i < points.length; i += 2)
+				d += `${i ? "L" : "M"}${points[i]},${points[i + 1]}`;
 			return tag === "polygon" ? `${d}z` : d;
 		}
 		default:

@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -214,7 +215,9 @@ const SCREENS = {
 				const inPosterRow = await page.evaluate(() => {
 					const rows = [...document.querySelectorAll(".browse-row-track")];
 					const row = document.activeElement?.closest(".browse-row-track");
-					return Boolean(row && !row.classList.contains("browse-row-wide") && rows.indexOf(row) > 0);
+					return Boolean(
+						row && !row.classList.contains("browse-row-wide") && rows.indexOf(row) > 0,
+					);
 				});
 				if (inPosterRow) break;
 				await page.keyboard.press("ArrowDown");
@@ -332,7 +335,10 @@ async function capture(browser, locale, device) {
 	const context = await openContext(browser, locale, device);
 	const page = await context.newPage();
 	for (const folder of device.folders) {
-		fs.rmSync(path.join(metadata, locale.store, "images", folder), { recursive: true, force: true });
+		fs.rmSync(path.join(metadata, locale.store, "images", folder), {
+			recursive: true,
+			force: true,
+		});
 		fs.mkdirSync(path.join(metadata, locale.store, "images", folder), { recursive: true });
 	}
 	const composer = device.canvas ? await browser.newPage({ viewport: device.canvas }) : null;

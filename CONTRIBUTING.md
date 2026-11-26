@@ -20,12 +20,12 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Start the dev server |
-| `pnpm build` | Production build |
+| Command      | Description                      |
+| ------------ | -------------------------------- |
+| `pnpm dev`   | Start the dev server             |
+| `pnpm build` | Production build                 |
 | `pnpm start` | Run the production build locally |
-| `pnpm test` | Run tests |
+| `pnpm test`  | Run tests                        |
 
 ## Workflow
 

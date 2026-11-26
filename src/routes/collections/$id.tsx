@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tansta
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ArrowLeft, Check, Minus, Plus, Search, X } from "lucide-react";
 import { useDeferredValue, useState } from "react";
+
 import { MediaCard } from "../../components/MediaCard";
 import { MediaPlayerDialog } from "../../components/MediaPlayerDialog";
 import { MediaSpotlightDialog } from "../../components/MediaSpotlightDialog";

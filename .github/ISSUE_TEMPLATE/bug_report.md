@@ -8,6 +8,7 @@ labels: bug
 A clear and concise description of what the bug is.
 
 **Steps to reproduce**
+
 1. Go to '...'
 2. Click on '...'
 3. See error
@@ -19,6 +20,7 @@ What you expected to happen.
 What actually happened.
 
 **Environment**
+
 - Aurora version / image tag:
 - Jellyfin version:
 - Browser (if UI issue):

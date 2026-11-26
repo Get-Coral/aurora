@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Info, Play, Search, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { MediaCard } from "../components/MediaCard";
 import { useSearchResults } from "../components/SearchPanel";
 import { useFavoriteAction } from "../components/useFavoriteAction";

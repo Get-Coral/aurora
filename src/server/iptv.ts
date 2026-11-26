@@ -19,9 +19,8 @@ function respond(status: number) {
  */
 async function tokenAllows(token: string | null, itemId: string) {
 	if (!token) return false;
-	const { OPEN_SESSION_REF, normalizeItemId, verifyStreamToken } = await import(
-		"../lib/stream-token"
-	);
+	const { OPEN_SESSION_REF, normalizeItemId, verifyStreamToken } =
+		await import("../lib/stream-token");
 	const claims = verifyStreamToken(token);
 	if (!claims || claims.itemId !== normalizeItemId(itemId)) return false;
 	if (claims.sessionRef === OPEN_SESSION_REF) return true;

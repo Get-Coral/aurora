@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { fetchMultiUserSettingsRuntime } from "./runtime-functions";
 
 export type MultiUserState = {

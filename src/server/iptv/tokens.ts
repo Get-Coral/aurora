@@ -5,8 +5,9 @@ import {
 	randomBytes,
 	timingSafeEqual,
 } from "node:crypto";
-import { httpUrl } from "../../lib/iptv/urls";
+
 import { deriveIptvKey } from "../../lib/iptv-source-store";
+import { httpUrl } from "../../lib/iptv/urls";
 
 /**
  * Opaque links for derived upstream URLs (HLS segments, keys). The key is

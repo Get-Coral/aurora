@@ -101,7 +101,7 @@ export function isResumable(
 ) {
 	return Boolean(
 		!item.played &&
-			((item.progress != null && item.progress > 0) ||
-				(item.playbackPositionTicks != null && item.playbackPositionTicks > 0)),
+		((item.progress != null && item.progress > 0) ||
+			(item.playbackPositionTicks != null && item.playbackPositionTicks > 0)),
 	);
 }

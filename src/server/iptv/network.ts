@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
+
 import { httpUrl } from "../../lib/iptv/urls";
 
 export class IptvSourceError extends Error {

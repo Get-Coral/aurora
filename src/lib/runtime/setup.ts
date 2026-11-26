@@ -17,6 +17,7 @@ import {
 	saveSettings,
 	saveSetupConfiguration,
 } from "@/server/functions";
+
 import { callRuntime } from "./shared";
 
 interface SetupPayload extends ClientJellyfinSettings {}

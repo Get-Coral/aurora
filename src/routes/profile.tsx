@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ArrowLeft, Film, KeyRound, Trash2, Upload, UserRound } from "lucide-react";
 import { useRef, useState } from "react";
+
 import { useI18n } from "../lib/i18n";
 import {
 	fetchAvatarCandidatesRuntime,

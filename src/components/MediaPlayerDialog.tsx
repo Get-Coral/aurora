@@ -25,6 +25,7 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { AURORA_BACK_EVENT } from "../lib/back-navigation";
 import { formatClock } from "../lib/clock";
 import { useI18n } from "../lib/i18n";
@@ -45,6 +46,13 @@ import {
 import { isTvPlayerAvailable, playInTvPlayer, shouldUseTvPlayer } from "../lib/native/tv-player";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
+	clampProgress,
+	isTimeBuffered,
+	ratioFromPointer,
+	resolveDuration,
+	watchedRatio,
+} from "../lib/player-timeline";
+import {
 	type AttachedStream,
 	attachStream,
 	browserDecodesDolby,
@@ -57,13 +65,6 @@ import {
 	withStartOffset,
 	withStreamParams,
 } from "../lib/player/attach-stream";
-import {
-	clampProgress,
-	isTimeBuffered,
-	ratioFromPointer,
-	resolveDuration,
-	watchedRatio,
-} from "../lib/player-timeline";
 import {
 	beginIptvPlaybackRuntime,
 	beginPlaybackSessionRuntime,

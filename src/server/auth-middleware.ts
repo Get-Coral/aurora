@@ -9,9 +9,8 @@ import { createMiddleware } from "@tanstack/react-start";
  */
 export const authRequiredMiddleware = createMiddleware({ type: "function" }).server(
 	async ({ next }) => {
-		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } = await import(
-			"@/lib/auth-store"
-		);
+		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } =
+			await import("@/lib/auth-store");
 
 		if (isLoginEnforced()) {
 			const { getCookie } = await import("@tanstack/react-start/server");

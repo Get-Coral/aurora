@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+
 import { adminRequiredMiddleware, authRequiredMiddleware } from "../auth-middleware";
 
 const ALLOWED_AVATAR_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -9,18 +10,16 @@ export const fetchUsername = createServerFn({ method: "GET" })
 	.handler(async () => {
 		// A signed-in visitor sees their own name, even when someone else has
 		// since selected another profile on a different device.
-		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } = await import(
-			"@/lib/auth-store"
-		);
+		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } =
+			await import("@/lib/auth-store");
 		if (isLoginEnforced()) {
 			const { getCookie } = await import("@tanstack/react-start/server");
 			const session = getSessionByToken(getCookie(SESSION_COOKIE_NAME));
 			if (session) return session.username;
 		}
 
-		const { getEffectiveJellyfinSettings, getMultiUserMode, getActiveUserId } = await import(
-			"@/lib/config-store"
-		);
+		const { getEffectiveJellyfinSettings, getMultiUserMode, getActiveUserId } =
+			await import("@/lib/config-store");
 		const settings = getEffectiveJellyfinSettings();
 
 		if (getMultiUserMode()) {
@@ -115,9 +114,8 @@ export const fetchAvatarCandidatesServerFn = createServerFn({ method: "GET" })
 export const fetchMultiUserSettings = createServerFn({ method: "GET" })
 	.middleware([authRequiredMiddleware])
 	.handler(async () => {
-		const { getMultiUserMode, isMultiUserModeLocked, getActiveUserId } = await import(
-			"@/lib/config-store"
-		);
+		const { getMultiUserMode, isMultiUserModeLocked, getActiveUserId } =
+			await import("@/lib/config-store");
 		return {
 			multiUserMode: getMultiUserMode(),
 			locked: isMultiUserModeLocked(),
@@ -143,9 +141,8 @@ export const setActiveUserServerFn = createServerFn({ method: "POST" })
 		// When sign-in is required, a session only grants access to its own
 		// profile. Switching to someone else's profile goes through the login
 		// flow so their password is checked.
-		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } = await import(
-			"@/lib/auth-store"
-		);
+		const { isLoginEnforced, getSessionByToken, SESSION_COOKIE_NAME } =
+			await import("@/lib/auth-store");
 		if (isLoginEnforced()) {
 			const { getCookie } = await import("@tanstack/react-start/server");
 			const session = getSessionByToken(getCookie(SESSION_COOKIE_NAME));

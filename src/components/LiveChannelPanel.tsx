@@ -1,5 +1,6 @@
 import { Tv, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+
 import { useI18n } from "../lib/i18n";
 import type { MediaItem } from "../lib/media";
 
