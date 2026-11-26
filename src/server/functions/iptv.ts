@@ -32,6 +32,8 @@ export interface IptvMediaTrack {
 	language?: string;
 	title?: string;
 	codec?: string;
+	forced?: boolean;
+	hearingImpaired?: boolean;
 }
 
 /** Whether IPTV is available on this server and has any sources. */
@@ -287,6 +289,8 @@ export const beginIptvPlayback = createServerFn({ method: "POST" })
 						language: track.language,
 						title: track.title,
 						codec: track.codec,
+						forced: track.forced,
+						hearingImpaired: track.hearingImpaired,
 					})),
 				};
 			} catch {

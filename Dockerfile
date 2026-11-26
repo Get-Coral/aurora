@@ -24,6 +24,12 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV AURORA_DATA_DIR=/data
+# FFmpeg lets IPTV films and episodes in MKV/AVI play, with their audio tracks
+# and subtitles. ffprobe ships in the same package and is found beside it.
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends ffmpeg \
+	&& rm -rf /var/lib/apt/lists/*
+ENV AURORA_IPTV_FFMPEG=/usr/bin/ffmpeg
 WORKDIR /app
 
 COPY --from=prod-deps /app/node_modules ./node_modules
