@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
@@ -179,11 +180,44 @@ constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs
     invalidate()
   }
 
+  // ---- Touch (phones and tablets) ----
+
+  /** Film time under a finger at `x`, along the drawn track. */
+  private fun positionAt(x: Float): Long {
+    val left = paddingLeft + thumbRadius
+    val right = width - paddingRight - thumbRadius
+    if (right <= left || duration <= 0) return 0L
+    return (duration * ((x - left) / (right - left)).coerceIn(0f, 1f)).toLong()
+  }
+
+  override fun onTouchEvent(event: MotionEvent): Boolean {
+    if (!isEnabled || duration <= 0) return false
+    when (event.actionMasked) {
+      MotionEvent.ACTION_DOWN -> {
+        handler.removeCallbacks(commit)
+        if (!scrubbing) startScrubbing()
+        scrubTo(positionAt(event.x))
+      }
+      MotionEvent.ACTION_MOVE -> if (scrubbing) scrubTo(positionAt(event.x))
+      MotionEvent.ACTION_UP -> {
+        if (scrubbing) scrubTo(positionAt(event.x))
+        stopScrubbing(canceled = false)
+        performClick()
+      }
+      MotionEvent.ACTION_CANCEL -> stopScrubbing(canceled = true)
+      else -> return false
+    }
+    return true
+  }
+
+  override fun performClick(): Boolean = super.performClick()
+
   // ---- Drawing ----
 
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
-    val emphasised = isFocused || scrubbing
+    // No focus on a touch screen: there the bar always shows its thumb, like the web player does.
+    val emphasised = isFocused || scrubbing || isInTouchMode
     val height = if (emphasised) focusedTrackHeight else trackHeight
     val left = paddingLeft + thumbRadius
     val right = width - paddingRight - thumbRadius

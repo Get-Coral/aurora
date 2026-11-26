@@ -274,7 +274,7 @@ class TvPlayerActivity : AppCompatActivity() {
             .setReadTimeoutMs(30_000)
             .apply { if (userAgent.isNotBlank()) setUserAgent(userAgent) }
     val player =
-        ExoPlayer.Builder(this)
+        ExoPlayer.Builder(this, auroraRenderers(this))
             .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(http))
             // Film audio: lets ExoPlayer hand Dolby streams to the TV or receiver as they are.
             .setAudioAttributes(
