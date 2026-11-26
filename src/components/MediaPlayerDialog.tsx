@@ -47,6 +47,7 @@ import { getClientPlaybackContext } from "../lib/platform";
 import {
 	type AttachedStream,
 	attachStream,
+	browserDecodesDolby,
 	browserEngineSupport,
 	choosePlaybackEngine,
 	type StreamTrack,
@@ -738,7 +739,7 @@ export function MediaPlayerDialog({
 			// the native app) ask the provider for HLS instead.
 			const preferHls = isNativeShell() || !browserEngineSupport().mse;
 			void Promise.all([
-				beginIptvPlaybackRuntime(item.id, preferHls),
+				beginIptvPlaybackRuntime(item.id, preferHls, browserDecodesDolby()),
 				createStreamTokenRuntime({ data: { id: item.id } }).catch(() => ({
 					token: null as string | null,
 				})),
@@ -1979,7 +1980,8 @@ export function MediaPlayerDialog({
 			playMethod: "Transcode",
 			streamUrl: withStreamParams(session.streamUrl, {
 				...params,
-				remux: session.iptv.transcoded ? null : "1",
+				// A converted stream keeps its own remux (audio converted for the browser).
+				...(session.iptv.transcoded ? {} : { remux: "1" }),
 				start: position > 0 ? Math.floor(position) : null,
 			}),
 			iptv: { ...session.iptv, transcoded: true },

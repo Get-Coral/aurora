@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canCopyAudio, canCopyVideo, ffprobeBinary, parseProbe } from "./iptv-probe";
+import {
+	browserCanPlayAudio,
+	canCopyAudio,
+	canCopyVideo,
+	ffprobeBinary,
+	parseProbe,
+} from "./iptv-probe";
 
 const output = JSON.stringify({
 	streams: [
@@ -44,6 +50,17 @@ describe("IPTV media probe", () => {
 		expect(canCopyVideo({ ...media, video: { codec: "h264", pixFmt: "yuv420p10le" } })).toBe(false);
 		expect(canCopyAudio(media.audio[0])).toBe(false);
 		expect(canCopyAudio(media.audio[1])).toBe(true);
+	});
+
+	it("converts Dolby audio unless the browser decodes it", () => {
+		expect(browserCanPlayAudio("aac", { dolby: false })).toBe(true);
+		expect(browserCanPlayAudio("eac3", { dolby: false })).toBe(false);
+		expect(browserCanPlayAudio("ac3", { dolby: false })).toBe(false);
+		expect(browserCanPlayAudio("eac3", { dolby: true })).toBe(true);
+		expect(browserCanPlayAudio("dts", { dolby: true })).toBe(false);
+		expect(browserCanPlayAudio("truehd", { dolby: true })).toBe(false);
+		// No audio track: nothing to convert.
+		expect(browserCanPlayAudio(undefined, { dolby: false })).toBe(true);
 	});
 
 	it("finds ffprobe beside ffmpeg", () => {

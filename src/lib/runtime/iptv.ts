@@ -205,10 +205,12 @@ export async function fetchIptvListRuntime(kind: "continue" | "favorites" | "his
 export async function beginIptvPlaybackRuntime(
 	id: string,
 	preferHls = false,
+	/** The browser decodes Dolby Digital (Plus) itself, so the server can leave it. */
+	dolbyAudio = false,
 ): Promise<IptvPlayback> {
 	return callRuntime<IptvPlayback>(
 		async () => (await client()).beginClientIptvPlayback(id),
-		() => beginIptvPlayback({ data: { id, preferHls } }),
+		() => beginIptvPlayback({ data: { id, preferHls, dolbyAudio } }),
 	);
 }
 
