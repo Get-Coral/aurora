@@ -1,0 +1,156 @@
+/**
+ * The native player of the Android app (the AuroraPlayer plugin, Media3
+ * ExoPlayer). The WebView plays provider files with Chromium's decoders,
+ * which leave out Dolby audio (AC3/E-AC3: no sound at all) and let the sound
+ * drift away from the picture in some MKV files. On Android TVs, phones and
+ * tablets, IPTV films and episodes are handed to the native player instead.
+ * It uses the device's own decoders (passing Dolby through to the TV or
+ * receiver), and FFmpeg's where the device has none, as on most phones.
+ */
+import { type ClientPlatform, getClientPlaybackContext } from "../platform";
+import { isNativeShell } from "../runtime-mode";
+
+/** The player's words, in the web app's language. */
+export interface TvPlayerLabels {
+	nowPlaying: string;
+	close: string;
+	skipBack: string;
+	skipForward: string;
+	audioTrack: string;
+	subtitles: string;
+	subtitlesOff: string;
+	/** With `{number}` where the track number goes. */
+	trackNumber: string;
+}
+
+export interface TvPlayerRequest {
+	itemId: string;
+	title: string;
+	/** The line under the title: the series and episode. */
+	subtitle?: string;
+	/** BCP 47 tag the player names audio and subtitle languages in. */
+	locale: string;
+	labels: TvPlayerLabels;
+	/** Absolute URL the native player can fetch without cookies. */
+	url: string;
+	/** Where to start, in seconds. */
+	positionSeconds: number;
+	durationSeconds?: number;
+	/** "hls" when the URL is a playlist the player can't tell from its path. */
+	format?: "hls" | "ts" | "file";
+	/** Tried when the main URL fails. */
+	fallbackUrl?: string;
+}
+
+export interface TvPlayerResult {
+	/** Where the viewer stopped, or null when the player could not tell. */
+	positionSeconds: number | null;
+	/** The stream's own length when the player learned it, in seconds. */
+	durationSeconds: number | null;
+	/** The film played to its end. */
+	ended: boolean;
+	/** Set when the player gave up on the stream. */
+	error?: string;
+}
+
+interface NativeTvPlayerResult {
+	positionMs: number;
+	durationMs?: number;
+	ended: boolean;
+	error?: string;
+}
+
+interface AuroraPlayerPlugin {
+	open(options: {
+		itemId: string;
+		title: string;
+		subtitle: string;
+		locale: string;
+		labels: TvPlayerLabels;
+		url: string;
+		positionMs: number;
+		durationMs: number;
+		format: string;
+		fallbackUrl: string;
+		userAgent: string;
+	}): Promise<NativeTvPlayerResult>;
+}
+
+/** The parts of an IPTV session that decide whether the native player takes it. */
+export interface TvPlayerCandidate {
+	live: boolean;
+	format: "hls" | "ts" | "file";
+}
+
+/**
+ * Films and episodes only: live channels play well in the WebView (hls.js,
+ * mpegts.js), and the channel list and zapping live there.
+ */
+export function shouldUseTvPlayer(session: TvPlayerCandidate) {
+	return !session.live && session.format === "file";
+}
+
+export function toTvPlayerResult(native: NativeTvPlayerResult): TvPlayerResult {
+	const position = Number(native.positionMs);
+	const duration = Number(native.durationMs);
+	return {
+		positionSeconds: Number.isFinite(position) && position >= 0 ? position / 1000 : null,
+		durationSeconds: Number.isFinite(duration) && duration > 0 ? duration / 1000 : null,
+		ended: native.ended === true,
+		...(native.error ? { error: native.error } : {}),
+	};
+}
+
+/**
+ * The Android app's own platforms. Not the Quest: its panel has the immersive
+ * theater for the same job.
+ */
+const NATIVE_PLAYER_PLATFORMS = new Set<ClientPlatform>(["android-tv", "android"]);
+
+export function hasNativePlayer(platform: ClientPlatform) {
+	return NATIVE_PLAYER_PLATFORMS.has(platform);
+}
+
+// Wrapped in an object: a Capacitor plugin is a proxy that answers every
+// property, `then` included, so resolving a promise with it directly makes
+// JavaScript treat it as a thenable and call the missing native `then()`.
+let plugin: Promise<{ player: AuroraPlayerPlugin } | null> | null = null;
+
+function loadPlugin(): Promise<{ player: AuroraPlayerPlugin } | null> {
+	plugin ??= (async () => {
+		if (!isNativeShell() || !hasNativePlayer(getClientPlaybackContext().platform)) return null;
+		const { Capacitor, registerPlugin } = await import("@capacitor/core");
+		// App versions from before the native player don't have it.
+		if (!Capacitor.isPluginAvailable("AuroraPlayer")) return null;
+		return { player: registerPlugin<AuroraPlayerPlugin>("AuroraPlayer") };
+	})().catch(() => null);
+	return plugin;
+}
+
+export async function isTvPlayerAvailable(): Promise<boolean> {
+	return (await loadPlugin()) != null;
+}
+
+/** Plays the stream full screen and resolves once the viewer is back. */
+export async function playInTvPlayer(request: TvPlayerRequest): Promise<TvPlayerResult> {
+	const loaded = await loadPlugin();
+	if (!loaded) throw new Error("The native player is not available on this device");
+	const native = await loaded.player.open({
+		itemId: request.itemId,
+		title: request.title,
+		subtitle: request.subtitle ?? "",
+		locale: request.locale,
+		labels: request.labels,
+		url: new URL(request.url, window.location.href).toString(),
+		positionMs: Math.max(0, Math.round(request.positionSeconds * 1000)),
+		durationMs: Math.max(0, Math.round((request.durationSeconds ?? 0) * 1000)),
+		format: request.format ?? "",
+		fallbackUrl: request.fallbackUrl
+			? new URL(request.fallbackUrl, window.location.href).toString()
+			: "",
+		// Some IPTV providers turn away players they don't know; the native
+		// player introduces itself the way the WebView does.
+		userAgent: navigator.userAgent,
+	});
+	return toTvPlayerResult(native);
+}

@@ -241,7 +241,7 @@ export const fetchIptvNextUp = createServerFn({ method: "GET" })
 
 export const beginIptvPlayback = createServerFn({ method: "POST" })
 	.middleware([authRequiredMiddleware])
-	.validator((input: { id: string; preferHls?: boolean }) => input)
+	.validator((input: { id: string; preferHls?: boolean; dolbyAudio?: boolean }) => input)
 	.handler(async ({ data }): Promise<IptvPlayback> => {
 		const [{ parseIptvId }, { resolveStream }, cache] = await Promise.all([
 			import("../../lib/iptv/ids"),
@@ -260,7 +260,6 @@ export const beginIptvPlayback = createServerFn({ method: "POST" })
 			const info = await (await backend()).vodInfo(catalog, parts.pid).catch(() => undefined);
 			durationSeconds = info?.durationSeconds;
 		}
-		const base = `/api/iptv?id=${encodeURIComponent(data.id)}${data.preferHls ? "&prefer=hls" : ""}`;
 		const ffmpeg = process.env.AURORA_IPTV_FFMPEG;
 		const [{ needsConversion, finalUrl }, probe] = await Promise.all([
 			import("../iptv"),
@@ -268,10 +267,16 @@ export const beginIptvPlayback = createServerFn({ method: "POST" })
 		]);
 		// Look inside files Aurora can convert, for audio tracks and subtitles.
 		let media: IptvPlayback["media"];
+		let audioNeedsConversion = false;
 		if (ffmpeg && !target.live && target.format === "file") {
 			try {
 				const url = await finalUrl(AbortSignal.timeout(20_000), target.url, false);
 				const probed = await probe.probeIptvMedia(data.id, url, ffmpeg);
+				// Dolby, DTS and the like play without sound in most browsers:
+				// convert the audio to AAC (the video is copied when it can be).
+				audioNeedsConversion = !probe.browserCanPlayAudio(probed.audio[0]?.codec, {
+					dolby: data.dolbyAudio === true,
+				});
 				media = {
 					audio: probed.audio.map((track) => ({
 						id: track.index,
@@ -292,12 +297,16 @@ export const beginIptvPlayback = createServerFn({ method: "POST" })
 				// Without a probe the file still plays; it just offers no choices.
 			}
 		}
+		const convertsContainer = Boolean(ffmpeg) && needsConversion(target.url);
+		const base = `/api/iptv?id=${encodeURIComponent(data.id)}${data.preferHls ? "&prefer=hls" : ""}${
+			audioNeedsConversion && !convertsContainer ? "&remux=1" : ""
+		}`;
 		return {
 			streamUrl: base,
 			fallbackUrl: target.fallback ? `${base}&fallback=1` : undefined,
 			format: target.format,
 			live: target.live,
-			transcoded: Boolean(ffmpeg) && needsConversion(target.url),
+			transcoded: convertsContainer || audioNeedsConversion,
 			durationSeconds,
 			media,
 		};

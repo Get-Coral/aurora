@@ -118,12 +118,18 @@ dependencies {
     // Only for the Spatial plugin to find the SDK's shader includes (see configurations above).
     debugCompileClasspath "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion@aar"
 
-    // Quest only: the immersive theater (Meta Spatial SDK) and its native player.
+    // The native player: IPTV films and series on Android TV, and the Quest theater.
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
+    implementation "androidx.media3:media3-ui:$media3Version"
+    // Software AC3 / E-AC3 / DTS / TrueHD for devices without a Dolby decoder (most phones):
+    // FFmpeg's audio decoders, as Jellyfin's own Android apps ship them. Its version follows Media3's.
+    implementation "org.jellyfin.media3:media3-ffmpeg-decoder:$media3Version+1"
+
+    // Quest only: the immersive theater (Meta Spatial SDK).
     questImplementation "com.meta.spatial:meta-spatial-sdk:$metaSpatialSdkVersion"
     questImplementation "com.meta.spatial:meta-spatial-sdk-toolkit:$metaSpatialSdkVersion"
     questImplementation "com.meta.spatial:meta-spatial-sdk-vr:$metaSpatialSdkVersion"
-    questImplementation "androidx.media3:media3-exoplayer:$media3Version"
-    questImplementation "androidx.media3:media3-exoplayer-hls:$media3Version"
 }
 
 apply from: 'capacitor.build.gradle'

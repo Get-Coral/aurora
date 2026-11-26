@@ -44,6 +44,17 @@ export function browserEngineSupport(): EngineSupport {
 	};
 }
 
+/**
+ * Whether this browser plays Dolby Digital (Plus) audio itself. Safari does;
+ * Chrome and Firefox don't, and play such files without sound.
+ */
+export function browserDecodesDolby(): boolean {
+	const support = browserEngineSupport();
+	return ['audio/mp4; codecs="ec-3"', 'audio/mp4; codecs="ac-3"'].every(
+		(type) => support.canPlayType(type) !== "",
+	);
+}
+
 export interface StreamTrack {
 	id: number;
 	label: string;

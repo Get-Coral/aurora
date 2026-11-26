@@ -70,6 +70,11 @@ export async function transcodeIptv(
 			"-user_agent",
 			"Aurora IPTV",
 			...(start > 0 ? ["-ss", String(start)] : []),
+			// Copied video can only start on a keyframe, at or before `start`.
+			// Start the audio there too: cut exactly at `start`, it would begin
+			// seconds later than the picture, and browsers play that gap away
+			// instead of waiting, so the sound drifts off the picture.
+			...(start > 0 && plan.copyVideo ? ["-noaccurate_seek"] : []),
 			"-i",
 			source.href,
 			"-map",

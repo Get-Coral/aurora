@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/aurora_player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        app:animation_enabled="false"
+        app:controller_layout_id="@layout/aurora_tv_player_controls"
+        app:pause_icon="@drawable/aurora_ic_pause"
+        app:play_icon="@drawable/aurora_ic_play"
+        app:show_buffering="when_playing"
+        app:show_next_button="false"
+        app:show_previous_button="false"
+        app:show_subtitle_button="false" />
+
+    <!-- The audio and subtitle pickers: .player-subtitle-picker, above the buttons on the right. -->
+    <LinearLayout
+        android:id="@+id/aurora_picker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="44dp"
+        android:layout_marginBottom="124dp"
+        android:background="@drawable/aurora_player_picker_bg"
+        android:minWidth="240dp"
+        android:orientation="vertical"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/aurora_picker_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="6dp"
+            android:fontFamily="@font/aurora_manrope_bold"
+            android:letterSpacing="0.16"
+            android:textAllCaps="true"
+            android:textColor="@color/aurora_accent_strong"
+            android:textSize="11sp" />
+
+        <ScrollView
+            android:id="@+id/aurora_picker_scroll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:focusable="false"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/aurora_picker_list"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="220dp"
+                android:orientation="vertical" />
+        </ScrollView>
+    </LinearLayout>
+</FrameLayout>

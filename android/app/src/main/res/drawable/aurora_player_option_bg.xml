@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- .player-subtitle-option: focused, active (accent with a hairline) and plain. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="12dp" />
+            <solid android:color="@color/aurora_focus_fill" />
+            <stroke android:width="3dp" android:color="@color/aurora_accent" />
+        </shape>
+    </item>
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="12dp" />
+            <stroke android:width="1dp" android:color="@color/aurora_line" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="12dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</selector>

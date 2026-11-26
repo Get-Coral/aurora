@@ -42,10 +42,12 @@ import {
 	type TheaterResult,
 	toTheaterUrl,
 } from "../lib/native/theater";
+import { isTvPlayerAvailable, playInTvPlayer, shouldUseTvPlayer } from "../lib/native/tv-player";
 import { getClientPlaybackContext } from "../lib/platform";
 import {
 	type AttachedStream,
 	attachStream,
+	browserDecodesDolby,
 	browserEngineSupport,
 	choosePlaybackEngine,
 	distinctLabels,
@@ -621,6 +623,70 @@ export function MediaPlayerDialog({
 		});
 	}
 
+	const onCloseRef = useRef(onClose);
+	onCloseRef.current = onClose;
+
+	/**
+	 * Plays an IPTV film or episode in the Android app's native player and,
+	 * once the viewer is back, saves where they got to and closes the player.
+	 * False when the native player couldn't play it: the WebView tries then.
+	 */
+	async function playIptvInTvPlayer(
+		target: MediaItem,
+		session: IptvPlayback,
+		resumeSeconds: number,
+	): Promise<boolean> {
+		let result: Awaited<ReturnType<typeof playInTvPlayer>>;
+		try {
+			result = await playInTvPlayer({
+				itemId: target.id,
+				title: target.title,
+				subtitle:
+					target.type === "episode" && target.seriesTitle
+						? `${target.seriesTitle}${target.episodeNumber ? ` · E${target.episodeNumber}` : ""}`
+						: undefined,
+				locale,
+				labels: {
+					nowPlaying: t("player.nowPlaying"),
+					close: t("player.close"),
+					skipBack: t("player.skipBack"),
+					skipForward: t("player.skipForward"),
+					audioTrack: t("player.audioTrack"),
+					subtitles: t("player.subtitles"),
+					subtitlesOff: t("player.subtitlesOff"),
+					trackNumber: t("player.trackNumber", { number: "{number}" }),
+				},
+				url: session.streamUrl,
+				positionSeconds: resumeSeconds,
+				durationSeconds: session.durationSeconds,
+				format: session.format,
+				fallbackUrl: session.fallbackUrl,
+			});
+		} catch {
+			return false;
+		}
+		// Failed before it got anywhere: let the WebView player have a go.
+		if (result.error && (result.positionSeconds ?? 0) <= resumeSeconds + 1) return false;
+
+		const total =
+			session.durationSeconds || result.durationSeconds || getRuntimeSeconds(target) || 0;
+		const position = result.ended ? total : (result.positionSeconds ?? resumeSeconds);
+		const played = result.ended || (total > 0 && watchedRatio(position, total) >= 0.94);
+		lastKnownPositionRef.current = position;
+		try {
+			await reportIptvPlaybackRuntime({
+				id: target.id,
+				positionTicks: Math.max(0, Math.floor(position * 10_000_000)),
+				durationTicks: Math.floor(total * 10_000_000),
+				played: played || undefined,
+			});
+		} catch {
+			// Progress is best effort.
+		}
+		if (activeItemIdRef.current === target.id) onCloseRef.current();
+		return true;
+	}
+
 	// Reset + prewarm playback session when the selected item changes.
 	useEffect(() => {
 		stopReportedRef.current = false;
@@ -674,12 +740,12 @@ export function MediaPlayerDialog({
 			// the native app) ask the provider for HLS instead.
 			const preferHls = isNativeShell() || !browserEngineSupport().mse;
 			void Promise.all([
-				beginIptvPlaybackRuntime(item.id, preferHls),
+				beginIptvPlaybackRuntime(item.id, preferHls, browserDecodesDolby()),
 				createStreamTokenRuntime({ data: { id: item.id } }).catch(() => ({
 					token: null as string | null,
 				})),
 			])
-				.then(([session, minted]) => {
+				.then(async ([session, minted]) => {
 					if (cancelled) return;
 					setStreamToken(minted.token);
 					if (session.durationSeconds) {
@@ -687,6 +753,13 @@ export function MediaPlayerDialog({
 						setDuration(session.durationSeconds);
 					}
 					const resumeSeconds = session.live ? 0 : resumeTicksFor(item) / 10_000_000;
+					// Android: films and episodes play in the native player, which
+					// has the Dolby decoders and MKV handling the WebView lacks.
+					if (shouldUseTvPlayer(session) && (await isTvPlayerAvailable())) {
+						if (cancelled) return;
+						if (await playIptvInTvPlayer(item, session, resumeSeconds)) return;
+						if (cancelled) return;
+					}
 					let streamUrl = session.streamUrl;
 					if (session.transcoded && resumeSeconds > 0) {
 						// Aurora's converter seeks on the provider; the new stream starts there.
@@ -1931,7 +2004,8 @@ export function MediaPlayerDialog({
 			playMethod: "Transcode",
 			streamUrl: withStreamParams(session.streamUrl, {
 				...params,
-				remux: session.iptv.transcoded ? null : "1",
+				// A converted stream keeps its own remux (audio converted for the browser).
+				...(session.iptv.transcoded ? {} : { remux: "1" }),
 				start: position > 0 ? Math.floor(position) : null,
 			}),
 			iptv: { ...session.iptv, transcoded: true },

@@ -116,3 +116,17 @@ export function canCopyVideo(media: ProbedMedia | undefined) {
 export function canCopyAudio(track: ProbedMedia["audio"][number] | undefined) {
 	return track?.codec === "aac" && (track.channels ?? 2) <= 2;
 }
+
+/** Audio every browser decodes in an MP4 or WebM. */
+const BROWSER_AUDIO = new Set(["aac", "mp3", "opus", "vorbis", "flac"]);
+/** Dolby Digital (Plus): Safari and some TVs decode it, Chrome and Firefox don't. */
+const DOLBY_AUDIO = new Set(["ac3", "eac3"]);
+
+/**
+ * Whether the browser can play a file's audio as it is. Without an audio
+ * track there is nothing to convert; an unknown codec is converted to be safe.
+ */
+export function browserCanPlayAudio(codec: string | undefined, options: { dolby: boolean }) {
+	if (!codec) return true;
+	return BROWSER_AUDIO.has(codec) || (options.dolby && DOLBY_AUDIO.has(codec));
+}
