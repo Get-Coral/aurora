@@ -473,4 +473,66 @@ describe("browse rows", () => {
 		expect(categories[0]?.filter).toEqual({ group: "|NL| FILMS" });
 		expect(result.rows[0]?.titleKey).toBe("added");
 	});
+
+	it("puts favourite channels first in the channel list and the guide", async () => {
+		const { browseIptv, iptvGuideRows } = await import("./service");
+		const catalog = {
+			source: "ab12",
+			loadedAt: 0,
+			...(await loadXtreamCatalog(config, api(xtreamResponses))),
+		};
+		const channel = catalog.channels[0]!;
+		catalog.channels = ["Een", "Canvas", "VTM", "Play4", "Ketnet"].map((title, index) => ({
+			...channel,
+			pid: `${index + 1}`,
+			title,
+			epgId: `epg${index + 1}`,
+		}));
+		const favorites = new Set([iptvId("ab12", "live", "3"), iptvId("ab12", "live", "5")]);
+		const backend: IptvBackend = {
+			sourceIds: async () => ["ab12"],
+			options: async () => ({ hiddenGroups: [], showAdult: false }),
+			schedule: async () => [],
+			catalog: async () => catalog,
+			vodInfo: async () => undefined,
+			seriesInfo: async () => ({ series: catalog.series[0]!, episodes: [] }),
+			epg: async () => new Map(),
+			art: (raw) => raw,
+			state: {
+				get: async (ids) =>
+					new Map(ids.filter((id) => favorites.has(id)).map((id) => [id, { favorite: true }])),
+				list: async (kind) =>
+					kind === "favorites"
+						? [...favorites].reverse().map((id) => ({
+								id,
+								state: { favorite: true },
+								snapshot: { id, source: "iptv", type: "channel", title: id, genres: [] },
+							}))
+						: [],
+				update: async () => {},
+			},
+		};
+		const titles = (items: { title: string }[]) => items.map((item) => item.title);
+
+		const live = await browseIptv(backend, { kind: "live" });
+		expect(titles(live.items)).toEqual(["VTM", "Ketnet", "Een", "Canvas", "Play4"]);
+		expect(live.items[0]?.isFavorite).toBe(true);
+		expect(live.total).toBe(5);
+
+		const paged = await browseIptv(backend, { kind: "live", offset: 2, limit: 2 });
+		expect(titles(paged.items)).toEqual(["Een", "Canvas"]);
+
+		const byTitle = await browseIptv(backend, { kind: "live", sort: "title" });
+		expect(titles(byTitle.items)).toEqual(["Canvas", "Een", "Ketnet", "Play4", "VTM"]);
+
+		const guide = await iptvGuideRows(backend, { from: 0, to: 1 });
+		expect(guide.rows.map((row) => row.channel.title)).toEqual([
+			"VTM",
+			"Ketnet",
+			"Een",
+			"Canvas",
+			"Play4",
+		]);
+		expect(guide.rows[0]?.channel.isFavorite).toBe(true);
+	});
 });

@@ -250,7 +250,25 @@ async function browseRows(backend: IptvBackend, input: IptvBrowseInput) {
 				("rating" in a.entry ? (a.entry.rating ?? 0) : 0),
 		);
 	else if (query.text) rows.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+	else if (input.kind === "live" && !input.favoritesOnly)
+		rows = await favoritesFirst(backend, rows);
 	return { all, rows, groups };
+}
+
+/**
+ * Favourite channels first, so they're at hand without searching; both parts
+ * keep the provider's order.
+ */
+async function favoritesFirst(backend: IptvBackend, rows: BrowseRow[]) {
+	const favorites = await backend.state.list("favorites", 1000).catch(() => []);
+	if (!favorites.length) return rows;
+	const ids = new Set(favorites.map((favorite) => favorite.id));
+	const pinned: BrowseRow[] = [];
+	const rest: BrowseRow[] = [];
+	for (const row of rows) {
+		(ids.has(entryId(row.catalog.source, row.entry)) ? pinned : rest).push(row);
+	}
+	return pinned.length ? [...pinned, ...rest] : rows;
 }
 
 export async function browseIptv(

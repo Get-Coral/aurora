@@ -7187,6 +7187,14 @@ html.tv-mode .player-autoplay-cancel {
   font-size: 0.7rem;
 }
 
+.iptv-guide-channel .icon-button {
+  flex: none;
+}
+
+.iptv-guide-favorite.is-favorite {
+  color: var(--accent-warm);
+}
+
 .iptv-guide-programme {
   position: absolute;
   top: 0.35rem;

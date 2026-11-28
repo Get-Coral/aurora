@@ -1,10 +1,11 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Play, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Play, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatClock } from "../lib/clock";
 import { useI18n } from "../lib/i18n";
 import type { MediaItem, MediaProgramme } from "../lib/media";
 import { fetchIptvGuideRowsRuntime } from "../lib/runtime-functions";
+import { useFavoriteAction } from "./useFavoriteAction";
 
 const PX_PER_MINUTE = 4;
 const WINDOW_HOURS = 6;
@@ -57,6 +58,7 @@ export function IptvGuide({
 	onGroups: (groups: string[]) => void;
 }) {
 	const { t } = useI18n();
+	const favorite = useFavoriteAction();
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const [shiftHours, setShiftHours] = useState(0);
@@ -215,6 +217,21 @@ export function IptvGuide({
 									title={t("dialog.watchLive")}
 								>
 									<Play size={14} fill="currentColor" />
+								</button>
+								<button
+									type="button"
+									className={`icon-button iptv-guide-favorite${channel.isFavorite ? " is-favorite" : ""}`}
+									onClick={() =>
+										favorite.mutate({ id: channel.id, isFavorite: Boolean(channel.isFavorite) })
+									}
+									aria-pressed={Boolean(channel.isFavorite)}
+									aria-label={
+										channel.isFavorite ? t("card.removeFromMyList") : t("card.addToMyList")
+									}
+									title={channel.isFavorite ? t("card.removeFromMyList") : t("card.addToMyList")}
+									data-tv-focusable="true"
+								>
+									<Heart size={14} fill={channel.isFavorite ? "currentColor" : "none"} />
 								</button>
 							</div>
 							<div className="iptv-guide-track" style={{ width }}>
